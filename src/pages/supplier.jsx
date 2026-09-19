@@ -308,7 +308,7 @@ export function SupDiff() {
   );
 }
 
-/* ---------------- 售后处理（一件代发：供应商审核收货 + 验收/拒收） ---------------- */
+/* ---------------- 售后处理（一件代发：总部审核 · 供应商收货验收/拒收 · 总部退款） ---------------- */
 const STEPS = ["待商家处理", "待买家退货", "待商家收货", "待验收", "待商家退款", "已完成"];
 const AS_ROWS = [
   { no: "AS2609180001", orderNo: "ORD260916000145", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺", way: "退货退款", reason: "不想要了", status: "待商家收货", step: 2, returnNo: "SF1234567890" },
@@ -320,7 +320,7 @@ export function SupAfterSales() {
   const [detail, setDetail] = useState(null);
   return (
     <>
-      <div className="alert"><span className="ic">i</span>一件代发退货审核与验收由<b style={{ margin: "0 4px" }}>供应商负责收货审核，总部负责退款</b></div>
+      <div className="alert"><span className="ic">i</span>一件代发退货：<b style={{ margin: "0 4px" }}>总部审核 · 供应商收货验收 · 总部退款</b></div>
       <div className="tbl-wrap">
         <table>
           <thead><tr><th className="tw">售后单号</th><th>商品</th><th className="tw">售后方式</th><th className="tw">售后原因</th><th className="tw">寄回物流</th><th className="tw">金额</th><th>进度</th><th className="tw">状态</th><th className="tw">操作</th></tr></thead>
@@ -367,7 +367,7 @@ function SupAsDetailModal({ as, onClose }) {
           <div>当前状态：<span className="tag blue">{as.status}</span></div>
         </div>
         <div className="note" style={{ marginTop: 12, lineHeight: 1.9 }}>
-          金额、售价、退款金额对供应商<b>脱敏</b>。一件代发的退货审核与验收由<b>供应商</b>做，退款由<b>总部</b>执行。
+          金额、售价、退款金额对供应商<b>脱敏</b>。一件代发的退货由<b>总部（租户）</b>审核，供应商负责<b>收货与验收</b>，退款由<b>总部</b>执行。
         </div>
         <div className="gfoot">
           <button className="btn primary" onClick={onClose}>关闭</button>

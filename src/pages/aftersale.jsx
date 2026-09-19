@@ -1,24 +1,309 @@
 import React, { useState } from "react";
 import { useToast, useRowSelect, BatchBar } from "../ui.jsx";
 
-/* 1:1 复刻真实 SAAS「售后管理」页（交易 > 售后管理） */
+/* 1:1 复刻真实 SAAS「售后管理」页（交易 > 售后管理）：
+   列表（页签/筛选/列/备注·详情）+ 整页「售后详情」（状态卡 + 步骤条 + 买家备注 +
+   售后申请/订单/客户三栏 + 商品信息 + 维权记录）。
+   处理流程（真实口径）：待商家处理[同意/拒绝] → 仅退款：待商家退款[原路退款] → 售后完成；
+   退货退款：等待买家退货 → 待商家签收[同意签收退货/拒绝签收退货] → 待商家退款 → 售后完成；
+   拒绝签收退货 → 填退回物流单号（商家寄回商品）→ 售后关闭。 */
+
 const TABS = ["全部", "待商家处理", "待商家收货", "待买家处理", "退款异常", "退款中", "退款成功"];
+const inTab = (status, tab) =>
+  tab === "全部" ? true
+    : tab === "待商家处理" ? ["待商家处理", "待商家退款"].includes(status)
+      : tab === "待商家收货" ? status === "待商家签收"
+        : tab === "待买家处理" ? status === "待买家退货"
+          : tab === "退款异常" ? status === "退款异常"
+            : tab === "退款中" ? status === "退款中"
+              : status === "售后完成";
+
+const STEPS_OF = (row) =>
+  row.status === "售后关闭" ? ["买家维权", "售后关闭"]
+    : row.way === "退货退款" ? ["买家维权", "待商家处理", "待商家签收", "待商家退款", "售后完成"]
+      : ["买家维权", "待商家处理", "待商家退款", "售后完成"];
+const STEP_IDX = (row) =>
+  row.status === "售后完成" ? 99
+    : { 待商家处理: 1, 待买家退货: 1, 待商家签收: 2, 待商家退款: 3 }[row.status] ?? 1;
+const TONE = (s) => (s === "待商家处理" ? "warn" : s === "售后关闭" ? "gray" : "blue");
 
 const ROWS = [
-  { no: "ORD260917000164", product: "什锦果蔬", spec: "黑色/", emoji: "🧺", asNo: "R2026091826091", way: "仅退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0, at: "2026-09-18 17:44:36", timeout: "-", status: "待商家处理" },
-  { no: "ORD260917000147", product: "华为手机", spec: "蓝色/M", emoji: "📱", asNo: "R2026091826091", way: "仅退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0, at: "2026-09-18 17:44:22", timeout: "-", status: "待商家处理" },
-  { no: "ORD260917000159", product: "什锦果蔬", spec: "蓝色/", emoji: "🧺", asNo: "R2026091826091", way: "仅退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0, at: "2026-09-18 17:42:38", timeout: "-", status: "待商家处理" },
-  { no: "ORD260917000153", product: "华为手机", spec: "蓝色/", emoji: "📱", asNo: "R2026091826091", way: "仅退款", ship: "暂无", amount: "¥2.00", qty: 1, refund: "¥2.00", points: 0, at: "2026-09-18 17:42:16", timeout: "-", status: "待商家处理" },
-  { no: "ORD260917000120", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺", asNo: "R2026091726091", way: "仅退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0, at: "2026-09-17 16:29:57", timeout: "-", status: "退款成功" },
+  {
+    no: "ORD260917000164", product: "什锦果蔬", spec: "黑色/l", emoji: "🧺",
+    asNo: "R20260918260918000008", way: "仅退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0,
+    at: "2026-09-18 17:44:36", timeout: "-", reason: "包裹为空", status: "待商家处理",
+    buyerNote: "-", refundNote: "-",
+    order: { 应付金额: "¥3.00", 实付金额: "¥1.00", 配送方式: "快递", 物流状态: "-" },
+    customer: { 申请人: "九九", 收货人: "T1", 联系电话: "13911112217", 收货地址: "重庆市重庆郊县丰都县董家镇测试" },
+    goods: { 单价: "3.00", 数量: 1, 实付款: "1.00", 退货数量: 0, 退货金额: "1.00" },
+    timeline: [{ t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥1.00", "退款原因：包裹为空", "退款说明：-"], at: "2026-09-18 17:44:36" }],
+  },
+  {
+    no: "ORD260917000147", product: "华为手机", spec: "蓝色/M", emoji: "📱",
+    asNo: "R20260918260918000007", way: "仅退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0,
+    at: "2026-09-18 17:44:22", timeout: "-", reason: "不想要了", status: "待商家退款",
+    buyerNote: "测试售后", refundNote: "测试",
+    order: { 应付金额: "¥1.00", 实付金额: "¥1.00", 配送方式: "快递", 物流状态: "已签收" },
+    customer: { 申请人: "九九", 收货人: "T1", 联系电话: "13911112217", 收货地址: "重庆市重庆郊县丰都县董家镇测试" },
+    goods: { 单价: "1.00", 数量: 1, 实付款: "1.00", 退货数量: 0, 退货金额: "1.00" },
+    timeline: [
+      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥1.00", "退款原因：不想要了", "退款说明：测试"], at: "2026-09-18 17:44:22" },
+      { t: "商家已同意售后申请", lines: [], at: "2026-09-18 18:02:10" },
+    ],
+  },
+  {
+    no: "ORD260910000069", product: "华为手机", spec: "蓝色/S", emoji: "📱",
+    asNo: "R20260910260910000004", way: "退货退款", ship: "暂无", amount: "¥0.01", qty: 1, refund: "¥0.01", points: 0,
+    at: "2026-09-10 14:40:57", timeout: "-", reason: "无快递信息", status: "待商家处理",
+    buyerNote: "测试", refundNote: "测试",
+    order: { 应付金额: "¥0.01", 实付金额: "¥0.01", 配送方式: "快递", 物流状态: "已签收" },
+    customer: { 申请人: "JJ代理", 收货人: "JOJO", 联系电话: "18100010002", 收货地址: "北京市北京城区昌平区百善镇测试" },
+    goods: { 单价: "0.01", 数量: 1, 实付款: "0.01", 退货数量: 1, 退货金额: "0.01" },
+    timeline: [{ t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥0.01", "退款原因：无快递信息", "退款说明：测试"], at: "2026-09-10 14:40:57" }],
+  },
+  {
+    no: "ORD260915000088", product: "华为手机", spec: "蓝色/M", emoji: "📱",
+    asNo: "R20260915260915000002", way: "退货退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0,
+    at: "2026-09-15 10:22:08", timeout: "-", reason: "商品与描述不符", status: "待商家签收",
+    buyerNote: "-", refundNote: "-",
+    order: { 应付金额: "¥1.00", 实付金额: "¥1.00", 配送方式: "快递", 物流状态: "已签收" },
+    customer: { 申请人: "店员10", 收货人: "欧耶", 联系电话: "13580530583", 收货地址: "安徽省蚌埠市蚌山区宏业村街道 234234234" },
+    goods: { 单价: "1.00", 数量: 1, 实付款: "1.00", 退货数量: 1, 退货金额: "1.00" },
+    timeline: [
+      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥1.00", "退款原因：商品与描述不符", "退款说明：-"], at: "2026-09-15 10:22:08" },
+      { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-15 10:30:41" },
+      { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：2585"], at: "2026-09-17 16:27:15" },
+    ],
+  },
+  {
+    no: "ORD260917000120", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺",
+    asNo: "R20260917260917000005", way: "仅退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0,
+    at: "2026-09-17 16:29:57", timeout: "-", reason: "不想要了", status: "售后完成",
+    buyerNote: "-", refundNote: "-",
+    order: { 应付金额: "¥1.00", 实付金额: "¥1.00", 配送方式: "快递", 物流状态: "-" },
+    customer: { 申请人: "九九", 收货人: "T1", 联系电话: "13911112217", 收货地址: "重庆市重庆郊县丰都县董家镇测试" },
+    goods: { 单价: "1.00", 数量: 1, 实付款: "1.00", 退货数量: 0, 退货金额: "1.00" },
+    timeline: [
+      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥1.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-17 16:29:57" },
+      { t: "商家已同意售后申请", lines: [], at: "2026-09-17 19:02:33" },
+      { t: "退款完成", lines: ["退款方式：原路退回", "退款金额：￥1.00"], at: "2026-09-17 20:46:10" },
+      { t: "售后完成", lines: [], at: "2026-09-17 20:46:11" },
+    ],
+  },
+  {
+    no: "ORD260912000016", product: "西瓜", spec: "S", emoji: "🍉",
+    asNo: "R20260912260912000004", way: "退货退款", ship: "暂无", amount: "¥0.02", qty: 2, refund: "¥0.02", points: 0,
+    at: "2026-09-12 15:18:34", timeout: "-", reason: "不想要了", status: "售后关闭",
+    buyerNote: "-", refundNote: "-",
+    order: { 应付金额: "¥0.02", 实付金额: "¥0.02", 配送方式: "顺丰速运", 物流状态: "已发货" },
+    customer: { 申请人: "JJ代理", 收货人: "JOJO", 联系电话: "18100010002", 收货地址: "北京市北京城区昌平区百善镇测试" },
+    goods: { 单价: "0.01", 数量: 2, 实付款: "0.02", 退货数量: 2, 退货金额: "0.02" },
+    timeline: [
+      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥0.02", "退款原因：不想要了", "退款说明：-"], at: "2026-09-12 15:18:34" },
+      { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-12 15:28:52" },
+      { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：2585"], at: "2026-09-12 16:27:15" },
+      { t: "商家拒绝签收退货", lines: [], at: "2026-09-12 16:29:13" },
+      { t: "商家寄回商品", lines: ["退货方式：快递", "物流单号：3323"], at: "2026-09-12 16:30:40" },
+      { t: "售后关闭", lines: ["关闭原因：商家寄回拒签商品,买家签收"], at: "2026-09-12 16:41:46" },
+    ],
+  },
 ];
 
+const now = () => new Date().toISOString().slice(0, 19).replace("T", " ");
+
 export function AfterSales() {
+  const [rows, setRows] = useState(ROWS);
   const [tab, setTab] = useState("全部");
   const [note, setNote] = useState(null);     // 备注
-  const [detail, setDetail] = useState(null); // 详情
+  const [detail, setDetail] = useState(null); // 售后详情（整页复刻）
+  const [back, setBack] = useState(null);     // 拒绝签收退货（填退回物流单号）
   const [toast, tip] = useToast();
-  const list = ROWS.filter((r) => (tab === "全部" ? true : r.status === tab));
-  const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((r) => r.no));
+  const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((r) => r.no));
+
+  /* 按维权编号更新行 + 同步详情视图 */
+  const act = (row, fn) => {
+    const n = fn({ ...row, timeline: [...row.timeline] });
+    setRows((rs) => rs.map((r) => (r.asNo === row.asNo ? n : r)));
+    setDetail({ ...n });
+  };
+  const addTimeline = (r, t, lines) => { r.timeline = [...r.timeline, { t, lines: lines || [], at: now() }]; };
+
+  /* 待商家处理：同意 / 拒绝 */
+  const agree = (row) => {
+    act(row, (r) => {
+      if (r.way === "仅退款") {
+        addTimeline(r, "商家已同意售后申请");
+        r.status = "待商家退款";
+      } else {
+        addTimeline(r, "商家已同意售后申请，等待买家退货");
+        r.status = "待买家退货";
+      }
+      return r;
+    });
+    tip(row.way === "仅退款" ? "已同意 → 待商家退款" : "已同意 → 等待买家退货（流转供应商签收）");
+  };
+  const refuseApply = (row) => {
+    act(row, (r) => {
+      addTimeline(r, "商家拒绝售后申请");
+      addTimeline(r, "售后关闭", ["关闭原因：商家拒绝售后申请"]);
+      r.status = "售后关闭";
+      return r;
+    });
+    tip("已拒绝 → 售后关闭");
+  };
+  /* 待商家签收：同意签收 / 拒绝签收（填退回单号） */
+  const agreeSign = (row) => {
+    act(row, (r) => {
+      addTimeline(r, "商家已同意签收退货");
+      r.status = "待商家退款";
+      return r;
+    });
+    tip("已同意签收退货 → 待商家退款");
+  };
+  const refuseSign = (row, backNo) => {
+    act(row, (r) => {
+      addTimeline(r, "商家拒绝签收退货");
+      addTimeline(r, "商家寄回商品", ["退货方式：快递", `物流单号：${backNo}`]);
+      addTimeline(r, "售后关闭", ["关闭原因：商家寄回拒签商品,买家签收"]);
+      r.status = "售后关闭";
+      return r;
+    });
+    setBack(null);
+    tip("已拒绝签收 → 商品寄回 → 售后关闭");
+  };
+  /* 待商家退款：原路退款 */
+  const refund = (row) => {
+    act(row, (r) => {
+      addTimeline(r, "退款完成", ["退款方式：原路退回", `退款金额：￥${r.refund.replace("¥", "")}`]);
+      addTimeline(r, "售后完成");
+      r.status = "售后完成";
+      return r;
+    });
+    tip("原路退款完成 → 售后完成");
+  };
+
+  /* ---------------- 整页售后详情（复刻真实 SaaS） ---------------- */
+  if (detail) {
+    const d = detail;
+    const steps = STEPS_OF(d);
+    const idx = STEP_IDX(d);
+    const desc =
+      d.status === "待商家处理" ? "买家已发起售后申请，等待商家处理"
+        : d.status === "待商家退款" ? "商家已同意，待商家退款"
+          : d.status === "待买家退货" ? "商家已同意售后申请，等待买家退货"
+            : d.status === "待商家签收" ? "买家已退货，待商家确认收货"
+              : d.status === "售后完成" ? "商家已完成退款"
+                : "商家拒绝收货已寄回，卖家签收";
+    return (
+      <>
+        <div className="card">
+          <div className="cbody">
+            <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 12, borderBottom: "1px solid var(--line)" }}>
+              <span style={{ cursor: "pointer", fontSize: 16 }} onClick={() => setDetail(null)}>←</span>
+              <b style={{ fontSize: 15 }}>售后详情</b>
+            </div>
+            <div style={{ display: "flex", gap: 40, padding: "12px 4px", fontSize: 13, color: "var(--text-2)" }}>
+              <span>订单编号：<b className="mono" style={{ color: "var(--text-1)" }}>{d.no}</b></span>
+              <span>维权编号：<b className="mono" style={{ color: "var(--text-1)" }}>{d.asNo}</b></span>
+            </div>
+
+            <div style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 4 }}>
+              <div style={{ width: 340, flex: "none", padding: "18px 20px", borderRight: "1px solid var(--line)" }}>
+                <b style={{ fontSize: 15, color: "#25c7a5" }}>{d.status}</b>
+                <div style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>{desc}</div>
+                <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center" }}>
+                  {d.status === "待商家处理" && <><button className="btn primary" onClick={() => agree(d)}>同意</button><button className="btn plain" onClick={() => refuseApply(d)}>拒绝</button></>}
+                  {d.status === "待商家签收" && <><button className="btn primary" onClick={() => agreeSign(d)}>同意签收退货</button><button className="btn plain" onClick={() => setBack(d)}>拒绝签收退货</button></>}
+                  {d.status === "待商家退款" && <button className="btn primary" onClick={() => refund(d)}>原路退款</button>}
+                  {d.status === "售后完成" && <button className="btn primary" onClick={() => tip("退款原路退回，去向可在财务中查看")}>查看退款去向</button>}
+                  <span style={{ color: "#25c7a5", fontSize: 13, cursor: "pointer" }} onClick={() => setNote(d)}>备 注</span>
+                </div>
+              </div>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "18px 10px", overflowX: "auto" }}>
+                <div style={{ display: "flex", alignItems: "center", width: "100%", maxWidth: 720, minWidth: 560 }}>
+                  {steps.map((s, i) => {
+                    const done = idx === 99 || i < idx || d.status === "售后关闭";
+                    const cur = i === idx;
+                    return (
+                      <div key={s} style={{ display: "flex", alignItems: "center", flex: i === steps.length - 1 ? "none" : 1 }}>
+                        <div style={{ textAlign: "center", flex: "none" }}>
+                          <span style={{ width: 26, height: 26, borderRadius: "50%", display: "grid", placeItems: "center", margin: "0 auto",
+                            border: cur ? "none" : "1px solid #25c7a5", background: cur ? "#25c7a5" : "#fff",
+                            color: cur ? "#fff" : "#25c7a5", fontSize: 13 }}>
+                            {done && !cur ? "✓" : i + 1}
+                          </span>
+                          <div style={{ marginTop: 6, fontSize: 13, color: cur || done ? "#25c7a5" : "#c2c2c2", fontWeight: cur ? 600 : 400, whiteSpace: "nowrap" }}>{s}</div>
+                          {i === 0 && <div style={{ marginTop: 2, fontSize: 12, color: "#b6bdc4" }}>{d.timeline[0]?.at}</div>}
+                          {i === steps.length - 1 && d.status !== "待商家处理" && idx !== 1 && <div style={{ marginTop: 2, fontSize: 12, color: "#b6bdc4" }}>{d.timeline[d.timeline.length - 1]?.at}</div>}
+                        </div>
+                        {i < steps.length - 1 && <div style={{ flex: 1, height: 1, background: i < idx ? "#25c7a5" : "#e5e5e5", margin: "0 8px", marginBottom: 26 }} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: "#fffbe6", border: "1px solid #ffe58f", borderRadius: 4, padding: "8px 14px", marginTop: 14, fontSize: 13, color: "var(--text-2)" }}>
+              买家备注：{d.buyerNote}
+            </div>
+
+            <div style={{ display: "flex", gap: 24, marginTop: 16 }}>
+              {[
+                ["售后申请信息", [["售后类型", d.way], ["退款金额", `￥ ${d.refund.replace("¥", "")}`], ["退还积分", d.points], ["退款原因", d.reason], ["退款说明", d.refundNote]]],
+                ["订单信息", Object.entries(d.order)],
+                ["客户信息", Object.entries(d.customer)],
+              ].map(([title, kv]) => (
+                <div key={title} style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 4, padding: "14px 18px" }}>
+                  <b style={{ fontSize: 13.5 }}>{title}</b>
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9, fontSize: 13, color: "var(--text-2)" }}>
+                    {kv.map(([k, v]) => <div key={k}><span style={{ color: "var(--text-3)" }}>{k}：</span>{String(v)}</div>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 16, border: "1px solid var(--line)", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ padding: "10px 16px", fontWeight: 600, fontSize: 13.5, background: "var(--th-bg, #f7f7f7)" }}>商品信息</div>
+              <table className="tbl-tight">
+                <thead><tr><th>商品</th><th className="tw">单价(元)</th><th className="tw">数量</th><th className="tw">实付款</th><th className="tw">退货数量</th><th className="tw">退货金额</th></tr></thead>
+                <tbody><tr>
+                  <td><div className="prod-cell"><span className="thumb" style={{ background: "#f4f7f6" }}>{d.emoji}</span><div><div>{d.product}</div><small>规格：{d.spec}</small></div></div></td>
+                  <td className="tw">{d.goods.单价}</td><td className="tw">{d.goods.数量}</td><td className="tw">{d.goods.实付款}</td><td className="tw">{d.goods.退货数量}</td><td className="tw">{d.goods.退货金额}</td>
+                </tr></tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: 16, border: "1px solid var(--line)", borderRadius: 4, padding: "14px 18px" }}>
+              <b style={{ fontSize: 13.5 }}>维权记录</b>
+              <div style={{ marginTop: 12 }}>
+                {d.timeline.map((t, i) => (
+                  <div key={i} style={{ display: "flex", gap: 12 }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "none" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", border: "2px solid #25c7a5", background: "#fff", marginTop: 5 }} />
+                      {i < d.timeline.length - 1 && <span style={{ flex: 1, width: 1, background: "#dde5e2" }} />}
+                    </div>
+                    <div style={{ paddingBottom: 18, fontSize: 13 }}>
+                      <div style={{ fontWeight: 600 }}>{t.t}</div>
+                      {t.lines.map((l, j) => <div key={j} style={{ color: "var(--text-2)", marginTop: 4 }}>{l}</div>)}
+                      <div style={{ color: "#b6bdc4", marginTop: 4 }}>{t.at}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {toast}
+        {note && <NoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
+        {back && <BackModal row={back} onClose={() => setBack(null)} onOk={(no) => refuseSign(back, no)} />}
+      </>
+    );
+  }
+
+  /* ---------------- 列表 ---------------- */
+  const list = (tab === "全部" ? rows : rows.filter((r) => inTab(r.status, tab)));
 
   return (
     <>
@@ -56,7 +341,7 @@ export function AfterSales() {
           </thead>
           <tbody>
             {list.map((r, i) => (
-              <tr key={r.no + i}>
+              <tr key={r.no + r.asNo}>
                 <td><input type="checkbox" checked={sel.has(r.no)} onChange={() => toggleOne(r.no)} /></td>
                 <td>{i + 1}</td>
                 <td>
@@ -78,8 +363,8 @@ export function AfterSales() {
                 <td className="tw">{r.points}</td>
                 <td className="tw mono">{r.at}</td>
                 <td className="tw">{r.timeout}</td>
-                <td className="tw">{r.reason || "七天无理由退货"}</td>
-                <td className="tw"><span className={`tag ${r.status === "待商家处理" ? "warn" : "blue"}`}>{r.status}</span></td>
+                <td className="tw">{r.reason}</td>
+                <td className="tw"><span className={`tag ${TONE(r.status)}`}>{r.status}</span></td>
                 <td className="tw">
                   <div className="op-col">
                     <span style={{ color: "#f5a623", fontSize: 13, height: 20 }}>★★★★★</span>
@@ -94,23 +379,39 @@ export function AfterSales() {
       </div>
 
       <div className="pager">
-        <span>共132条记录</span>
+        <span>共{tab === "全部" ? 132 : list.length}条记录</span>
         <span className="pg">‹</span><span className="pg active">1</span><span className="pg">2</span><span className="pg">3</span><span className="pg">4</span><span className="pg">5</span><span className="pg">›</span>
         <select defaultValue="30"><option>30/页</option></select>
         <span className="jump">跳至<input defaultValue="1" />页</span>
       </div>
 
-
       {toast}
       {note && <NoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
-      {detail && (
-        <AfterSaleDetailDrawer
-          row={detail}
-          onClose={() => setDetail(null)}
-          onNote={() => { setNote(detail); setDetail(null); }}
-        />
-      )}
     </>
+  );
+}
+
+/* ---------------- 拒绝签收退货（商家寄回商品，必填退回物流单号） ---------------- */
+function BackModal({ row, onClose, onOk }) {
+  const [no, setNo] = useState("");
+  return (
+    <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="gbox">
+        <b>拒绝签收退货</b>
+        <p>{row.asNo} · {row.product}</p>
+        <div className="note" style={{ marginTop: 10, lineHeight: 1.9 }}>
+          拒绝签收后，商品将<b>寄回给买家</b>（售后单关闭，不退款）。
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 13, marginBottom: 6 }}><i style={{ color: "#f5522e" }}>*</i> 退回物流单号</div>
+          <input className="ctl" style={{ width: "100%" }} placeholder="请输入寄回给买家的物流单号" value={no} onChange={(e) => setNo(e.target.value)} />
+        </div>
+        <div className="gfoot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" disabled={!no.trim()} onClick={() => onOk(no.trim())}>确认拒绝签收</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -128,55 +429,6 @@ function NoteModal({ row, onClose, onSaved }) {
         <div className="gfoot">
           <button className="btn plain" onClick={onClose}>取消</button>
           <button className="btn primary" disabled={!text.trim()} onClick={onSaved}>保存</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- 售后详情 ---------------- */
-function AfterSaleDetailDrawer({ row, onClose, onNote }) {
-  const shipped = row.ship !== "暂无";
-  return (
-    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="drawer" style={{ width: 620 }}>
-        <header>售后详情<button className="x" onClick={onClose}>×</button></header>
-        <div className="body">
-          <section className="card">
-            <h3>售后单</h3>
-            <div className="cbody">
-              <div className="frow"><label>售后编号</label><div className="fc"><input className="mono" value={row.asNo} readOnly /></div></div>
-              <div className="frow"><label>订单编号</label><div className="fc"><input className="mono" value={row.no} readOnly /></div></div>
-              <div className="frow"><label>售后方式</label><div className="fc"><input value={row.way} readOnly /></div></div>
-              <div className="frow"><label>当前状态</label><div className="fc"><span className="tag warn">{row.status}</span></div></div>
-              <div className="frow"><label>申请时间</label><div className="fc"><input className="mono" value={row.at} readOnly /></div></div>
-            </div>
-          </section>
-
-          <section className="card">
-            <h3>商品与金额</h3>
-            <div className="cbody">
-              <div className="frow"><label>商品</label><div className="fc"><input value={`${row.product} ${row.spec}`} readOnly /></div></div>
-              <div className="frow"><label>数量</label><div className="fc"><input value={row.qty} readOnly /></div></div>
-              <div className="frow"><label>订单金额</label><div className="fc"><input value={row.amount} readOnly /></div></div>
-              <div className="frow"><label>退款金额</label><div className="fc"><input value={row.refund} readOnly style={{ color: "#f5522e" }} /></div></div>
-            </div>
-          </section>
-
-          <section className="card">
-            <h3>退款处理说明</h3>
-            <div className="cbody">
-              <div className="note" style={{ padding: 10, lineHeight: 1.9 }}>
-                {shipped
-                  ? <>该售后<b>已发货</b> → 转<b>线下协商</b>。</>
-                  : <>该售后<b>未发货</b> → 退款同时<b>同步关闭对应的发货任务</b>。</>}
-              </div>
-            </div>
-          </section>
-        </div>
-        <div className="foot">
-          <button className="btn plain" onClick={onNote}>备注</button>
-          <button className="btn primary" onClick={onClose}>关闭</button>
         </div>
       </div>
     </div>
