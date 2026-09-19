@@ -10,14 +10,14 @@ const STORE = { name: "濮源直播间", contact: "赵玉", phone: "13330329788"
 const SUPPLY_NO = "23441231235554";
 
 const RECEIPT_CARDS = [
-  { id: "c1", state: "待发货", qty: "132件", no: "DB20260420108", acts: ["查看详情"] },
+  { id: "c1", state: "待发货", qty: "132件", no: "DB20260420106", acts: ["查看详情"] },
   { id: "c2", state: "已发货", qty: "132件", no: "DB20260420108", acts: ["查看详情", "查看物流", "确认收货"] },
-  { id: "c3", state: "已收货", qty: "132件", no: "DB20260420108", acts: ["查看详情"] },
+  { id: "c3", state: "已收货", qty: "132件", no: "DB20260420109", acts: ["查看详情"] },
 ];
 
 /* 配送差异单（照 Axure 原型的差异页字段） */
 const DIFF_CARDS = [
-  { id: "CY136465", state: "待举证", skuCount: 22, diffCount: 17, supplyNo: "5000029" },
+  { id: "CY136465", state: "待举证", skuCount: 22, diffCount: 10, supplyNo: "5000029" },
   { id: "CY1936", state: "待举证", skuCount: 22, diffCount: 5, supplyNo: "5000027" },
   { id: "CY1906", state: "审核通过", skuCount: 50, diffCount: 20, supplyNo: "5000018" },
   { id: "CY130", state: "审核不通过", skuCount: 50, diffCount: 20, supplyNo: "5000018" },
@@ -25,7 +25,7 @@ const DIFF_CARDS = [
 ];
 const DIFF_ITEMS = [
   { name: "裤子", shouldQty: 30, realQty: 25, diffQty: 5 },
-  { name: "裤子", shouldQty: 30, realQty: 15, diffQty: 5 },
+  { name: "裤子", shouldQty: 30, realQty: 25, diffQty: 5 },
 ];
 
 const GRID = [
@@ -485,9 +485,9 @@ const RETURN_REASONS = ["七天无理由退货", "商品质量问题", "商品�
 /* 可发起返厂的来源（该门店已收货的供货单） */
 const RETURN_SOURCES = [
   { supplyNo: "FHD2609170017", orderNo: "ORD260917000139", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", returnTo: "供应商002", viaHq: false },
-  { supplyNo: "FHD2609180011", orderNo: "ORD260918000093", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", returnTo: "供应商003", viaHq: false },
+  { supplyNo: "FHD2609180016", orderNo: "ORD260918000093", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", returnTo: "供应商003", viaHq: false },
   { supplyNo: "FHD2609180014", orderNo: "ORD260918000101", product: "华为手机", spec: "黑色 / L", emoji: "📱", returnTo: "JOJO供应商", viaHq: true },
-  { supplyNo: "FHD2609190002", orderNo: "ORD260919000012", product: "奶粉", spec: "800g / 罐", emoji: "🥛", returnTo: "供应商001", viaHq: true },
+  { supplyNo: "FHD2609170002", orderNo: "ORD260917000164", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", returnTo: "供应商003", viaHq: false },
 ];
 const RET_TONE = (s) => (s === "待返厂" ? "#f5a623" : s === "返厂中" ? "#2f80ed" : s === "已拒收" ? "#f5522e" : "#25c7a5");
 
