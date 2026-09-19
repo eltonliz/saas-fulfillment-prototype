@@ -375,6 +375,12 @@ export const SUPPLIER_DOCS = [
   },
 ];
 
+// 累计实收（只增不减）：与租户侧同口径；部分收货/收货异常单独标
+SUPPLIER_DOCS.forEach((d) => { if (d.received === undefined) d.received = d.status === "已收货" ? d.qty : 0; });
+SUPPLIER_DOCS.find((d) => d.id === "FHD2609160009").received = 3; // 收货异常（差异单 DIFF2609170003 来源）
+SUPPLIER_DOCS.find((d) => d.id === "FHD2609170015").received = 6; // 部分收货
+SUPPLIER_DOCS.find((d) => d.id === "FHD2609170017").received = 4; // 部分收货
+
 /* 配送差异单（双来源，审核均由总部执行） */
 export const DIFFS = [
   { id: "DIFF2609170003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609160009", shipper: "供应商003", summary: "什锦果蔬 应收4/实收3 差1", diffQty: 1, status: "待举证", evidence: "少货 · 照片 2 张" },
