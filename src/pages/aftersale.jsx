@@ -219,9 +219,10 @@ export function AfterSales() {
                     退货对象：<b>{d.returnTo}</b>（一件代发 · 签收 / 验收在供应商后台）
                   </div>
                 )}
-                <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center" }}>
+                <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   {d.status === "待商家处理" && <><button className="btn primary" onClick={() => agree(d)}>同意</button><button className="btn plain" onClick={() => refuseApply(d)}>拒绝</button></>}
-                  {d.status === "待商家签收" && <><button className="btn primary" onClick={() => agreeSign(d)}>同意签收退货</button><button className="btn plain" onClick={() => setBack(d)}>拒绝签收退货</button></>}
+                  {d.status === "待商家签收" && !d.returnTo && <><button className="btn primary" onClick={() => agreeSign(d)}>同意签收退货</button><button className="btn plain" onClick={() => setBack(d)}>拒绝签收退货</button></>}
+                  {d.status === "待商家签收" && d.returnTo && <span style={{ fontSize: 12.5, color: "#f5a623" }}>待供应商签收，签收 / 验收在供应商后台操作</span>}
                   {d.status === "待商家退款" && <button className="btn primary" onClick={() => refund(d)}>原路退款</button>}
                   {d.status === "售后完成" && <button className="btn primary" onClick={() => tip("退款原路退回，去向可在财务中查看")}>查看退款去向</button>}
                   <span style={{ color: "#25c7a5", fontSize: 13, cursor: "pointer" }} onClick={() => setNote(d)}>备 注</span>
