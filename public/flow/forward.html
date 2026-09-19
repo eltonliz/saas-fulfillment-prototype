@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>正向履约主流程 · 进销存业务流程图</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', 'Noto Sans SC', 'PingFang SC', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif SC', serif;
+      --font-mono:     'Geist Mono', 'Noto Sans SC', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+    .frame { max-width: 1280px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 0.5rem;
+    }
+    .sub { font-size: 0.85rem; color: var(--color-muted); margin-bottom: 1.5rem; }
+    svg { width: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">进销存 · 业务流程图 / FORWARD FULFILLMENT</p>
+    <h1>正向履约主流程</h1>
+    <p class="sub">四条履约链路：一件代发 · 总仓直达 · 总仓中转自提 · 直配门店自提　｜　货物全程：供应商 →（总部仓）→（门店）→ 客户</p>
+
+    <svg viewBox="0 0 1280 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="forward-flow-title forward-flow-desc">
+      <title id="forward-flow-title">正向履约主流程</title>
+      <desc id="forward-flow-desc">泳道图：客户下单付款后，系统按供货模式自动派单；供应商发货可直达消费者（一件代发）、发总部仓或直配门店；经总部仓的链路收货转发后直奔消费者（总仓直达）或发门店；门店确认全部到货后系统激活提货码，客户到店由门店核销完成订单。</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      <!-- Lane structure -->
+      <line x1="40" y1="80"  x2="1240" y2="80"  stroke="rgba(45,49,66,0.22)" stroke-width="1"/>
+      <line x1="40" y1="168" x2="1240" y2="168" stroke="rgba(45,49,66,0.10)" stroke-width="1"/>
+      <line x1="40" y1="256" x2="1240" y2="256" stroke="rgba(45,49,66,0.10)" stroke-width="1"/>
+      <line x1="40" y1="344" x2="1240" y2="344" stroke="rgba(45,49,66,0.10)" stroke-width="1"/>
+      <line x1="40" y1="432" x2="1240" y2="432" stroke="rgba(45,49,66,0.10)" stroke-width="1"/>
+      <line x1="40" y1="520" x2="1240" y2="520" stroke="rgba(45,49,66,0.22)" stroke-width="1"/>
+      <line x1="168" y1="80" x2="168" y2="520" stroke="rgba(45,49,66,0.22)" stroke-width="1"/>
+
+      <!-- Lane labels -->
+      <text x="104" y="128" fill="#4f5d75" font-size="12" font-weight="500" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle" letter-spacing="0.14em">客户</text>
+      <text x="104" y="216" fill="#4f5d75" font-size="12" font-weight="500" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle" letter-spacing="0.14em">系统</text>
+      <text x="104" y="304" fill="#4f5d75" font-size="12" font-weight="500" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle" letter-spacing="0.14em">供应商</text>
+      <text x="104" y="392" fill="#4f5d75" font-size="12" font-weight="500" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle" letter-spacing="0.14em">总部仓</text>
+      <text x="104" y="480" fill="#4f5d75" font-size="12" font-weight="500" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle" letter-spacing="0.14em">门店</text>
+
+      <!-- Arrows (before boxes) -->
+      <!-- 1. 客户付款 → 系统派单 -->
+      <path d="M310,124 H388 Q396,124 396,132 V184" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <!-- 2. 系统派单 → 供应商发货 -->
+      <path d="M462,212 H528 Q536,212 536,220 V272" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <!-- 3. 供应商发货 → 总部仓（发总仓） -->
+      <path d="M614,300 H652 Q660,300 660,308 V360" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <!-- 4. 供应商发货 → 门店确认到货（直配门店，绕过总部仓） -->
+      <path d="M560,328 V454 Q560,462 568,462 H786" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <!-- 5. 供应商发货 → 消费者签收（一件代发） -->
+      <path d="M496,272 V122 Q496,114 504,114 H890" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <!-- 6. 总部仓收货转发 → 消费者签收（总仓直达） -->
+      <path d="M720,360 V158 Q720,150 728,150 H892 Q900,150 900,142 V126" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <!-- 消费者签收（共同终点） -->
+      <circle cx="900" cy="114" r="4" fill="#2d3142"/>
+      <text x="914" y="119" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif">消费者签收</text>
+      <!-- 7. 总部仓收货转发 → 门店确认到货（发门店） -->
+      <path d="M766,388 H844 Q852,388 852,396 V448" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <!-- 8. 门店确认到货 → 系统激活提货码（关键交接） -->
+      <path d="M918,476 H1024 Q1032,476 1032,468 V220 Q1032,212 1040,212 H1064" fill="none" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+      <!-- 9. 系统激活提货码 → 门店核销提货码 -->
+      <path d="M1130,240 V440" fill="none" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+
+      <!-- Arrow labels (masked, 6px+ above the stroke) -->
+      <rect x="628" y="90" width="64" height="16" rx="2" fill="#f5f5f5"/>
+      <text x="660" y="102" fill="#7a8399" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">一件代发</text>
+      <rect x="786" y="128" width="64" height="16" rx="2" fill="#f5f5f5"/>
+      <text x="818" y="140" fill="#7a8399" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">总仓直达</text>
+      <rect x="616" y="278" width="50" height="16" rx="2" fill="#f5f5f5"/>
+      <text x="641" y="290" fill="#7a8399" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">发总仓</text>
+      <rect x="643" y="440" width="68" height="16" rx="2" fill="#f5f5f5"/>
+      <text x="677" y="452" fill="#7a8399" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">直配门店</text>
+      <rect x="777" y="366" width="56" height="16" rx="2" fill="#f5f5f5"/>
+      <text x="805" y="378" fill="#7a8399" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">发门店</text>
+
+      <!-- Steps -->
+      <!-- 客户下单付款 -->
+      <rect x="178" y="96" width="132" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="244" y="120" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">客户下单付款</text>
+      <text x="244" y="138" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">订单转待发货</text>
+
+      <!-- 系统按模式派单 -->
+      <rect x="330" y="184" width="132" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="396" y="208" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">系统按模式派单</text>
+      <text x="396" y="226" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">派给供应商 / 总部仓</text>
+
+      <!-- 供应商发货 -->
+      <rect x="482" y="272" width="132" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="548" y="296" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">供应商发货</text>
+      <text x="548" y="314" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">填快递公司 + 单号</text>
+
+      <!-- 总部仓收货转发 -->
+      <rect x="634" y="360" width="132" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="700" y="384" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">总部仓收货转发</text>
+      <text x="700" y="402" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">登记实收 · 再发</text>
+
+      <!-- 门店确认到货 -->
+      <rect x="786" y="448" width="132" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="852" y="472" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">门店确认到货</text>
+      <text x="852" y="490" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">货全部到齐</text>
+
+      <!-- 系统激活提货码（焦点节点） -->
+      <rect x="1064" y="184" width="132" height="56" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+      <text x="1130" y="208" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">系统激活提货码</text>
+      <text x="1130" y="226" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">订单转「待提货」</text>
+
+      <!-- 门店核销提货码 -->
+      <rect x="1064" y="448" width="132" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="1130" y="472" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">门店核销提货码</text>
+      <text x="1130" y="490" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">客户到店出示后核销</text>
+
+      <!-- Legend -->
+      <line x1="40" y1="552" x2="1240" y2="552" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="40" y="568" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
+      <rect x="120" y="564" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="142" y="574" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif">履约步骤</text>
+      <rect x="252" y="562" width="14" height="12" rx="2" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+      <text x="274" y="574" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif">关键节点</text>
+      <circle cx="400" cy="570" r="4" fill="#2d3142"/>
+      <text x="414" y="574" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif">流程终点</text>
+      <line x1="528" y1="570" x2="562" y2="570" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+      <text x="572" y="574" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif">关键交接</text>
+    </svg>
+  </div>
+</body>
+</html>
