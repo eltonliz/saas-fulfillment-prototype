@@ -194,7 +194,7 @@ function Home({ onGo }) {
           {GRID.map(([t, i]) => {
             const target = t === "收货管理" ? "receipts" : t === "配送差异" ? "diffs" : t === "退货返厂" ? "returns" : null;
             return (
-              <button key={t} className={t === "退货返厂" ? "hl" : ""} data-hl="新增" onClick={() => target && onGo(target)}>
+              <button key={t} className={["收货管理", "配送差异", "退货返厂"].includes(t) ? "hl" : ""} data-hl="新增" onClick={() => target && onGo(target)}>
                 <i>{i}</i>{t}
               </button>
             );
