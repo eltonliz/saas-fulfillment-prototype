@@ -16,6 +16,7 @@ import { ScenarioList } from "./pages/scenarios.jsx";
 import { FlowsView } from "./pages/flows.jsx";
 import { VersionLog } from "./pages/versions.jsx";
 import { useToast } from "./ui.jsx";
+import { supplyStore } from "./store.js";
 
 const TENANT = {
   版本记录: { crumbs: ["版本记录"], tabs: ["版本记录"] },
@@ -55,6 +56,16 @@ export function App() {
     setPortal(p);
     if (p === "tenant") setPage("商品管理");
     if (p === "supplier") setPage("一件代发");
+  };
+
+  /* 订单「关联供货单」的真实跳转：租户侧可见 → 发货管理；一件代发单（租户侧无此单）→ 供应商后台·一件代发。
+     提示用 App 级 toast（跨页面导航后仍可见） */
+  const gotoSupply = (no) => {
+    const doc = supplyStore.get().find((d) => d.id === no);
+    const dest = doc ? "发货管理" : "供应商后台 · 一件代发";
+    if (doc) setPage("发货管理");
+    else { setPortal("supplier"); setPage("一件代发"); }
+    tip(`已跳转「${dest}」，查找供货单 ${no}`);
   };
 
   /* 门店 APP */
@@ -116,7 +127,7 @@ export function App() {
             {page === "业务流程图" && <FlowsView />}
             {page === "场景清单" && <ScenarioList />}
             {page === "商品管理" && <ProductManagement onOpenDrawer={() => setDrawer(true)} />}
-            {page === "订单管理" && <OrderManagement />}
+            {page === "订单管理" && <OrderManagement onOpenSupply={gotoSupply} />}
             {page === "售后管理" && <AfterSales />}
             {page === "门店商品" && <ShopProduct />}
             {page === "供应商管理" && <SupplierMaster />}

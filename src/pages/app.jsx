@@ -41,6 +41,7 @@ export function StoreApp() {
   const [view, setView] = useState("home");
   const [confirm, setConfirm] = useState(false);
   const [mode, setMode] = useState("preview");
+  const [diffCard, setDiffCard] = useState(null);   // 当前查看的配送差异单
   useReqPage("app:" + view);
 
   return (
@@ -59,7 +60,7 @@ export function StoreApp() {
 
         <div className="mnav">
           <button className="back" onClick={() => { setView("home"); setConfirm(false); }}>‹</button>
-          <span>{view === "home" ? "工作台" : view === "receipts" ? "收货管理" : view === "receive" ? "发货单详情" : view === "diffs" ? "配送差异" : view === "returns" ? "退货返厂" : "举证信息"}</span>
+          <span>{view === "home" ? "工作台" : view === "receipts" ? "收货管理" : view === "receive" ? "发货单详情" : view === "diffs" ? "配送差异" : view === "diffDetail" ? "差异单详情" : view === "returns" ? "退货返厂" : "举证信息"}</span>
           {view !== "home" && <span style={{ marginLeft: "auto", color: "#666", fontSize: 18, letterSpacing: 1 }}>⋯</span>}
         </div>
 
@@ -67,8 +68,9 @@ export function StoreApp() {
           {view === "home" && <Home onGo={setView} />}
           {view === "receipts" && <Receipts onOpen={() => setView("receive")} />}
           {view === "receive" && <Receive onConfirm={() => setConfirm(true)} onBack={() => setView("receipts")} />}
-          {view === "diffs" && <Diffs onOpen={() => setView("evidence")} />}
-          {view === "evidence" && <Evidence onBack={() => setView("diffs")} />}
+          {view === "diffs" && <Diffs onDetail={(c) => { setDiffCard(c); setView("diffDetail"); }} onEvidence={(c) => { setDiffCard(c); setView("evidence"); }} />}
+          {view === "diffDetail" && <DiffDetail card={diffCard} onBack={() => setView("diffs")} onEvidence={() => setView("evidence")} />}
+          {view === "evidence" && <Evidence card={diffCard} onBack={() => setView("diffs")} />}
           {view === "returns" && <Returns />}
         </div>
 
@@ -383,10 +385,11 @@ function Receive({ onConfirm, onBack }) {
 }
 
 /* ---------------- 配送差异（照收货页风格 + Axure 差异页字段） ---------------- */
-function Diffs({ onOpen }) {
+const DIFF_TONE = (s) => (s === "待举证" ? "#f5a623" : s === "审核通过" ? "#25c7a5" : s === "审核不通过" ? "#f5522e" : "#999");
+
+function Diffs({ onDetail, onEvidence }) {
   const [chip, setChip] = useState("全部");
   const list = DIFF_CARDS.filter((c) => chip === "全部" || c.state === chip);
-  const tone = (s) => (s === "待举证" ? "#f5a623" : s === "审核通过" ? "#25c7a5" : s === "审核不通过" ? "#f5522e" : "#999");
   return (
     <div>
       <div className="mtabs">
@@ -399,15 +402,15 @@ function Diffs({ onOpen }) {
           <div className="mcard" key={c.id}>
             <div className="hd">
               <b>配送差异单</b>
-              <span style={{ color: tone(c.state), fontSize: 12.5 }}>{c.state}</span>
+              <span style={{ color: DIFF_TONE(c.state), fontSize: 12.5 }}>{c.state}</span>
             </div>
             <div className="mrow"><span>配货差异单编号</span><b className="mono">{c.id}</b></div>
             <div className="mrow"><span>商品数</span><b>{c.skuCount}</b></div>
             <div className="mrow"><span>配货差异总数量</span><b style={{ color: "#f5522e" }}>{c.diffCount}</b></div>
             <div className="mrow"><span>关联供货编号</span><b className="mono">{c.supplyNo}</b></div>
             <div className="macts">
-              <button className="btn sm" onClick={onOpen}>查看详情</button>
-              {c.state === "待举证" && <button className="btn primary sm" onClick={onOpen}>去举证</button>}
+              <button className="btn sm" onClick={() => onDetail(c)}>查看详情</button>
+              {c.state === "待举证" && <button className="btn primary sm" onClick={() => onEvidence(c)}>去举证</button>}
             </div>
           </div>
         ))}
@@ -417,8 +420,56 @@ function Diffs({ onOpen }) {
   );
 }
 
+/* ---------------- 差异单详情（查看详情落点） ---------------- */
+function DiffDetail({ card, onBack, onEvidence }) {
+  if (!card) return null;
+  return (
+    <div className="mpad">
+      <div className="mcard">
+        <div className="hd">
+          <b>配送差异单 {card.id}</b>
+          <span style={{ color: DIFF_TONE(card.state), fontSize: 12.5 }}>{card.state}</span>
+        </div>
+        <div className="mrow"><span>商品数</span><b>{card.skuCount}</b></div>
+        <div className="mrow"><span>配货差异总数量</span><b style={{ color: "#f5522e" }}>{card.diffCount}</b></div>
+        <div className="mrow"><span>关联供货编号</span><b className="mono">{card.supplyNo}</b></div>
+      </div>
+
+      <div className="mcard">
+        <div style={{ fontSize: 12.5, fontWeight: 600, margin: "4px 0 8px" }}>抽查指令（破）</div>
+        {DIFF_ITEMS.map((it, i) => (
+          <div key={i} style={{ borderTop: "1px solid #f2f2f2", padding: "9px 0", fontSize: 12.5 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>👜 {it.name}</span><b>差异数量 {it.diffQty}</b>
+            </div>
+            <div className="mrow" style={{ paddingTop: 4 }}><span>应发 {it.shouldQty}　实发 {it.realQty}</span></div>
+          </div>
+        ))}
+      </div>
+
+      {card.state === "待举证" ? (
+        <div className="mcard" style={{ background: "#fff7e8", color: "#b7791f", fontSize: 12.5, lineHeight: 1.8 }}>
+          到货点验与发货单存在差异，请<b>尽快上传凭证</b>；提交后由总部（租户）审核，审核通过后按「谁发货谁补发」补发。
+        </div>
+      ) : (
+        <div className="mcard" style={{ background: "#f5f7f8", color: "#666", fontSize: 12.5, lineHeight: 1.8 }}>
+          {card.state === "待审核" ? "凭证已提交，等待总部（租户）审核。"
+            : card.state === "审核通过" ? "总部审核已通过，差异补发由总部按链路跟进。"
+              : card.state === "审核不通过" ? "总部审核不通过，本差异单不再补发，如有疑问请联系总部。"
+                : "本差异单已关闭。"}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 10, paddingBottom: 16 }}>
+        <button className="btn plain" style={{ flex: 1 }} onClick={onBack}>返回</button>
+        {card.state === "待举证" && <button className="btn primary" style={{ flex: 2 }} onClick={onEvidence}>去举证</button>}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- 举证信息 ---------------- */
-function Evidence({ onBack }) {
+function Evidence({ card, onBack }) {
   const [reasons, setReasons] = useState(["少货"]);
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState(0);
@@ -426,7 +477,7 @@ function Evidence({ onBack }) {
   return (
     <div className="mpad">
       <div className="mcard">
-        <div className="hd"><b>配货差异单 {DIFF_CARDS[0].id}</b><span style={{ color: "#f5a623", fontSize: 12.5 }}>待举证</span></div>
+        <div className="hd"><b>配货差异单 {card?.id || DIFF_CARDS[0].id}</b><span style={{ color: "#f5a623", fontSize: 12.5 }}>待举证</span></div>
         <div style={{ fontSize: 12.5, fontWeight: 600, margin: "4px 0 8px" }}>抽查指令（破）</div>
         {DIFF_ITEMS.map((it, i) => (
           <div key={i} style={{ borderTop: "1px solid #f2f2f2", padding: "9px 0", fontSize: 12.5 }}>

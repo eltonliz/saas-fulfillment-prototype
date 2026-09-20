@@ -13,7 +13,7 @@ const canShipOrder = (o) => {
 
 const STEPS = ["买家下单", "买家付款", "商家发货", "买家签收", "交易完成"];
 
-export function OrderManagement() {
+export function OrderManagement({ onOpenSupply }) {
   const [tab, setTab] = useState("全部");
   const [detail, setDetail] = useState(null);
   const [ship, setShip] = useState(null);
@@ -120,7 +120,7 @@ export function OrderManagement() {
                 <td className="tw">{o.orderType || "销售订单"}</td>
                 <td className="tw">{o.buyerNote || "-"}</td>
                 <td className="col-new">
-                  {o.supplyNo ? (<><span onClick={() => tip(`已定位到供货单 ${o.supplyNo}`)} className="mono" style={{ color: "#25c7a5", cursor: "pointer" }}>{o.supplyNo}</span><small style={{ color: "#999" }}>{o.supplyMode}</small></>)
+                  {o.supplyNo ? (<><span onClick={() => onOpenSupply && onOpenSupply(o.supplyNo)} className="mono" style={{ color: "#25c7a5", cursor: "pointer" }}>{o.supplyNo}</span><small style={{ color: "#999" }}>{o.supplyMode}</small></>)
                     : (<span style={{ color: "#f5a623" }}>{o.supplyMode ? `待派单 · ${o.supplyMode}` : "—"}</span>)}
                 </td>
                 <td>

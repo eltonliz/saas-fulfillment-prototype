@@ -108,7 +108,7 @@ export function Shell({ portal, onPortal, active, crumbs, tabs, menu, projectLab
           <span className="tab">工作台 <span className="x">×</span></span>
           {tabs.map((t) => (
             <span key={t} className={`tab ${active === t ? "active" : ""}`} onClick={() => onNav(t)}>
-              {t} <span className="x">×</span>
+              {t} <span className="x" onClick={(e) => e.stopPropagation()}>×</span>
             </span>
           ))}
           <span className="more">▾</span>
