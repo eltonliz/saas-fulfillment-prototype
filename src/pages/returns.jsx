@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { RETURN_STEPS } from "../data.js";
-import { useToast, Confirm } from "../ui.jsx";
+import { useToast, Confirm, usePaged, Pager } from "../ui.jsx";
 import { useReturns, setReturns, patchHop } from "../store.js";
 
 const HOP_TAG = { 待发货: "warn", 运输中: "blue", 已收货: "" };
@@ -14,6 +14,7 @@ export function TenantReturns() {
   const [recv, setRecv] = useState(null);       // 总仓确认收货
   const [toast, tip] = useToast();
   const list = rows.filter((r) => (tab === "全部" ? true : r.status === tab));
+  const pg = usePaged(list);
 
   const patch = (id, idx, p, msg) => { patchHop(id, idx, p); if (msg) tip(msg); };
 
@@ -41,7 +42,7 @@ export function TenantReturns() {
             </tr>
           </thead>
           <tbody>
-            {list.map((r) => {
+            {pg.pageRows.map((r) => {
               const hqHop = r.viaHq ? r.hops[0] : null;
               const canRecvByHq = hqHop && hqHop.status === "运输中";
               const canForward = r.viaHq && r.hops[0].status === "已收货" && r.hops[1].status === "待发货";
@@ -81,6 +82,7 @@ export function TenantReturns() {
           </tbody>
         </table>
       </div>
+      <Pager {...pg} />
 
 
       {toast}
@@ -158,6 +160,7 @@ export function SupplierReturns() {
   const [accept, setAccept] = useState(null);
   const [toast, tip] = useToast();
   const list = rows.filter((r) => (tab === "全部" ? true : r.status === tab));
+  const pgS = usePaged(list);
 
   return (
     <>
@@ -177,7 +180,7 @@ export function SupplierReturns() {
             <tr><th className="tw">返厂单号</th><th className="tw">退货门店</th><th>商品</th><th className="tw">退货数量</th><th className="tw">退货原因</th><th className="tw">金额</th><th className="tw">状态</th><th style={{ minWidth: 92 }}>操作</th></tr>
           </thead>
           <tbody>
-            {list.map((r) => {
+            {pgS.pageRows.map((r) => {
               const last = r.hops[r.hops.length - 1];
               const canAccept = last.status === "运输中";
               return (
@@ -209,6 +212,7 @@ export function SupplierReturns() {
           </tbody>
         </table>
       </div>
+      <Pager {...pgS} />
 
       {toast}
       {detail && <ReturnDetailDrawer row={detail} portal="supplier" onClose={() => setDetail(null)} />}

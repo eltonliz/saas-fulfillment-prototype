@@ -524,7 +524,7 @@ function Evidence({ card, onBack }) {
 
       <div style={{ display: "flex", gap: 10, paddingBottom: 16 }}>
         <button className="btn plain" style={{ flex: 1 }} onClick={onBack}>取消</button>
-        <button className="btn primary" style={{ flex: 2 }} disabled={!reasons.length || photos < 1}
+        <button className="btn primary" style={{ flex: 2 }} disabled={done || !reasons.length || photos < 1}
           onClick={() => {
             /* 原型桥接：举证提交写入租户后台差异单 —— 最早一笔「待举证」的门店上报单转「待总部审核」 */
             const target = diffStore.get().find((d) => d.status === "待举证" && d.source === "门店上报");

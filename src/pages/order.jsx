@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useToast, useRowSelect, BatchBar, Confirm } from "../ui.jsx";
+import { useToast, useRowSelect, BatchBar, Confirm, usePaged, Pager } from "../ui.jsx";
 import { orderStore, supplyStore } from "../store.js";
 import { pickupCodeOf, fmtPickupCode } from "../data.js";
 
@@ -39,6 +39,7 @@ export function OrderManagement({ onOpenSupply }) {
       : tab === "已关闭" ? ["已关闭", "已全额退款", "已取消"].includes(o.status)
         : o.status === tab));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((o) => o.id));
+  const pg = usePaged(rows);
 
   /* 真实行为：列表点「发货」先进订单详情，详情里再点「发货」才开发货弹窗 */
   const openDetail = (o) => setDetail(o);
@@ -101,7 +102,7 @@ export function OrderManagement({ onOpenSupply }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((o) => (
+            {pg.pageRows.map((o) => (
               <tr key={o.id}>
                 <td><input type="checkbox" checked={sel.has(o.id)} onChange={() => toggleOne(o.id)} /></td>
                 <td>
@@ -156,12 +157,7 @@ export function OrderManagement({ onOpenSupply }) {
         </table>
       </div>
 
-      <div className="pager">
-        <span>共443条记录</span>
-        <span className="pg">‹</span><span className="pg active">1</span><span className="pg">2</span><span className="pg">3</span><span className="pg">4</span><span className="pg">5</span><span className="pg">›</span>
-        <select defaultValue="30"><option>30/页</option></select>
-        <span className="jump">跳至<input defaultValue="1" />页</span>
-      </div>
+      <Pager {...pg} />
 
       {toast}
       {detail && (

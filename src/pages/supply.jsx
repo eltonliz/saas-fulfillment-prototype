@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SUPPLY_DOCS } from "../data.js";
-import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar } from "../ui.jsx";
+import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 import { supplyStore, supplierStore, diffStore, orderStore, patchDoc, addDiff, ARRIVAL_TIMEOUT_DAYS } from "../store.js";
 
 const LEG_LABEL = {
@@ -162,6 +162,7 @@ const Thumb = ({ d }) => (
 function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
   const list = rows.filter((d) => (tab === "全部" ? true : d.status === tab));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((d) => d.id));
+  const pg = usePaged(list);
   return (
     <>
       <div className="pills">
@@ -190,7 +191,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
             </tr>
           </thead>
           <tbody>
-            {list.map((d) => (
+            {pg.pageRows.map((d) => (
               <tr key={d.id}>
                 <td><input type="checkbox" checked={sel.has(d.id)} onChange={() => toggleOne(d.id)} /></td>
                 <td className="tw mono">{d.id}</td>
@@ -230,6 +231,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
           </tbody>
         </table>
       </div>
+      <Pager {...pg} />
     </>
   );
 }
@@ -323,6 +325,7 @@ export function SupplyDiff() {
   /* 两套来源的状态 Tab 不同：总部上报走「供应商审核」，门店上报走「总部审核 + 举证」 */
   const tabs = DIFF_TABS_BY_SOURCE[source];
   const list = rows.filter((d) => d.source === source && diffInTab(d.status, tab));
+  const pg = usePaged(list);
   const makeupOf = (d) => (d.makeup ? [...supplyDocs, ...supplierDocs].find((x) => x.id === d.makeup) : null);
 
   return (
@@ -353,7 +356,7 @@ export function SupplyDiff() {
             <tr><th className="tw">差异单号</th><th className="tw">来源链路</th><th className="tw">上报方</th><th className="tw">关联供货单</th><th className="tw">发货方（补发责任）</th><th>差异摘要</th><th>举证信息</th><th className="tw">状态</th><th className="tw">补发任务</th><th className="tw">操作</th></tr>
           </thead>
           <tbody>
-            {list.map((d) => {
+            {pg.pageRows.map((d) => {
               const mk = makeupOf(d);
               return (
                 <tr key={d.id}>
@@ -387,6 +390,7 @@ export function SupplyDiff() {
           </tbody>
         </table>
       </div>
+      <Pager {...pg} />
 
       {toast}
       {ship && <ShipDrawer doc={ship} onClose={() => setShip(null)} onDone={(p) => {

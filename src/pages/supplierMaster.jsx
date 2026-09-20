@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useToast, useRowSelect, BatchBar, Confirm } from "../ui.jsx";
+import { useToast, useRowSelect, BatchBar, Confirm, usePaged, Pager } from "../ui.jsx";
 
 /* 1:1 复刻真实 SAAS「供应商管理」页（供应商 > 供应商管理） */
 const ROWS = [
@@ -28,6 +28,7 @@ export function SupplierMaster() {
   const [toast, tip] = useToast();
   const list = rows.filter((r) => (tab === "全部" ? true : tab === "已启用" ? r.enabled : !r.enabled));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((r) => r.no));
+  const pg = usePaged(list);
   const setEnabled = (no, v) => setRows((rs) => rs.map((r) => (r.no === no ? { ...r, enabled: v } : r)));
 
   return (
@@ -72,7 +73,7 @@ export function SupplierMaster() {
             </tr>
           </thead>
           <tbody>
-            {list.map((r) => (
+            {pg.pageRows.map((r) => (
               <tr key={r.no + r.name}>
                 <td><input type="checkbox" checked={sel.has(r.no)} onChange={() => toggleOne(r.no)} /></td>
                 <td className="tw mono">{r.no}</td>
@@ -101,12 +102,7 @@ export function SupplierMaster() {
         </table>
       </div>
 
-      <div className="pager">
-        <span>共{ROWS.length}条记录</span>
-        <span className="pg">‹</span><span className="pg active">1</span><span className="pg">2</span><span className="pg">›</span>
-        <select defaultValue="10"><option>10</option><option>30</option></select>
-        <span className="jump">跳至<input defaultValue="1" />页</span>
-      </div>
+      <Pager {...pg} />
 
 
       {toast}

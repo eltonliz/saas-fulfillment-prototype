@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag } from "./supply.jsx";
-import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar } from "../ui.jsx";
+import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 import { supplierStore, supplyStore, diffStore, orderStore, patchDoc } from "../store.js";
 import { ORDERS } from "../data.js";
 
@@ -24,6 +24,7 @@ export function SupTasks({ leg, title, desc }) {
   const mine = docs.filter((d) => d.leg === leg);
   const list = mine.filter((d) => (tab === "全部" ? true : d.status === tab));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((d) => d.id));
+  const pg = usePaged(list);
   const pending = mine.filter((d) => d.status === "待发货" && !d.isMakeup).length;
   /* 补发单发货收口在配送差异页：批量 / 导入 / 模板不含补发单 */
   const canShipRows = mine.filter((d) => d.status === "待发货" && !d.isMakeup);
@@ -64,7 +65,7 @@ export function SupTasks({ leg, title, desc }) {
             </tr>
           </thead>
           <tbody>
-            {list.map((d) => (
+            {pg.pageRows.map((d) => (
               <tr key={d.id}>
                 <td><input type="checkbox" checked={sel.has(d.id)} onChange={() => toggleOne(d.id)} /></td>
                 <td className="tw mono">
@@ -105,6 +106,7 @@ export function SupTasks({ leg, title, desc }) {
           </tbody>
         </table>
       </div>
+      <Pager {...pg} />
 
       {modal?.k === "ship" && (
         <SupShipModal
@@ -122,9 +124,13 @@ export function SupTasks({ leg, title, desc }) {
               /* 未发满保持「待发货」便于继续发；发满转「已发货」 */
               status: sent >= modal.d.qty ? "已发货" : "待发货",
             });
-            /* 代发（供应商 → 消费者）回写销售订单：订单转「已发货」并生成快递记录，消费者查物流即这条 */
+            /* 代发（供应商 → 消费者）回写销售订单：累计已发，发满转「已发货」并记快递；消费者查物流即这条（与租户侧部分发货同口径） */
             if (modal.d.leg === "sup_consumer") {
-              orderStore.set((os) => os.map((o) => (o.no === modal.d.orderNo ? { ...o, status: "已发货", carrier: p.carrier, tracking: p.tracking.trim(), track: "已发货 " + ts } : o)));
+              orderStore.set((os) => os.map((o) => {
+                if (o.no !== modal.d.orderNo) return o;
+                const shipped = (o.shippedQty ?? 0) + p.qty;
+                return { ...o, shippedQty: shipped, status: shipped >= o.qty ? "已发货" : o.status, carrier: p.carrier, tracking: p.tracking.trim(), track: "已发货 " + ts };
+              }));
             }
             tip(`供货单 ${modal.d.id} 已发货 ${p.qty} 件` + (sent < modal.d.qty ? `，剩余 ${modal.d.qty - sent} 件可再发` : ""));
             setModal(null);
@@ -186,7 +192,7 @@ function SupShipModal({ doc, onClose, onDone }) {
                   <span style={{ display: "inline-flex", alignItems: "center", border: "1px solid #e5e5e5", borderRadius: 3, height: 30 }}>
                     <span style={{ padding: "0 8px", color: "#999", fontSize: 12.5, borderRight: "1px solid #e5e5e5", lineHeight: "28px" }}>发货数</span>
                     <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
-                    <input value={qty} onChange={(e) => setQty(Number(e.target.value.replace(/\D/g, "")) || 0)} style={{ width: 44, height: 28, border: 0, textAlign: "center", padding: 0 }} />
+                    <input value={qty} onChange={(e) => setQty(Math.min(remain, Number(e.target.value.replace(/\D/g, "")) || 0))} style={{ width: 44, height: 28, border: 0, textAlign: "center", padding: 0 }} />
                     <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.min(remain, q + 1))}>＋</button>
                   </span>
                 </td>
@@ -313,6 +319,7 @@ export function SupDiff() {
   /* 与门店端 / 租户后台同一套状态 Tab；两种来源合并展示：
      总部上报（供应商 → 总仓）：本方审核 → 本方补发；门店上报：总部审核后本方执行补发 */
   const mine = all.filter((d) => d.leg.startsWith("供应商") && diffInTab(d.status, tab));
+  const pgD = usePaged(mine);
   const makeupOf = (d) => (d.makeup ? docs.find((x) => x.id === d.makeup) : null);
 
   /* 审核通过 → 按「谁发货谁补发」生成补发供货单，进入本方发货列表（补发标签 + 关联原供货单） */
@@ -348,7 +355,7 @@ export function SupDiff() {
             <tr><th className="tw">差异单号</th><th className="tw">来源链路</th><th className="tw">关联供货单</th><th>差异摘要</th><th>异常原因 / 凭证</th><th className="tw">审核结果</th><th className="tw">状态</th><th className="tw">补发任务</th><th className="tw">操作</th></tr>
           </thead>
           <tbody>
-            {mine.map((d) => (
+            {pgD.pageRows.map((d) => (
               <tr key={d.id}>
                 <td className="tw mono">{d.id}</td>
                 <td className="tw">{d.leg}</td>
@@ -372,6 +379,7 @@ export function SupDiff() {
           </tbody>
         </table>
       </div>
+      <Pager {...pgD} />
 
       {toast}
       {ship && (
@@ -637,6 +645,9 @@ export function SupAfterSales() {
     tip("已重新发起退款（原路退回）→ 售后完成");
   };;
 
+  /* 分页 hooks 必须写在任何早退（详情页）之前，否则两次渲染 hooks 数量不一致会崩 */
+  const pgA = usePaged(tab === "全部" ? rows : rows.filter((r) => asInTab(r.status, tab)));
+
   /* ---------------- 整页售后详情（复刻 SaaS + 进销存修改） ---------------- */
   if (detail) {
     const d = detail;
@@ -845,10 +856,10 @@ export function SupAfterSales() {
             </tr>
           </thead>
           <tbody>
-            {list.map((r, i) => (
+            {pgA.pageRows.map((r, i) => (
               <tr key={r.asNo}>
                 <td><input type="checkbox" checked={sel.has(r.asNo)} onChange={() => toggleOne(r.asNo)} /></td>
-                <td>{i + 1}</td>
+                <td>{(pgA.page - 1) * pgA.pageSize + i + 1}</td>
                 <td>
                   <div className="prod-cell">
                     <span className="thumb" style={{ background: "#f4f7f6" }}>{r.emoji}</span>
@@ -882,12 +893,7 @@ export function SupAfterSales() {
         </table>
       </div>
 
-      <div className="pager">
-        <span>共{list.length}条记录</span>
-        <span className="pg">‹</span><span className="pg active">1</span><span className="pg">›</span>
-        <select defaultValue="30"><option>30/页</option></select>
-        <span className="jump">跳至<input defaultValue="1" />页</span>
-      </div>
+      <Pager {...pgA} />
 
       {toast}
       {note && <AsNoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}

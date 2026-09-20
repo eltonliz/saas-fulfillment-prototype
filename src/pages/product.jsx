@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { PRODUCTS, PRODUCT_IMG, SUPPLIERS, SHIP_MODES } from "../data.js";
-import { useRowSelect, BatchBar } from "../ui.jsx";
+import { useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 import { productStore } from "../store.js";
 
 const Hl = ({ label, children, cell, cls = "" }) => (
@@ -21,6 +21,7 @@ export function ProductManagement({ onOpenDrawer }) {
   const rows = products.filter((p) => (tab === "全部" ? true : tab === "自定义分类" ? !!p.customCat : p.status === tab))
     .filter((p) => (mode === "全部" ? true : p.shipMode === mode));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((p) => p.id));
+  const pg = usePaged(rows);
 
   return (
     <>
@@ -94,7 +95,7 @@ export function ProductManagement({ onOpenDrawer }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((p) => (
+            {pg.pageRows.map((p) => (
               <tr key={p.id}>
                 <td><input type="checkbox" checked={sel.has(p.id)} onChange={() => toggleOne(p.id)} /></td>
                 <td>0</td>
@@ -136,13 +137,7 @@ export function ProductManagement({ onOpenDrawer }) {
         </table>
       </div>
 
-      <div className="pager">
-        <span>共{rows.length}条记录</span>
-        <span className="pg">‹</span>
-        <span className="pg active">1</span><span className="pg">2</span><span className="pg">›</span>
-        <select defaultValue="30"><option>30/页</option><option>50/页</option></select>
-        <span className="jump">跳至<input defaultValue="1" />页</span>
-      </div>
+      <Pager {...pg} />
 
     </>
   );

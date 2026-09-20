@@ -40,6 +40,10 @@ export const SHOP_PRODUCTS = [
   { id: "s5", name: "手机(复制)", no: "_CP5753", purchase: "0", stock: 318, sale: "0.01~0.10", visible: true, emoji: "📱" },
   { id: "s6", name: "222", no: "_CP8301", purchase: "0", stock: 117, sale: "0.01", visible: true, emoji: "📦" },
   { id: "s7", name: "111", no: "_CP5698", purchase: "0", stock: 117, sale: "0.01", visible: true, emoji: "📦" },
+  /* 总部自营商品同步到门店（供货模式列显示「总部自营」） */
+  { id: "s8", name: "儿童书包", no: "_CP8811", purchase: "—", stock: 120, sale: "129.00", visible: true, emoji: "🎒" },
+  { id: "s9", name: "保温饭盒", no: "_CP8812", purchase: "—", stock: 86, sale: "99.00", visible: true, emoji: "🍱" },
+  { id: "s10", name: "文具套装", no: "_CP8813", purchase: "—", stock: 240, sale: "59.00", visible: true, emoji: "✏️" },
 ];
 
 /* ---------------- 订单管理 ---------------- */

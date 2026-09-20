@@ -21,6 +21,47 @@ export function useRowSelect(ids) {
   return { sel, allSel, toggleAll, toggleOne };
 }
 
+/* 列表分页（真实 SaaS 版式）：const pg = usePaged(list); 渲染 pg.pageRows + <Pager {...pg} /> */
+export function usePaged(rows, initialSize = 30) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialSize);
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const cur = Math.min(page, pages);
+  const pageRows = rows.slice((cur - 1) * pageSize, cur * pageSize);
+  return { pageRows, page: cur, setPage, pageSize, setPageSize, total };
+}
+
+export function Pager({ total, page, setPage, pageSize, setPageSize }) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const nums = [];
+  for (let p = 1; p <= pages; p++) {
+    if (p === 1 || p === pages || Math.abs(p - page) <= 1) nums.push(p);
+    else if (nums[nums.length - 1] !== "…") nums.push("…");
+  }
+  const jump = (e) => {
+    if (e.key === "Enter") {
+      const n = Number(e.target.value.replace(/\D/g, "")) || 1;
+      setPage(Math.min(pages, Math.max(1, n)));
+      e.target.value = "";
+    }
+  };
+  return (
+    <div className="pager">
+      <span>共{total}条记录</span>
+      <span className="pg" style={{ opacity: page <= 1 ? 0.4 : 1 }} onClick={() => page > 1 && setPage(page - 1)}>‹</span>
+      {nums.map((p, i) => p === "…"
+        ? <span key={"e" + i} style={{ padding: "0 2px" }}>…</span>
+        : <span key={p} className={`pg ${p === page ? "active" : ""}`} onClick={() => setPage(p)}>{p}</span>)}
+      <span className="pg" style={{ opacity: page >= pages ? 0.4 : 1 }} onClick={() => page < pages && setPage(page + 1)}>›</span>
+      <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
+        {[10, 20, 30, 50].map((s) => <option key={s} value={s}>{s}/页</option>)}
+      </select>
+      <span className="jump">跳至<input placeholder="" onKeyDown={jump} />页</span>
+    </div>
+  );
+}
+
 /* 批量操作条（与 useRowSelect 配套） */
 export function BatchBar({ allSel, toggleAll, count, children }) {
   return (

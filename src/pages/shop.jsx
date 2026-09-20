@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SHOP_PRODUCTS, PRODUCTS } from "../data.js";
-import { useToast, useRowSelect, BatchBar } from "../ui.jsx";
+import { useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 
 const modeOf = (name) => (PRODUCTS.find((p) => p.name.replace("(复制)", "") === name.replace("(复制)", "")) || {}).shipMode || "";
 
@@ -9,6 +9,7 @@ export function ShopProduct() {
   const [shop, setShop] = useState(null);   // 设置门店
   const [toast, tip] = useToast();
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(SHOP_PRODUCTS.map((p) => p.id));
+  const pg = usePaged(SHOP_PRODUCTS);
 
   return (
     <>
@@ -51,7 +52,7 @@ export function ShopProduct() {
             </tr>
           </thead>
           <tbody>
-            {SHOP_PRODUCTS.map((p) => (
+            {pg.pageRows.map((p) => (
               <tr key={p.id}>
                 <td><input type="checkbox" checked={sel.has(p.id)} onChange={() => toggleOne(p.id)} /></td>
                 <td>
@@ -78,12 +79,7 @@ export function ShopProduct() {
         </table>
       </div>
 
-      <div className="pager">
-        <span>共{SHOP_PRODUCTS.length}条记录</span>
-        <span className="pg">‹</span><span className="pg active">1</span><span className="pg">›</span>
-        <select defaultValue="30"><option>30/页</option></select>
-        <span className="jump">跳至<input defaultValue="1" />页</span>
-      </div>
+      <Pager {...pg} />
 
       {toast}
       {shop && <ProductStoreDrawer row={shop} onClose={() => setShop(null)} onSaved={() => { tip(`「${shop.name}」可售门店已更新`); setShop(null); }} />}

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useToast, useRowSelect, BatchBar } from "../ui.jsx";
+import { useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 
 /* 1:1 复刻真实 SAAS「售后管理」页（交易 > 售后管理）：
    列表（页签/筛选/列/备注·详情）+ 整页「售后详情」（状态卡 + 步骤条 + 买家备注 +
@@ -238,6 +238,9 @@ export function AfterSales() {
     tip("已重新发起退款，退款完成 → 售后完成");
   };
 
+  /* 分页 hooks 必须写在任何早退（详情页）之前，否则两次渲染 hooks 数量不一致会崩 */
+  const pg = usePaged((tab === "全部" ? rows : rows.filter((r) => inTab(r.status, tab))));
+
   /* ---------------- 整页售后详情（复刻真实 SaaS） ---------------- */
   if (detail) {
     const d = detail;
@@ -403,10 +406,10 @@ export function AfterSales() {
             </tr>
           </thead>
           <tbody>
-            {list.map((r, i) => (
+            {pg.pageRows.map((r, i) => (
               <tr key={r.no + r.asNo}>
                 <td><input type="checkbox" checked={sel.has(r.no)} onChange={() => toggleOne(r.no)} /></td>
-                <td>{i + 1}</td>
+                <td>{(pg.page - 1) * pg.pageSize + i + 1}</td>
                 <td>
                   <div className="prod-cell">
                     <span className="thumb" style={{ background: "#f4f7f6" }}>{r.emoji}</span>
@@ -441,12 +444,7 @@ export function AfterSales() {
         </table>
       </div>
 
-      <div className="pager">
-        <span>共{list.length}条记录</span>
-        <span className="pg">‹</span><span className="pg active">1</span><span className="pg">2</span><span className="pg">3</span><span className="pg">4</span><span className="pg">5</span><span className="pg">›</span>
-        <select defaultValue="30"><option>30/页</option></select>
-        <span className="jump">跳至<input defaultValue="1" />页</span>
-      </div>
+      <Pager {...pg} />
 
       {toast}
       {note && <NoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
