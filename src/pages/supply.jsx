@@ -9,16 +9,23 @@ const LEG_LABEL = {
   supplier_inbound: "供应商 → 门店",
   hq_store: "总部仓 → 门店",
 };
-/* 配送差异状态 Tab：门店APP / 租户后台 / 供应商后台三端同一套口径，
-   唯一区别是租户（总部）执行审核，供应商只读知情并执行补发 */
+/* 配送差异状态 Tab —— 按来源分两套业务场景：
+   · 总部上报（供应商 → 总仓）：收货异常当场举证开单 → 供应商审核 → 供应商补发 → 总部收货，故无「待举证/待审核」；
+   · 门店上报：门店举证 → 总部审核 → 按「谁发货谁补发」补发，与门店APP同一套状态口径。
+   供应商后台合并展示两类，用同一个 diffInTab（「待审核」含待供应商审核 / 待总部审核）。 */
+export const DIFF_TABS_BY_SOURCE = {
+  总部上报: ["全部", "待供应商审核", "补发中", "补发完成", "审核不通过", "已关闭"],
+  门店上报: ["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"],
+};
 export const DIFF_TABS = ["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"];
 export const diffInTab = (status, tab) =>
   tab === "全部" ? true
     : tab === "待举证" ? status === "待举证"
-      : tab === "待审核" ? status === "待审核"
-        : tab === "审核通过" ? ["补发中", "补发完成"].includes(status)
-          : tab === "审核不通过" ? status === "审核不通过"
-            : status === "已关闭";
+      : tab === "待审核" ? ["待总部审核", "待供应商审核"].includes(status)
+        : tab === "待供应商审核" ? status === "待供应商审核"
+          : tab === "审核通过" ? ["补发中", "补发完成"].includes(status)
+            : tab === "审核不通过" ? status === "审核不通过"
+              : status === "已关闭";
 /* 总部 = 租户，门店也属于同一租户 —— 权限一致，本租户的供货单一律可见。
    只有「供应商 → 消费者（一件代发）」是供应商独占的，租户侧不显示。
    另：「总部仓 → 消费者」不是供货单 —— 消费者那一跳由订单管理的「发货」完成，
@@ -44,7 +51,7 @@ const canReceive = (d) => ["已发货", "部分收货"].includes(d.status);
    ============================================================================ */
 const STORE_ADDR = { "9071门店": "辽宁省铁岭市银州区工人街 28 号", "九天门店": "广东省广州市荔湾区宝华路 76 号" };
 /* 生成下一个 FHD 单号（跨两端去重） */
-function newFhdId() {
+export function newFhdId() {
   const used = new Set([...supplyStore.get(), ...supplierStore.get()].map((d) => d.id));
   const dt = new Date();
   const ymd = String(dt.getFullYear()).slice(2) + String(dt.getMonth() + 1).padStart(2, "0") + String(dt.getDate()).padStart(2, "0");
@@ -73,16 +80,19 @@ function applyReceive(doc, p) {
     }
     const d = new Date();
     const ymd = String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+    /* 谁被上报谁审核：总仓收货（供应商 → 总仓）→ 总部上报、供应商审核；门店收货 → 门店上报、总部审核。
+       两种来源的举证都在收货环节一次完成，直接进各自「待审核」态。 */
+    const byHq = doc.leg === "supplier_to_hq";
     addDiff({
       id: "DIFF" + ymd + String(diffStore.get().length + 1).padStart(4, "0"),
-      source: "总部上报", leg: LEG_LABEL[doc.leg], reporter: "总部",
+      source: byHq ? "总部上报" : "门店上报", leg: LEG_LABEL[doc.leg], reporter: byHq ? "总部" : "门店",
       supplyNo: doc.id, shipper: doc.shipper,
       summary: `${doc.product} 应收${doc.qty}/实收${recv}｜${p.reason}`,
-      status: "待审核",              /* 决策 4：举证已在收货时完成，跳过「待举证」 */
+      status: byHq ? "待供应商审核" : "待总部审核",
       evidence: `${p.reason} · 照片 ${p.photos} 张`,
       note: p.note,
     });
-    return `供货单 ${doc.id} 已记收货异常，差异单直接进入「待审核」（举证已在收货时完成）`;
+    return `供货单 ${doc.id} 已记收货异常，差异单进入「${byHq ? "待供应商审核" : "待总部审核"}」（举证已在收货时完成）`;
   }
 
   let extra = "";
@@ -288,6 +298,8 @@ export function SupplyDiff({ onOpenSupply }) {
   const [detail, setDetail] = useState(null);
   const [pass, setPass] = useState(null);
   const [toast, tip] = useToast();
+  /* 两套来源的状态 Tab 不同：总部上报走「供应商审核」，门店上报走「总部审核 + 举证」 */
+  const tabs = DIFF_TABS_BY_SOURCE[source];
   const list = rows.filter((d) => d.source === source && diffInTab(d.status, tab));
   const makeupOf = (d) => (d.makeup ? [...supplyDocs, ...supplierDocs].find((x) => x.id === d.makeup) : null);
 
@@ -298,7 +310,7 @@ export function SupplyDiff({ onOpenSupply }) {
           <div className="field">
             <span className="portal-sw">
               {["总部上报", "门店上报"].map((s) => (
-                <button key={s} className={source === s ? "on" : ""} onClick={() => setSource(s)}>{s}</button>
+                <button key={s} className={source === s ? "on" : ""} onClick={() => { setSource(s); setTab("全部"); }}>{s}</button>
               ))}
             </span>
           </div>
@@ -308,7 +320,7 @@ export function SupplyDiff({ onOpenSupply }) {
       </div>
 
       <div className="pills">
-        {DIFF_TABS.map((t) => (
+        {tabs.map((t) => (
           <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
         ))}
       </div>
@@ -330,7 +342,7 @@ export function SupplyDiff({ onOpenSupply }) {
                   <td className="tw">{d.shipper}</td>
                   <td>{d.summary}</td>
                   <td className="tw">{d.evidence}</td>
-                  <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : d.status === "待审核" ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "补发中" || d.status === "补发完成" ? "" : "gray"}`}>{d.status}</span></td>
+                  <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "补发中" || d.status === "补发完成" ? "" : "gray"}`}>{d.status}</span></td>
                   <td className="tw">{d.makeup
                     ? <span className="mono" onClick={() => onOpenSupply && onOpenSupply(d.makeup)} style={{ color: "#25c7a5", cursor: "pointer" }}>
                         {d.makeup}
@@ -340,7 +352,7 @@ export function SupplyDiff({ onOpenSupply }) {
                   <td className="tw">
                     <div className="op-col">
                       <button className="gray" onClick={() => setDetail(d)}>详情</button>
-                      {d.status === "待审核" && <button onClick={() => setPass(d)}>审核</button>}
+                      {d.status === "待总部审核" && <button onClick={() => setPass(d)}>审核</button>}
                       {d.makeup && mk?.status === "待发货" && <button onClick={() => onOpenSupply && onOpenSupply(d.makeup)}>去发货</button>}
                     </div>
                   </td>
@@ -434,7 +446,7 @@ function DiffDetailDrawer({ row, onClose, onOpenSupply }) {
               <div className="frow"><label>差异摘要</label><div className="fc"><input value={row.summary} readOnly /></div></div>
               <div className="frow"><label>举证信息</label><div className="fc"><input value={row.evidence} readOnly /></div></div>
               <div className="frow"><label>举证照片</label><div className="fc" style={{ paddingTop: 6 }}><EvidencePhotos evidence={row.evidence} /></div></div>
-              <div className="frow"><label>当前状态</label><div className="fc"><span className="tag warn">{row.status}</span></div></div>
+              <div className="frow"><label>当前状态</label><div className="fc"><span className={`tag ${row.status === "待举证" ? "warn" : ["待供应商审核", "待总部审核"].includes(row.status) ? "blue" : row.status === "审核不通过" ? "danger" : row.status === "已关闭" ? "gray" : ""}`}>{row.status}</span></div></div>
               {row.makeup && <div className="frow"><label>补发供货单</label><div className="fc"><input className="mono" value={row.makeup} readOnly /></div></div>}
               {row.makeup && (
                 <div className="frow"><label>补发物流</label><div className="fc">
@@ -453,8 +465,8 @@ function DiffDetailDrawer({ row, onClose, onOpenSupply }) {
             <h3>处理口径</h3>
             <div className="cbody">
               <div className="note" style={{ padding: 10, lineHeight: 1.9 }}>
-                审核由租户（总部）执行；供应商对差异<b>只读知情、执行补发，不参与钱款</b>（已明确否决两级审核）。
-                审核通过后按「<b>谁发货谁补发</b>」自动生成补发供货单。
+                <b>谁被上报谁审核</b>：总部上报（供应商 → 总仓，总仓收货时登记）→ 供应商审核；门店上报 → 总部审核。
+                审核通过后按「<b>谁发货谁补发</b>」自动生成补发供货单，补发单带「补发」标识、关联原供货单。
               </div>
             </div>
           </section>
@@ -682,7 +694,7 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
                       <span key={i} style={{ width: 62, height: 62, display: "grid", placeItems: "center", background: "#e8ecef", borderRadius: 4 }}>🧾</span>
                     ))}
                   </div>
-                  <div className="note">上传文件（单个不超 5M）；举证在收货环节一次完成，提交后自动开配送差异单并直接进「待审核」</div>
+                  <div className="note">上传文件（单个不超 5M）；举证在收货环节一次完成，提交后自动开配送差异单（总仓收货 → 交供应商审核；门店收货 → 交总部审核）</div>
                 </div>
               </div>
             </>

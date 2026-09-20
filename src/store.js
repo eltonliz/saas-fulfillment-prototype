@@ -83,7 +83,8 @@ export function applyArrivalTimeouts(now = new Date()) {
       }
       diffStore.set((ds) => ds.map((x) => (x.id === d.reshipOf ? { ...x, status: "补发完成" } : x)));
     }
-    /* R6：已完成 / 已取消 / 已退款订单不被重新激活提货码；按 supplyNo 或 orderNo 匹配 */
+    /* R6：已完成 / 已取消 / 已退款订单不被重新激活提货码；按 supplyNo 或 orderNo 匹配（只认本次被自动确认的单） */
+    const docsNow = [...supplyStore.get(), ...supplierStore.get()].filter((x) => fired.includes(x.id));
     orderStore.set((os) => os.map((o) => {
       const hit = fired.includes(o.supplyNo) || docsNow.some((d) => d.orderNo && d.orderNo === o.no);
       return hit && !["已完成", "已取消", "已全额退款"].includes(o.status) ? { ...o, pickupReady: true } : o;

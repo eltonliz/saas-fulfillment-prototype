@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab } from "./supply.jsx";
-import { TrackDrawer, useToast, useRowSelect, BatchBar } from "../ui.jsx";
-import { supplierStore, diffStore, patchDoc } from "../store.js";
+import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId } from "./supply.jsx";
+import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar } from "../ui.jsx";
+import { supplierStore, supplyStore, diffStore, patchDoc } from "../store.js";
 import { ORDERS } from "../data.js";
 
 const LEG_LABEL = {
@@ -285,17 +285,40 @@ function SupDocDrawer({ doc, onClose, onTrack }) {
   );
 }
 
-/* ---------------- 配送差异（供应商只读） ---------------- */
+/* ---------------- 配送差异（总部上报单由本方审核，门店上报单只读+补发） ---------------- */
 export function SupDiff() {
   const all = diffStore.use();
   const docs = supplierStore.use();
   const [tab, setTab] = useState("全部");
-  /* 与门店端 / 租户后台同一套状态 Tab；供应商不执行审核，只读审核结果并做补发 */
+  const [audit, setAudit] = useState(null);
+  const [toast, tip] = useToast();
+  /* 与门店端 / 租户后台同一套状态 Tab；两种来源合并展示：
+     总部上报（供应商 → 总仓）：本方审核 → 本方补发；门店上报：总部审核后本方执行补发 */
   const mine = all.filter((d) => d.leg.startsWith("供应商") && diffInTab(d.status, tab));
   const makeupOf = (d) => (d.makeup ? docs.find((x) => x.id === d.makeup) : null);
+
+  /* 审核通过 → 按「谁发货谁补发」生成补发供货单，进入本方发货列表（补发标签 + 关联原供货单） */
+  const approveAudit = (d) => {
+    const orig = [...supplierStore.get(), ...supplyStore.get()].find((x) => x.id === d.supplyNo);
+    const reshipId = newFhdId();
+    const doc = {
+      id: reshipId, leg: orig?.leg || "supplier_to_hq", source: "配送差异补发",
+      createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+      orderNo: orig?.orderNo || "—", product: orig?.product || "补发商品", spec: orig?.spec || "",
+      emoji: orig?.emoji || "📦", qty: d.diffQty ?? 1, sent: 0,
+      shipper: d.shipper, receiver: orig?.receiver || "九天教育总仓", receiverAddr: orig?.receiverAddr || "",
+      carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
+      isMakeup: true, reshipOf: d.id,
+    };
+    supplierStore.set((ds) => [doc, ...ds]);
+    if (["supplier_to_hq", "supplier_inbound"].includes(doc.leg)) supplyStore.set((ds) => [doc, ...ds]);
+    diffStore.set((ds) => ds.map((x) => (x.id === d.id ? { ...x, status: "补发中", makeup: reshipId } : x)));
+    tip(`差异单 ${d.id} 审核通过，已生成补发供货单 ${reshipId}（在「${doc.leg === "supplier_inbound" ? "发门店" : "发总部仓"}」列表发货）`);
+  };
+
   return (
     <>
-      <div className="alert"><span className="ic">i</span>供应商对差异单<b style={{ margin: "0 4px" }}>只读知情</b>，可查看差异原因、数量、凭证与审核结果，并执行补发任务（审核由总部执行，供应商不参与）</div>
+      <div className="alert"><span className="ic">i</span><b>谁被上报谁审核</b>：总部上报（供应商 → 总仓）由本方审核、审核通过后补发；门店上报由总部审核，本方只读知情、执行补发任务</div>
       <div className="pills" style={{ marginTop: 12 }}>
         {DIFF_TABS.map((t) => (
           <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
@@ -304,7 +327,7 @@ export function SupDiff() {
       <div className="tbl-wrap">
         <table>
           <thead>
-            <tr><th className="tw">差异单号</th><th className="tw">来源链路</th><th className="tw">关联供货单</th><th>差异摘要</th><th>异常原因 / 凭证</th><th className="tw">审核结果</th><th className="tw">状态</th><th className="tw">补发任务</th></tr>
+            <tr><th className="tw">差异单号</th><th className="tw">来源链路</th><th className="tw">关联供货单</th><th>差异摘要</th><th>异常原因 / 凭证</th><th className="tw">审核结果</th><th className="tw">状态</th><th className="tw">补发任务</th><th className="tw">操作</th></tr>
           </thead>
           <tbody>
             {mine.map((d) => (
@@ -315,16 +338,38 @@ export function SupDiff() {
                 <td>{d.summary}</td>
                 <td className="tw">{d.evidence}<div style={{ marginTop: 4 }}><EvidencePhotos evidence={d.evidence} size={30} /></div></td>
                 <td className="tw">{d.status === "审核不通过" ? <span className="tag danger">不通过</span> : ["补发中", "补发完成"].includes(d.status) ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
-                <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : d.status === "待审核" ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "已关闭" ? "gray" : ""}`}>{d.status}</span></td>
+                <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "已关闭" ? "gray" : ""}`}>{d.status}</span></td>
                 <td className="tw">{d.makeup
                   ? <span className="mono" style={{ color: "#25c7a5" }}>{d.makeup}<small style={{ display: "block", fontFamily: "inherit" }}>{makeupOf(d) ? `${makeupOf(d).status}${makeupOf(d).tracking ? " · 已发物流" : ""}` : "—"}</small></span>
                   : <span style={{ color: "#999" }}>—</span>}</td>
+                <td className="tw">
+                  <div className="op-col">
+                    {d.status === "待供应商审核" && <button onClick={() => setAudit(d)}>审核</button>}
+                  </div>
+                </td>
               </tr>
             ))}
-            {!mine.length && <tr><td colSpan={8} style={{ textAlign: "center", padding: 40, color: "#999" }}>当前筛选下暂无涉己差异单</td></tr>}
+            {!mine.length && <tr><td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#999" }}>当前筛选下暂无涉己差异单</td></tr>}
           </tbody>
         </table>
       </div>
+
+      {toast}
+      {audit && (
+        <Confirm
+          title="审核配送差异"
+          text={`差异单 ${audit.id}（原供货单 ${audit.supplyNo}）：${audit.summary}。通过 → 生成补发供货单并由本方发货（补发单带「补发」标识、关联原供货单）；驳回 → 差异单转「审核不通过」，不补发、转线下。`}
+          okText="审核通过"
+          rejectText="驳回"
+          onOk={() => { approveAudit(audit); setAudit(null); }}
+          onReject={() => {
+            diffStore.set((ds) => ds.map((x) => (x.id === audit.id ? { ...x, status: "审核不通过" } : x)));
+            tip(`差异单 ${audit.id} 已驳回：不补发，转线下处理`);
+            setAudit(null);
+          }}
+          onCancel={() => setAudit(null)}
+        />
+      )}
     </>
   );
 }
