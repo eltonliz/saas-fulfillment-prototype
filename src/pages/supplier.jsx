@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch } from "./supply.jsx";
+import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar } from "../ui.jsx";
 import { supplierStore, diffStore, patchDoc } from "../store.js";
 
@@ -77,6 +77,8 @@ export function SupTasks({ leg, title, desc }) {
                 <td>{d.receiver}<small>{d.receiverAddr}</small></td>
                 <td className="tw mono">{d.qty}/{d.sent}
                   {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {d.received ?? 0}｜待补 {d.qty - (d.received ?? 0)} 件</small>}
+                  {d.status === "收货异常" && !d.makeupAnomaly && <small style={{ color: "#f5522e" }}>实收 {d.received ?? 0}｜差 {Math.max(0, d.qty - (d.received ?? 0))} 件</small>}
+                  {d.makeupAnomaly && <small style={{ color: "#f5522e" }}>补发仍有异常 · 转线下</small>}
                 </td>
                 <td className="tw mono">{d.tracking ? <>{d.carrier}<small>{d.tracking}</small></> : "-"}</td>
                 <td className="tw">
@@ -239,9 +241,11 @@ function SupDocDrawer({ doc, onClose, onTrack }) {
             <div className="row" style={{ gap: 30 }}>
               <div className="field"><label>供货单号</label><b className="mono">{doc.id}</b></div>
               <div className="field"><label>供货路径</label><b>{LEG_LABEL[doc.leg]}</b></div>
-              <div className="field"><label>供货状态</label><span className="tag">{doc.status}</span></div>
+              <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{doc.status}</span></div>
             </div>
           </div>
+
+          {doc.status === "收货异常" && <ReceiveAbnormal doc={doc} ro />}
 
           <h3 style={{ fontSize: 14, margin: "0 0 8px" }}>供货商品明细</h3>
           <table className="tbl-tight">

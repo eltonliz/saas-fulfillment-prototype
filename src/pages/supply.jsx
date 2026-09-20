@@ -129,6 +129,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                 <td>{d.receiver}<small>{d.receiverAddr}</small></td>
                 <td className="tw mono">{d.qty}/{d.sent}
                   {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {d.received ?? 0}｜待补 {d.qty - (d.received ?? 0)} 件</small>}
+                  {d.status === "收货异常" && !d.makeupAnomaly && <small style={{ color: "#f5522e" }}>实收 {d.received ?? 0}｜差 {Math.max(0, d.qty - (d.received ?? 0))} 件</small>}
                   {d.makeupAnomaly && <small style={{ color: "#f5522e" }}>补发仍有异常 · 转线下</small>}
                 </td>
                 <td className="tw mono">{d.tracking ? <>{d.carrier}<small>{d.tracking}</small></> : "-"}</td>
@@ -855,6 +856,29 @@ export function BatchShipDrawer({ rows, onClose, onDone }) {
 }
 
 /* ---------------- 供货单详情抽屉 ---------------- */
+/* 收货异常说明：异常原因不在供货单本身，来自收货点验时生成的配送差异单 */
+export function ReceiveAbnormal({ doc, ro }) {
+  const diff = diffStore.get().find((d) => d.supplyNo === doc.id);
+  return (
+    <>
+      <h3 style={{ fontSize: 14, margin: "18px 0 10px", borderLeft: "3px solid #f5522e", paddingLeft: 9 }}>收货异常说明</h3>
+      <div style={{ border: "1px solid rgba(245,82,46,.35)", background: "rgba(245,82,46,.05)", borderRadius: 4, padding: "10px 14px", lineHeight: 2, fontSize: 13.5 }}>
+        {diff ? (
+          <>
+            <div>异常情况：<b>{diff.summary}</b></div>
+            <div>上报来源：{diff.source}（{diff.reporter}收货点验）</div>
+            <div>凭证：{diff.evidence && diff.evidence !== "—" ? diff.evidence : diff.status === "待举证" ? "收货方待举证" : "—"}</div>
+            <div>关联差异单：<span className="mono">{diff.id}</span>　<span className="tag danger">{diff.status}</span>{diff.makeup && <>　补发单 <span className="mono">{diff.makeup}</span></>}</div>
+          </>
+        ) : (
+          <div>异常情况：<b>补发单收货异常（实收 {doc.received ?? 0} / 应发 {doc.qty} 件）</b>{doc.reshipOf && <>　源差异单 <span className="mono">{doc.reshipOf}</span></>}</div>
+        )}
+        <div>处理流程：{diff ? "差异审核由总部执行；" : "按规则补发单不再新开差异单，转线下处理；"}{ro ? "供应商只读知情，" : ""}审核通过后生成补发任务，由原发货方补发。</div>
+      </div>
+    </>
+  );
+}
+
 function DocDetailDrawer({ doc, onClose }) {
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -865,7 +889,7 @@ function DocDetailDrawer({ doc, onClose }) {
             <div className="row" style={{ gap: 30 }}>
               <div className="field"><label>供货单号</label><b className="mono">{doc.id}</b></div>
               <div className="field"><label>供货路径</label><b>{LEG_LABEL[doc.leg]}</b></div>
-              <div className="field"><label>供货状态</label><span className="tag">{doc.status}</span></div>
+              <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{doc.status}</span></div>
             </div>
             <div className="row" style={{ gap: 30 }}>
               <div className="field"><label>发货主体</label><b>{doc.shipper}</b></div>
@@ -873,6 +897,8 @@ function DocDetailDrawer({ doc, onClose }) {
             </div>
             <div className="row"><div className="field"><label>收货地址</label><span>{doc.receiverAddr}</span></div></div>
           </div>
+
+          {doc.status === "收货异常" && <ReceiveAbnormal doc={doc} />}
 
           <h3 style={{ fontSize: 14, margin: "0 0 10px", borderLeft: "3px solid #25c7a5", paddingLeft: 9 }}>供货商品明细</h3>
           <table>
@@ -902,7 +928,7 @@ function DocDetailDrawer({ doc, onClose }) {
               </div>
             </div>
           ) : (
-            <div className="note">该单尚未收货，暂无待回写记录。</div>
+            <div className="note">{["已收货", "部分收货", "收货异常"].includes(doc.status) ? "本期收货不落可售库存，该单无待回写记录。" : "该单尚未收货，暂无待回写记录。"}</div>
           )}
           <div className="note" style={{ marginBottom: 12 }}>
             本期「只做销」：收货<b>不产生仓库库存</b>，这批实收也不会落到宿主商品的可售库存上。
