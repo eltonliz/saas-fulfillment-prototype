@@ -81,7 +81,7 @@ export function TrackDrawer({ doc, onClose }) {
 }
 
 /* 通用确认弹窗 */
-export function Confirm({ title = "操作确认", text, okText = "确定", onOk, onCancel }) {
+export function Confirm({ title = "操作确认", text, okText = "确定", onOk, onCancel, rejectText, onReject }) {
   return (
     <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="gbox">
@@ -89,6 +89,7 @@ export function Confirm({ title = "操作确认", text, okText = "确定", onOk,
         <p>{text}</p>
         <div className="gfoot">
           <button className="btn plain" onClick={onCancel}>取消</button>
+          {onReject && <button className="btn" onClick={onReject}>{rejectText || "驳回"}</button>}
           <button className="btn primary" onClick={onOk}>{okText}</button>
         </div>
       </div>

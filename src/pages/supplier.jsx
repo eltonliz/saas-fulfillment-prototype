@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos } from "./supply.jsx";
+import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar } from "../ui.jsx";
 import { supplierStore, diffStore, patchDoc } from "../store.js";
 import { ORDERS } from "../data.js";
@@ -288,10 +288,19 @@ function SupDocDrawer({ doc, onClose, onTrack }) {
 /* ---------------- 配送差异（供应商只读） ---------------- */
 export function SupDiff() {
   const all = diffStore.use();
-  const mine = all.filter((d) => d.leg.startsWith("供应商"));
+  const docs = supplierStore.use();
+  const [tab, setTab] = useState("全部");
+  /* 与门店端 / 租户后台同一套状态 Tab；供应商不执行审核，只读审核结果并做补发 */
+  const mine = all.filter((d) => d.leg.startsWith("供应商") && diffInTab(d.status, tab));
+  const makeupOf = (d) => (d.makeup ? docs.find((x) => x.id === d.makeup) : null);
   return (
     <>
-      <div className="alert"><span className="ic">i</span>供应商对差异单<b style={{ margin: "0 4px" }}>只读知情</b>，可查看差异原因、数量、凭证与审核结果，并执行补发任务</div>
+      <div className="alert"><span className="ic">i</span>供应商对差异单<b style={{ margin: "0 4px" }}>只读知情</b>，可查看差异原因、数量、凭证与审核结果，并执行补发任务（审核由总部执行，供应商不参与）</div>
+      <div className="pills" style={{ marginTop: 12 }}>
+        {DIFF_TABS.map((t) => (
+          <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
+        ))}
+      </div>
       <div className="tbl-wrap">
         <table>
           <thead>
@@ -305,12 +314,14 @@ export function SupDiff() {
                 <td className="tw mono">{d.supplyNo}</td>
                 <td>{d.summary}</td>
                 <td className="tw">{d.evidence}<div style={{ marginTop: 4 }}><EvidencePhotos evidence={d.evidence} size={30} /></div></td>
-                <td className="tw">{["补发中", "补发完成"].includes(d.status) ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
-                <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : d.status === "待总部审核" ? "blue" : ""}`}>{d.status}</span></td>
-                <td className="tw">{d.makeup ? <span className="mono" style={{ color: "#25c7a5" }}>{d.makeup}</span> : <span style={{ color: "#999" }}>—</span>}</td>
+                <td className="tw">{d.status === "审核不通过" ? <span className="tag danger">不通过</span> : ["补发中", "补发完成"].includes(d.status) ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
+                <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : d.status === "待审核" ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "已关闭" ? "gray" : ""}`}>{d.status}</span></td>
+                <td className="tw">{d.makeup
+                  ? <span className="mono" style={{ color: "#25c7a5" }}>{d.makeup}<small style={{ display: "block", fontFamily: "inherit" }}>{makeupOf(d) ? `${makeupOf(d).status}${makeupOf(d).tracking ? " · 已发物流" : ""}` : "—"}</small></span>
+                  : <span style={{ color: "#999" }}>—</span>}</td>
               </tr>
             ))}
-            {!mine.length && <tr><td colSpan={8} style={{ textAlign: "center", padding: 40, color: "#999" }}>暂无涉己差异单</td></tr>}
+            {!mine.length && <tr><td colSpan={8} style={{ textAlign: "center", padding: 40, color: "#999" }}>当前筛选下暂无涉己差异单</td></tr>}
           </tbody>
         </table>
       </div>

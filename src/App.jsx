@@ -16,7 +16,7 @@ import { ScenarioList } from "./pages/scenarios.jsx";
 import { FlowsView } from "./pages/flows.jsx";
 import { VersionLog } from "./pages/versions.jsx";
 import { useToast } from "./ui.jsx";
-import { supplyStore } from "./store.js";
+import { supplyStore, supplierStore } from "./store.js";
 
 const TENANT = {
   版本记录: { crumbs: ["版本记录"], tabs: ["版本记录"] },
@@ -66,6 +66,21 @@ export function App() {
     if (doc) setPage("发货管理");
     else { setPortal("supplier"); setPage("一件代发"); }
     tip(`已跳转「${dest}」，查找供货单 ${no}`);
+  };
+
+  /* 差异单「补发任务」跳转：按「谁发货谁补发」找对发货页 ——
+     总部仓链路 → 租户后台发货管理；供应商链路 → 供应商后台对应发货页 */
+  const gotoMakeup = (id) => {
+    const doc = [...supplyStore.get(), ...supplierStore.get()].find((d) => d.id === id);
+    if (!doc) { tip(`未找到补发单 ${id}`); return; }
+    if (doc.leg === "hq_store") {
+      setPortal("tenant"); setPage("发货管理");
+      tip(`已跳转「发货管理」，补发单 ${id} 在此发货`);
+      return;
+    }
+    const dest = doc.leg === "supplier_to_hq" ? "发总部仓" : doc.leg === "supplier_inbound" ? "发门店" : "一件代发";
+    setPortal("supplier"); setPage(dest);
+    tip(`已跳转「供应商后台 · ${dest}」，补发单 ${id} 在此发货`);
   };
 
   /* 门店 APP */
@@ -133,7 +148,7 @@ export function App() {
             {page === "供应商管理" && <SupplierMaster />}
             {page === "发货管理" && <SupplyDispatch />}
             {page === "收货管理" && <SupplyReceipt />}
-            {page === "配送差异" && <SupplyDiff />}
+            {page === "配送差异" && <SupplyDiff onOpenSupply={gotoMakeup} />}
             {page === "退货返厂" && <TenantReturns />}
           </>
         )}
