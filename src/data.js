@@ -118,10 +118,11 @@ export const ORDERS = [
   /* 进销存新增：第二条「待提货」自提订单 —— 货已到店（照进销存口径：到店确认后才出现待提货），用于买家端演示 */
   {
     id: "o9", no: "ORD260918000202", product: "沐浴露", spec: "持久留香 / 500ml", qty: 1, unitPrice: "¥199.00", emoji: "🧴",
-    afterSale: "暂无售后",
+    afterSale: "暂无售后", buyerNote: "麻烦早点发货",
     amounts: { 商品金额: "199.00", 邮费: "0", 优惠金额: "-9.00", 积分抵现: "-", 应收金额: "190.00", 实收金额: "190.00" },
     buyer: { 昵称: "林小满" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true,
-    createdAt: "2026-09-17 11:20:00", status: "已发货", ops: ["详情", "备注", "分配门店"],
+    createdAt: "2026-09-17 11:20:00", status: "已发货",
+    payMethod: "微信支付", payTime: "2026-09-17 11:20:02", ops: ["详情", "备注", "分配门店"],
     supplyNo: "", supplyMode: "供应商直配",
   },
   /* 进销存新增：待收货自提订单 —— 供应商已发门店、在途（货未到店，提货码未开放） */
@@ -130,7 +131,8 @@ export const ORDERS = [
     afterSale: "暂无售后",
     amounts: { 商品金额: "178.00", 邮费: "0", 优惠金额: "-10.00", 积分抵现: "-", 应收金额: "168.00", 实收金额: "168.00" },
     buyer: { 昵称: "徐一诺" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
-    createdAt: "2026-09-18 15:30:00", status: "已发货", ops: ["详情", "备注", "分配门店"],
+    createdAt: "2026-09-18 15:30:00", status: "已发货",
+    payMethod: "微信支付", payTime: "2026-09-18 15:30:02", ops: ["详情", "备注", "分配门店"],
     supplyNo: "FHD2609180012", supplyMode: "供应商直配",
   },
   /* 状态补齐：待付款自提订单（未支付 → 不生成发货任务，提货码不可用） */
@@ -161,6 +163,25 @@ export const ORDERS = [
     createdAt: "2026-09-13 15:02:41", status: "已完成",
     payMethod: "微信支付", payTime: "2026-09-13 15:02:43", ops: ["详情", "备注", "分配门店"],
     supplyNo: "", supplyMode: "供应商直配",
+  },
+  /* 状态补齐：售后中自提订单（买家端「售后中」＋售后进度卡；挂起不发货） */
+  {
+    id: "o14", no: "ORD260918000231", product: "儿童保温杯", spec: "500ml / 蓝", qty: 1, unitPrice: "¥89.00", emoji: "🥤",
+    afterSale: "售后处理中", afterSaleLink: "查看", buyerNote: "麻烦早点发货",
+    amounts: { 商品金额: "89.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "89.00", 实收金额: "89.00" },
+    buyer: { 昵称: "徐一诺" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-18 16:10:22", status: "售后中",
+    payMethod: "微信支付", payTime: "2026-09-18 16:10:25", ops: ["详情", "备注", "分配门店"],
+    supplyNo: "", supplyMode: "供应商直配",
+  },
+  /* 状态补齐：已取消自提订单（超时未支付 → 买家端「订单已取消」） */
+  {
+    id: "o15", no: "ORD260918000232", product: "沐浴露", spec: "持久留香 / 500ml", qty: 1, unitPrice: "¥199.00", emoji: "🧴",
+    afterSale: "暂无售后", buyerNote: "麻烦早点发货", cancelReason: "超时未支付",
+    amounts: { 商品金额: "199.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "199.00", 实收金额: "190.00" },
+    buyer: { 昵称: "苏晚" }, store: "九天门店", delivery: "上门自提",
+    createdAt: "2026-09-18 20:33:56", status: "已取消", ops: ["详情", "备注", "分配门店"],
+    supplyNo: "", supplyMode: "",
   },
 ];
 

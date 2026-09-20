@@ -24,7 +24,7 @@ export function OrderManagement({ onOpenSupply }) {
   const [toast, tip] = useToast();
   const rows = orderStore.use().filter((o) =>
     tab === "全部" ? true
-      : tab === "已关闭" ? ["已关闭", "已全额退款"].includes(o.status)
+      : tab === "已关闭" ? ["已关闭", "已全额退款", "已取消"].includes(o.status)
         : o.status === tab);
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((o) => o.id));
 
@@ -298,7 +298,7 @@ function OrderDetailDrawer({ order, onClose, onShip, onNote }) {
             <div style={{ width: 250, flex: "none" }}>
               <div style={{ fontSize: 22, color: "#333", marginBottom: 8 }}>{order.status}</div>
               <div style={{ color: "#999", fontSize: 13, marginBottom: 14 }}>
-                {order.status === "待付款" ? "等待买家付款" : order.status === "待发货" ? "买家已付款，待商家发货" : order.status === "已发货" ? "商家已发货，等待买家签收" : order.status === "售后中" ? "售后处理中，订单已挂起" : order.status === "已完成" ? "交易完成" : order.status === "已全额退款" ? "已退款" : "—"}
+                {order.status === "待付款" ? "等待买家付款" : order.status === "待发货" ? "买家已付款，待商家发货" : order.status === "已发货" ? "商家已发货，等待买家签收" : order.status === "售后中" ? "售后处理中，订单已挂起" : order.status === "已完成" ? "交易完成" : order.status === "已取消" ? "超时未支付，订单自动取消" : order.status === "已全额退款" ? "已退款" : "—"}
               </div>
               {order.status === "待发货" && (canShipOrder(order)
                 ? <button className="btn primary" style={{ marginBottom: 14 }} onClick={onShip}>发货</button>

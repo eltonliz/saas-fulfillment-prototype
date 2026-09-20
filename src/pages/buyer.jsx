@@ -8,31 +8,78 @@ import { useReqPage } from "./reqnotes.jsx";
    进销存口径修正：货到门店并确认到货后，「待提货」与提货码才出现
    ============================================================================ */
 
-const isPickup = (o) => o.delivery === "上门自提" && !/已全额退款|已取消/.test(o.status);
-/* 自提订单状态：unship 待发货 / shipping 待收货（在途）/ ready 待提货 / done 已完成
+const isPickup = (o) => o.delivery === "上门自提";
+/* 自提订单状态：unpaid 待付款 / unship 待发货 / shipping 待收货（在途）/ ready 待提货 /
+   done 已完成 / canceled 已取消 / aftersale 售后中；
    货未到店的按关联供货单的货物流转定状态（流转路径对买家可见） */
 export const buyerStateOf = (o, docs = []) => {
   if (o.status === "待付款") return "unpaid";
+  if (o.status === "已取消" || o.status === "已全额退款") return "canceled";
+  if (o.status === "售后中") return "aftersale";
   if (o.pickupUsed) return "done";
   if (o.pickupReady) return "ready";
   const doc = docs.find((d) => (o.supplyNo && d.id === o.supplyNo) || d.orderNo === o.no);
   return doc && doc.status !== "待发货" ? "shipping" : "unship";
 };
 const STATE_META = {
-  unpaid: { label: "待付款", color: "#f5a623", icon: "💰", tip: "订单尚未支付，支付后商家开始备货" },
+  unpaid: { label: "待付款", color: "#25c7a5", icon: "⏱", tip: "订单尚未支付，支付后商家开始备货" },
   unship: { label: "待发货", color: "#25c7a5", icon: "⏳", tip: "商家备货中，货到门店确认后开放提货码" },
   shipping: { label: "待收货", color: "#25c7a5", icon: "🚚", tip: "运输中，货到门店确认后开放提货码" },
   ready: { label: "待提货", color: "#25c7a5", icon: "⏱", tip: "请到自提门店出示提货码" },
   done: { label: "已完成", color: "#999", icon: "✓", tip: "订单已完成" },
+  canceled: { label: "订单已取消", color: "#25c7a5", icon: "!", tip: "" },
+  aftersale: { label: "售后中", color: "#25c7a5", icon: "⏱", tip: "" },
 };
-/* 页签照「我的订单」设计稿；待收货/待自提 合并一档（货已发出，等待客户收/提） */
-const TABS = ["全部", "待付款", "待发货", "待收货/待自提", "已完成"];
+/* 页签照「我的订单」设计稿：待发货/待自提 一档、待收货独立一档 */
+const TABS = ["全部", "待付款", "待发货/待自提", "待收货", "已完成"];
 const inTab = (st, orderStatus, t) =>
   t === "全部" ? true
     : t === "待付款" ? orderStatus === "待付款"
-      : t === "待发货" ? st === "unship"
-        : t === "待收货/待自提" ? (st === "shipping" || st === "ready")
+      : t === "待发货/待自提" ? (st === "unship" || st === "ready")
+        : t === "待收货" ? st === "shipping"
           : st === "done";
+
+/* 店铺卡头与自提门店信息（照设计稿：门店名 + 地址 + 联系人电话） */
+const SHOP = "九天教育官方旗舰店";
+const STORE_INFO = {
+  "9071门店": { addr: "辽宁省铁岭市银州区工人街 28 号", contact: "朱先生", phone: "15554174768" },
+  "九天门店": { addr: "广东省广州市荔湾区宝华路 76 号", contact: "王店长", phone: "13488202020" },
+};
+
+/* 列表卡状态文案与配色（照设计稿：待付款带倒计时红字；完成/取消灰字；其余绿字） */
+const listStatusText = (st, o) =>
+  st === "unpaid" ? `等待付款 ${o.countdown || "23:00:22"}`
+    : st === "unship" ? "待发货"
+      : st === "shipping" ? "待收货"
+        : st === "ready" ? "待提货"
+          : st === "done" ? "交易完成"
+            : st === "canceled" ? (o.status === "已全额退款" ? "已全额退款" : "超时未支付，订单已取消")
+              : "售后中";
+const listStatusColor = (st) => (st === "unpaid" || st === "aftersale" ? "#f04438" : st === "done" || st === "canceled" ? "#8a949d" : "#25c7a5");
+
+/* 列表 / 详情底部按钮组（照设计稿逐状态） */
+const LIST_ACTIONS = {
+  unpaid: [["取消订单", "plain"], ["去支付", "primary"]],
+  unship: [["申请售后", "plain"]],
+  shipping: [["申请售后", "plain"]],
+  ready: [["申请售后", "plain"], ["查看自提码", "code"]],
+  done: [["删除订单", "plain"], ["去评价", "primary"]],
+  canceled: [["删除订单", "plain"]],
+  aftersale: [["撤销申请", "primary"]],
+};
+const DETAIL_ACTIONS = {
+  unpaid: [["取消订单", "plain"], ["去支付", "primary"]],
+  unship: [["申请售后", "plain"]],
+  shipping: [["申请售后", "plain"]],
+  ready: [["申请售后", "plain"]],
+  done: [["申请售后", "plain"], ["去评价", "primary"]],
+  canceled: [["删除订单", "plain"]],
+  aftersale: [["撤销申请", "primary"]],
+};
+const btnBase = { border: "1px solid #dcdcdc", background: "#fff", borderRadius: 15, padding: "5px 14px", fontSize: 12.5, color: "#333", cursor: "pointer" };
+const btnPrimaryStyle = { border: 0, background: "#25c7a5", color: "#fff", borderRadius: 15, padding: "6px 16px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" };
+const btnCodeStyle = { border: 0, background: "#e6f7f2", color: "#25c7a5", borderRadius: 15, padding: "6px 16px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" };
+const btnStyleOf = (kind) => (kind === "primary" ? btnPrimaryStyle : kind === "code" ? btnCodeStyle : btnBase);
 
 export function BuyerApp() {
   const orders = orderStore.use();
@@ -42,12 +89,14 @@ export function BuyerApp() {
   const [curId, setCurId] = useState(null);
   const [codeOpen, setCodeOpen] = useState(false);
   const [mode, setMode] = useState("preview");
+  const [flash, setFlash] = useState("");
   useReqPage(view === "list" ? "buyer:list" : "buyer:detail");
 
   const all = orders.filter(isPickup);
   const list = all.filter((o) => inTab(buyerStateOf(o, docs), o.status, tab));
   const order = orders.find((o) => o.id === curId);
   const back = () => { setView("list"); setCodeOpen(false); };
+  const say = (m) => { setFlash(m); setTimeout(() => setFlash(""), 1800); };
 
   return (
     <>
@@ -84,6 +133,7 @@ export function BuyerApp() {
               <div className="mpad">
                 {list.map((o) => (
                   <OrderCard key={o.id} o={o} st={buyerStateOf(o, docs)}
+                    say={say}
                     onOpen={() => { setCurId(o.id); setView("detail"); }}
                     onCode={() => { setCurId(o.id); setCodeOpen(true); }} />
                 ))}
@@ -96,57 +146,103 @@ export function BuyerApp() {
             const st = buyerStateOf(order, docs);
             const m = STATE_META[st];
             const a = order.amounts || {};
+            const si = STORE_INFO[order.store] || {};
+            const refundedCanceled = st === "canceled" && order.status === "已全额退款";
+            const showCodeBtn = ["ready", "done"].includes(st) || refundedCanceled;
+            const money = (v, kind) => {
+              if (v === undefined || v === null || v === "" || v === "-") return "-";
+              const abs = String(v).replace("¥", "").replace(/^-/, "").trim();
+              return kind === "neg" ? `-¥${abs}` : `¥${abs}`;
+            };
+            const rows = st === "unpaid"
+              ? [["商品总金额", a.商品金额], ["运费", a.邮费], ["订单总金额", a.商品金额], ["订单应付金额", money(a.应收金额), "#f04438"]]
+              : st === "canceled" && !refundedCanceled
+                ? [["商品总金额", a.商品金额], ["运费", a.邮费], ["订单总金额", a.商品金额], ["订单应付金额", money(a.应收金额, "neg"), "#b9c0c7"], ["订单实付金额", money(a.实收金额), "#f04438"]]
+                : [["商品总金额", a.商品金额], ["运费", a.邮费], ["订单总金额", a.商品金额], ["优惠金额", money(a.优惠金额, "neg"), "#f04438"], ["订单应付金额", money(a.应收金额, "neg"), "#b9c0c7"], ["订单实付金额", money(a.实收金额), "#f04438"]];
+            const infoRows = st === "unpaid" || (st === "canceled" && !refundedCanceled)
+              ? [["订单编号", order.no, true], ["下单时间", order.createdAt], ["买家留言", order.buyerNote || "—"]]
+              : [["订单编号", order.no, true], ["下单时间", order.createdAt], ["支付时间", order.payTime || "—"], ["支付方式", order.payMethod || "—"], ["买家留言", order.buyerNote || "—"]];
             return (
               <div style={{ paddingBottom: 20 }}>
-                <div style={{ background: "#fff", padding: "16px", display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ width: 26, height: 26, borderRadius: "50%", background: m.color, color: "#fff", display: "grid", placeItems: "center", fontSize: 15, fontWeight: 700, flex: "none" }}>{m.icon}</span>
-                  <b style={{ fontSize: 18 }}>{m.label}</b>
+                <div style={{ background: "#fff", padding: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ width: 26, height: 26, borderRadius: "50%", background: m.color, color: "#fff", display: "grid", placeItems: "center", fontSize: 15, fontWeight: 700, flex: "none" }}>{m.icon}</span>
+                    <b style={{ fontSize: 18 }}>{m.label}</b>
+                  </div>
+                  {st === "unpaid" && (
+                    <div style={{ marginTop: 6, fontSize: 13, color: "#8a949d" }}>
+                      剩 <b style={{ color: "#f04438" }}>23:00:22</b><b style={{ color: "#f04438" }}>秒</b> 订单自动取消
+                    </div>
+                  )}
+                  {st === "canceled" && (
+                    <div style={{ marginTop: 6, fontSize: 13, color: "#8a949d" }}>
+                      {refundedCanceled ? "已全额退款" : (order.cancelReason || "超时未支付")}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ padding: 12 }}>
-                  <div className="mcard">
-                    <b style={{ fontSize: 14.5 }}>{order.store}</b>
-                    <div className="note">自提门店 · {m.tip}</div>
+                  {/* 自提门店卡：门店名 + 地址 + 联系人电话（照设计稿） */}
+                  <div className="mcard" style={{ display: "flex", gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <b style={{ fontSize: 15 }}>{order.store}</b>
+                      <div className="note" style={{ marginTop: 4 }}>{si.addr || "—"}</div>
+                      <div className="note" style={{ marginTop: 2 }}>{si.contact} {si.phone}</div>
+                    </div>
+                    <span style={{ width: 64, height: 64, borderRadius: 8, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 28, flex: "none" }}>🏪</span>
                   </div>
 
+                  {/* 售后进度卡（售后中 / 已取消-退款） */}
+                  {(st === "aftersale" || refundedCanceled) && (
+                    <div className="mcard" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <b style={{ fontSize: 14.5 }}>售后进度</b>
+                        <div className="note" style={{ marginTop: 2 }}>本订单有2条售后申请记录，点击可查看详情</div>
+                      </div>
+                      <span style={{ color: "#c0c6cc", fontSize: 18 }}>›</span>
+                    </div>
+                  )}
+
+                  {/* 店铺卡：铺头 + 商品行 + 行内「查看自提码」 */}
                   <div className="mcard">
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 10 }}>
+                      <span style={{ fontSize: 14 }}>🏪</span><b style={{ fontSize: 14.5 }}>{SHOP}</b><span style={{ color: "#c0c6cc" }}>›</span>
+                    </div>
                     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                       <span style={{ width: 56, height: 56, borderRadius: 6, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 26, flex: "none" }}>{order.emoji}</span>
-                      <div style={{ flex: 1 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <b style={{ fontSize: 13.5 }}>{order.product}</b>
                         <div className="note" style={{ marginTop: 2 }}>{order.spec}</div>
                       </div>
-                      <div style={{ textAlign: "right" }}>
+                      <div style={{ textAlign: "right", flex: "none" }}>
                         <b style={{ fontSize: 14 }}>{order.unitPrice}</b>
                         <div className="note">×{order.qty}</div>
                       </div>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
-                      {["unpaid", "unship", "shipping"].includes(st) ? (
-                        <span style={{ background: "#f5f7f8", color: "#b9c0c7", borderRadius: 15, padding: "6px 16px", fontSize: 12.5 }}>查看自提码</span>
-                      ) : (
-                        <button onClick={() => setCodeOpen(true)} style={{ border: 0, background: "#e6f7f2", color: "#25c7a5", borderRadius: 15, padding: "6px 16px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>查看自提码</button>
-                      )}
-                    </div>
+                    {showCodeBtn && (
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                        <button style={btnCodeStyle} onClick={() => setCodeOpen(true)}>查看自提码</button>
+                      </div>
+                    )}
                   </div>
 
+                  {/* 金额卡：逐状态行集（照设计稿） */}
                   <div className="mcard">
-                    {[["商品总金额", a.商品金额], ["运费", a.邮费], ["优惠金额", a.优惠金额], ["订单应付金额", a.应收金额]].map(([k, v]) => (
-                      <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "5px 0" }}>
-                        <span style={{ color: "#666" }}>{k}</span><span>{v || "-"}</span>
+                    {rows.map(([k, v, color]) => (
+                      <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, padding: "6px 0" }}>
+                        <span style={{ color: "#666" }}>{k}</span>
+                        <span style={{ color: color || "#333", fontWeight: color === "#f04438" && k === "订单实付金额" ? 700 : 400 }}>{v}</span>
                       </div>
                     ))}
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, padding: "8px 0 0", borderTop: "1px solid #f2f4f6", marginTop: 4 }}>
-                      <b>订单实付金额</b><b style={{ color: "#f04438" }}>¥{a.实收金额 || "-"}</b>
-                    </div>
                   </div>
 
+                  {/* 订单信息卡：未支付仅 3 行；已支付 5 行 */}
                   <div className="mcard" style={{ marginBottom: 20 }}>
-                    {[["订单编号", order.no], ["下单时间", order.createdAt], ["支付时间", order.payTime || "—"], ["支付方式", order.payMethod || "—"], ["买家留言", "—"]].map(([k, v]) => (
+                    {infoRows.map(([k, v, copy]) => (
                       <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "5px 0" }}>
                         <span style={{ color: "#8a949d" }}>{k}</span>
                         <span style={{ color: "#333", display: "flex", alignItems: "center", gap: 6 }}>
-                          {v}{k === "订单编号" && <CopyMini text={order.no} />}
+                          {v}{copy && <CopyMini text={order.no} />}
                         </span>
                       </div>
                     ))}
@@ -156,6 +252,17 @@ export function BuyerApp() {
             );
           })()}
         </div>
+
+        {view === "detail" && order && (
+          <div style={{ flex: "none", background: "#fff", borderTop: "1px solid #f1f1f1", padding: "10px 14px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            {(DETAIL_ACTIONS[buyerStateOf(order, docs)] || []).map(([label, kind]) => (
+              <button key={label} style={btnStyleOf(kind)} onClick={() => say(`「${label}」为示意操作`)}>{label}</button>
+            ))}
+          </div>
+        )}
+        {flash && (
+          <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: view === "detail" ? 70 : 26, background: "rgba(16,22,29,.82)", color: "#fff", fontSize: 12.5, padding: "7px 14px", borderRadius: 8, zIndex: 60, whiteSpace: "nowrap" }}>{flash}</div>
+        )}
 
         {codeOpen && order && <PickupCodeModal order={order} done={buyerStateOf(order, docs) === "done"} onClose={() => setCodeOpen(false)} />}
       </div>
@@ -232,35 +339,24 @@ export function FlowArrow({ label, id }) {
   );
 }
 
-/* 订单卡片（照「我的订单」设计稿：店铺卡头 + 商品行 + 状态副行 + 共N件实付 + 状态按钮） */
-function OrderCard({ o, st, onOpen, onCode }) {
-  const m = STATE_META[st];
+/* 订单卡片（照「我的订单」设计稿：店铺卡头 + 彩色状态 + 商品行 + 状态副行 + 共N件实付(红) + 状态按钮组） */
+function OrderCard({ o, st, say, onOpen, onCode }) {
   const a = o.amounts || {};
-  const btnStyle = { border: "1px solid #dcdcdc", background: "#fff", borderRadius: 15, padding: "5px 14px", fontSize: 12.5, color: "#333", cursor: "pointer" };
+  const btns = LIST_ACTIONS[st] || [];
   return (
     <div className="mcard" style={{ marginBottom: 10 }}>
       <div className="hd" style={{ borderBottom: "1px solid #f5f7f8", paddingBottom: 8, marginBottom: 0 }}>
-        <span style={{ fontSize: 13, color: "#333" }}>🏬 {o.store} ›</span>
-        <span style={{ color: m.color, fontSize: 12.5, fontWeight: 600 }}>{m.label}</span>
+        <span style={{ fontSize: 13, color: "#333" }}>🏪 {SHOP} ›</span>
+        <span style={{ color: listStatusColor(st), fontSize: 12.5, fontWeight: 600 }}>{listStatusText(st, o)}</span>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 10, cursor: "pointer" }} onClick={onOpen}>
         <span style={{ width: 58, height: 58, borderRadius: 6, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 26, flex: "none" }}>{o.emoji}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <b style={{ fontSize: 13.5 }}>{o.product}</b>
           <div className="note" style={{ marginTop: 2 }}>{o.spec}</div>
-          {(st === "ready" || st === "done") && (
-            <div style={{ marginTop: 5, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              {st === "ready" ? (
-                <span style={{ color: "#25c7a5", fontSize: 12 }}>请前往门店提货 ›</span>
-              ) : (
-                <span style={{ color: "#999", fontSize: 12 }}>已提货 订单已完成 ›</span>
-              )}
-              {st === "ready" && (
-                <button onClick={(e) => { e.stopPropagation(); onCode(); }}
-                  style={{ border: 0, background: "#e6f7f2", color: "#25c7a5", borderRadius: 13, padding: "4px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", flex: "none" }}>查看自提码</button>
-              )}
-            </div>
-          )}
+          {st === "ready" && <div style={{ marginTop: 5, color: "#8a949d", fontSize: 12 }}>待提货 请前往门店提货 ›</div>}
+          {st === "done" && <div style={{ marginTop: 5, color: "#8a949d", fontSize: 12 }}>已提货 订单已完成 ›</div>}
+          {st === "aftersale" && <div style={{ marginTop: 5, color: "#f04438", fontSize: 12 }}>售后中 请在6天20时40分内寄回 ›</div>}
         </div>
         <div style={{ textAlign: "right", flex: "none" }}>
           <b style={{ fontSize: 13 }}>{o.unitPrice}</b>
@@ -273,21 +369,26 @@ function OrderCard({ o, st, onOpen, onCode }) {
         </div>
       )}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10, paddingTop: 8, borderTop: "1px solid #f5f7f8" }}>
-        <span className="note" style={{ marginTop: 0 }}>共 {o.qty} 件　实付 <b style={{ color: "#333" }}>¥{a.实收金额 || "-"}</b></span>
+        <span className="note" style={{ marginTop: 0 }}>共 {o.qty} 件　实付 <b style={{ color: "#f04438" }}>¥{a.实收金额 || "-"}</b></span>
         <span style={{ display: "flex", gap: 8 }}>
-          {st === "done" ? <button style={btnStyle}>去评价</button> : st === "unpaid" ? <button style={btnStyle}>去支付</button> : <button style={btnStyle}>申请售后</button>}
+          {btns.map(([label, kind]) => (
+            <button key={label} style={btnStyleOf(kind)}
+              onClick={(e) => { e.stopPropagation(); label === "查看自提码" ? onCode() : say(`「${label}」为示意操作`); }}>
+              {label}
+            </button>
+          ))}
         </span>
       </div>
     </div>
   );
 }
 
-/* 复制（照设计稿的复制成功态） */
+/* 复制（照设计稿：描边小 chip，复制成功变「已复制」） */
 function CopyMini({ text }) {
   const [ok, setOk] = useState(false);
   return (
     <span onClick={() => { try { navigator.clipboard?.writeText(text).catch(() => {}); } catch { /* 非安全上下文下忽略 */ } setOk(true); setTimeout(() => setOk(false), 1500); }}
-      style={{ color: "#25c7a5", cursor: "pointer" }}>{ok ? "已复制" : "复制"}</span>
+      style={{ border: "1px solid #e2e6ea", borderRadius: 10, padding: "1px 8px", fontSize: 11.5, color: ok ? "#25c7a5" : "#666", cursor: "pointer", flex: "none" }}>{ok ? "已复制" : "复制"}</span>
   );
 }
 
@@ -312,6 +413,9 @@ function PickupCodeModal({ order, done, onClose }) {
           onClick={() => { try { navigator.clipboard?.writeText(code).catch(() => {}); } catch { /* 非安全上下文下忽略 */ } setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
           {copied ? "已复制" : "复制"}
         </button>
+        {copied && (
+          <span style={{ position: "absolute", left: "50%", top: "40%", transform: "translate(-50%, -50%)", background: "rgba(16,22,29,.82)", color: "#fff", fontSize: 13.5, padding: "8px 18px", borderRadius: 8 }}>复制成功</span>
+        )}
         <div className="note" style={{ marginTop: 12, textAlign: "center" }}>{done ? "订单已完成" : "请在门店前台出示此码核销"}</div>
       </div>
     </div>
