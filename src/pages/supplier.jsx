@@ -107,9 +107,10 @@ export function SupTasks({ leg, title, desc }) {
           doc={modal.d}
           onClose={() => setModal(null)}
           onDone={(p) => {
-            const sent = (modal.d.sent ?? 0) + p.qty;
+            const sent = Math.min(modal.d.qty, (modal.d.sent ?? 0) + p.qty);
             patchDoc(modal.d.id, {
               sent,
+              carrier: p.carrier || modal.d.carrier,
               tracking: p.tracking || modal.d.tracking,
               track: "已发货 " + new Date().toISOString().slice(0, 19).replace("T", " "),
               status: "已发货",
@@ -135,13 +136,14 @@ export const SupToStore = () => <SupTasks leg="supplier_inbound" title="发门�
 
 /* ---------------- 供应商发货弹窗（版式与真实 SaaS「发货」弹窗一致） ---------------- */
 function SupShipModal({ doc, onClose, onDone }) {
-  const [qty, setQty] = useState(Math.max(1, doc.status === "部分收货" ? doc.qty - (doc.received ?? 0) : doc.qty - doc.sent));
+  const remain = doc.status === "部分收货" ? doc.qty - (doc.received ?? 0) : doc.qty - doc.sent;
+  const [qty, setQty] = useState(Math.max(1, remain));
   const [tracking, setTracking] = useState("");
+  const [carrier, setCarrier] = useState("");
   const [addr, setAddr] = useState(0);
-  const remain = doc.qty - doc.sent;
   const addresses = [
     { name: "JOJO供应商", phone: "18100010002", addr: "广东省广州市天河区科苑路 16 号" },
-    { name: "文轩教育供应商", phone: "13700006600", addr: "广东省广州市天河区科韵路 16 号" },
+    { name: "供应商002", phone: "13979554185", addr: "广东省广州市天河区科韵路 16 号" },
   ];
 
   return (
@@ -186,8 +188,8 @@ function SupShipModal({ doc, onClose, onDone }) {
           <h3 style={{ fontSize: 14, margin: "18px 0 8px" }}>收货人信息</h3>
           <div style={{ lineHeight: 2, display: "flex", gap: 60 }}>
             <div>
-              <div>配送方式： {doc.tracking ? "快递发货" : "快递发货"}</div>
-              <div>收货人电话： {doc.leg === "sup_consumer" ? "13979554185" : "—"}</div>
+              <div>配送方式： 快递发货</div>
+              <div>收货人电话： {doc.leg === "sup_consumer" ? (ORDERS.find((o) => o.no === doc.orderNo)?.buyer?.["收件人电话"] || "—") : "—"}</div>
               <div>收货地址： {doc.receiverAddr}</div>
             </div>
             <div>收货人： {doc.receiver}</div>
@@ -214,7 +216,7 @@ function SupShipModal({ doc, onClose, onDone }) {
           <div style={{ display: "flex", gap: 40, marginTop: 22, alignItems: "center", fontSize: 13, color: "#666" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span>快递公司信息：<i className="req">*</i></span>
-              <select className="ctl" defaultValue="" style={{ width: 220, height: 32 }}><option value="">请选择或搜索快递公司</option>
+              <select className="ctl" value={carrier} onChange={(e) => setCarrier(e.target.value)} style={{ width: 220, height: 32, color: carrier ? "#333" : "#bbb" }}><option value="">请选择或搜索快递公司</option>
                 {CARRIERS.map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
@@ -227,7 +229,7 @@ function SupShipModal({ doc, onClose, onDone }) {
         </div>
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" onClick={() => onDone({ qty, tracking: tracking.trim() })}>确定</button>
+          <button className="btn primary" onClick={() => onDone({ qty, tracking: tracking.trim(), carrier })}>确定</button>
         </div>
       </div>
     </div>
@@ -335,7 +337,9 @@ const AS_STEPS_OF = (row) =>
     : row.way === "退货退款" ? ["买家维权", "待商家处理", "待供应商签收", "待商家退款", "售后完成"]
       : ["买家维权", "待商家处理", "待商家退款", "售后完成"];
 const AS_STEP_IDX = (row) =>
-  row.status === "售后完成" ? 99 : { 待商家处理: 1, 待买家退货: 1, 待商家签收: 2, 待商家退款: 3, 退款中: 3, 退款异常: 3 }[row.status] ?? 1;
+  row.status === "售后完成" ? 99
+    : row.way === "仅退款" ? ({ 待商家处理: 1, 待商家退款: 2, 退款中: 2, 退款异常: 2 }[row.status] ?? 1)
+      : ({ 待商家处理: 1, 待买家退货: 1, 待商家签收: 2, 待商家退款: 3, 退款中: 3, 退款异常: 3 }[row.status] ?? 1);
 const asTone = (s) => (s === "待商家处理" ? "warn" : s === "售后关闭" ? "gray" : s === "退款异常" ? "danger" : "blue");
 const asDisp = (r) => (r.status === "待商家签收" ? "待供应商签收" : r.status);
 const MASK = <span className="tag gray">已脱敏</span>;
@@ -531,10 +535,11 @@ export function SupAfterSales() {
   const retryRefund = (row) => {
     act(row, (r) => {
       add(r, "重新发起退款", ["退款方式：原路退回", "退款金额：￥" + r.refund]);
-      r.status = "退款中";
+      add(r, "退款完成", []);
+      r.status = "售后完成";
       return r;
     });
-    tip("已重新发起退款 → 退款中");
+    tip("已重新发起退款（原路退回）→ 售后完成");
   };;
 
   /* ---------------- 整页售后详情（复刻 SaaS + 进销存修改） ---------------- */
@@ -783,7 +788,7 @@ export function SupAfterSales() {
       </div>
 
       <div className="pager">
-        <span>共{tab === "全部" ? 32 : list.length}条记录</span>
+        <span>共{list.length}条记录</span>
         <span className="pg">‹</span><span className="pg active">1</span><span className="pg">›</span>
         <select defaultValue="30"><option>30/页</option></select>
         <span className="jump">跳至<input defaultValue="1" />页</span>

@@ -8,9 +8,9 @@ const ROWS = [
   { no: "SN00000031", name: "测试供应商A", contact: "测试联系人", phone: "13800001111", at: "2026-08-11 11:02:56", qual: "已通过", enabled: false },
   { no: "SN00000032", name: "阿萨德", contact: "阿萨德", phone: "13144156669", at: "2026-08-11 11:27:15", qual: "已通过", enabled: false },
   { no: "SN00000033", name: "审核驳回测试", contact: "测试联系人", phone: "13800002222", at: "2026-08-11 11:30:22", qual: "已通过", enabled: false },
-  { no: "SN00000034", name: "供应商001", contact: "供应商001", phone: "18100010002", at: "2026-08-12 16:09:13", qual: "已通过", enabled: false },
-  { no: "SN00000035", name: "供应商002", contact: "供应商002", phone: "13979554185", at: "2026-08-12 16:09:41", qual: "已通过", enabled: false },
-  { no: "SN00000036", name: "供应商003", contact: "供应商003", phone: "13122223333", at: "2026-08-12 16:10:11", qual: "已通过", enabled: false },
+  { no: "SN00000034", name: "供应商001", contact: "供应商001", phone: "18100010002", at: "2026-08-12 16:09:13", qual: "已通过", enabled: true },
+  { no: "SN00000035", name: "供应商002", contact: "供应商002", phone: "13979554185", at: "2026-08-12 16:09:41", qual: "已通过", enabled: true },
+  { no: "SN00000036", name: "供应商003", contact: "供应商003", phone: "13122223333", at: "2026-08-12 16:10:11", qual: "已通过", enabled: true },
   { no: "SN00000037", name: "123", contact: "123", phone: "13144156666", at: "2026-08-12 16:24:09", qual: "已通过", enabled: false },
   { no: "SN00000038", name: "123", contact: "123", phone: "13144156666", at: "2026-08-12 16:34:04", qual: "待审核", enabled: false },
 ];

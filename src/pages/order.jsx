@@ -6,7 +6,6 @@ import { pickupCodeOf, fmtPickupCode } from "../data.js";
 /* F3/F4：总部仓直配订单，须等「供应商→总仓」那段确认收货后才可发货；
    总部自营货在总部仓、无供应商前置，支付后直接可发 */
 const canShipOrder = (o) => {
-  if (o.canShip) return true;
   if (o.status !== "待发货") return false;
   if (o.supplyMode === "总部自营") return true;
   if (o.supplyMode !== "总部仓直配") return false;
@@ -130,13 +129,14 @@ export function OrderManagement({ onOpenSupply }) {
                 <td className="col-new">
                   {o.supplyNo ? (<><span onClick={() => onOpenSupply && onOpenSupply(o.supplyNo)} className="mono" style={{ color: "#25c7a5", cursor: "pointer" }}>{o.supplyNo}</span><small style={{ color: "#999" }}>{o.supplyMode}</small></>)
                     : o.supplyMode === "总部自营" ? (<span className="hl" data-hl="新增：总部自营·无前置供货单" style={{ color: "#25c7a5" }}>自营直发</span>)
-                      : (<span style={{ color: "#f5a623" }}>{o.supplyMode ? `待派单 · ${o.supplyMode}` : "—"}</span>)}
+                      : o.supplyMode ? (<span style={{ color: o.status === "待发货" ? "#f5a623" : "#999" }}>{o.status === "待发货" ? `待派单 · ${o.supplyMode}` : o.supplyMode}</span>)
+                        : (<span style={{ color: "#999" }}>—</span>)}
                 </td>
                 <td>
                   <div className="op-col">
                     {o.status === "待发货" && (canShipOrder(o)
                       ? <button onClick={() => openDetail(o)}>发货</button>
-                      : <span title={o.shipHint} style={{ color: o.shipMode === "供应商直配" ? "#bbb" : "#f5a623", fontSize: o.shipMode === "供应商直配" ? 14 : 13, height: 22 }}>{o.shipBlock || "待总部仓收货"}</span>)}
+                      : <span style={{ color: o.supplyMode === "供应商直配" ? "#bbb" : "#f5a623", fontSize: o.supplyMode === "供应商直配" ? 14 : 13, height: 22 }}>{o.supplyMode === "供应商直配" ? "由供应商发货" : (o.shipBlock || "待总部仓收货")}</span>)}
                     {o.ops.filter((x) => x !== "发货").map((op) => (<button key={op} className="gray" onClick={() => openDetail(o)}>{op}</button>))}
                   </div>
                 </td>
@@ -162,7 +162,7 @@ export function OrderManagement({ onOpenSupply }) {
           onNote={() => tip("商家备注已保存（仅商家侧可见）")}
         />
       )}
-      {ship && <ShipModal order={ship} onClose={() => setShip(null)} onDone={() => { tip(`订单 ${ship.no} 已发货`); setShip(null); }} />}
+      {ship && <ShipModal order={ship} onClose={() => setShip(null)} onDone={() => { orderStore.set((os) => os.map((o) => (o.id === ship.id ? { ...o, status: "已发货" } : o))); tip(`订单 ${ship.no} 已发货`); setShip(null); }} />}
       {after && <AfterSalePop order={after} onClose={() => setAfter(null)} />}
       {pickup && <PickupCodePop order={pickup} onClose={() => setPickup(null)} />}
       {track && <OrderTrackModal order={track} onClose={() => setTrack(null)} />}
@@ -290,7 +290,7 @@ function OrderTrackModal({ order, onClose }) {
 function OrderDetailDrawer({ order, onClose, onShip, onNote }) {
   const total = order.amounts["应收金额"];
   /* 步骤条完成度：按订单状态点亮 —— 待付款 1 步；待发货/售后中 2 步；已发货 3 步；已完成 5 步 */
-  const doneN = { 待付款: 1, 待发货: 2, 已发货: 3, 售后中: 2, 已完成: 5, 已全额退款: 2 }[order.status] ?? 2;
+  const doneN = { 待付款: 1, 待发货: 2, 已发货: 3, 售后中: 2, 已完成: 5, 已全额退款: 2, 已取消: 1, 已关闭: 1 }[order.status] ?? 2;
 
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -356,7 +356,7 @@ function OrderDetailDrawer({ order, onClose, onShip, onNote }) {
             <div>
               <div style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>付款信息</div>
               <div className="note" style={{ lineHeight: 2.1, fontSize: 13 }}>
-                <div>应付金额： ￥{total}</div><div>实付金额： ￥{total}</div>
+                <div>应付金额： ￥{total}</div><div>实付金额： ￥{order.amounts["实收金额"] || total}</div>
               </div>
             </div>
             <div>
@@ -385,7 +385,7 @@ function OrderDetailDrawer({ order, onClose, onShip, onNote }) {
                   </div>
                 </td>
                 <td className="tw">{order.unitPrice}</td><td className="tw">{order.qty}</td><td className="tw">件</td>
-                <td className="tw">￥{total}</td><td className="tw">未退款</td><td className="tw">未发货</td>
+                <td className="tw">￥{order.amounts["实收金额"] || total}</td><td className="tw">{order.afterSale === "售后处理中" ? "退款中" : "未退款"}</td><td className="tw">{["已发货", "已完成"].includes(order.status) ? "已发货" : "未发货"}</td>
               </tr>
             </tbody>
           </table>

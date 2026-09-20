@@ -24,7 +24,8 @@ const STEPS_OF = (row) =>
       : ["买家维权", "待商家处理", "待商家退款", "售后完成"];
 const STEP_IDX = (row) =>
   row.status === "售后完成" ? 99
-    : { 待商家处理: 1, 待买家退货: 1, 待商家签收: 2, 待商家退款: 3, 退款中: 3, 退款异常: 3 }[row.status] ?? 1;
+    : row.way === "仅退款" ? ({ 待商家处理: 1, 待商家退款: 2, 退款中: 2, 退款异常: 2 }[row.status] ?? 1)
+      : ({ 待商家处理: 1, 待买家退货: 1, 待商家签收: 2, 待商家退款: 3, 退款中: 3, 退款异常: 3 }[row.status] ?? 1);
 const TONE = (s) => (s === "待商家处理" ? "warn" : s === "售后关闭" ? "gray" : s === "退款异常" ? "danger" : "blue");
 
 const ROWS = [
@@ -95,7 +96,7 @@ const ROWS = [
     asNo: "R20260912260912000004", way: "退货退款", ship: "暂无", amount: "¥0.02", qty: 2, refund: "¥0.02", points: 0,
     at: "2026-09-12 15:18:34", timeout: "-", reason: "不想要了", status: "售后关闭",
     buyerNote: "-", refundNote: "-",
-    order: { 应付金额: "¥0.02", 实付金额: "¥0.02", 配送方式: "顺丰速运", 物流状态: "已发货" },
+    order: { 应付金额: "¥0.02", 实付金额: "¥0.02", 配送方式: "快递", 物流状态: "已发货" },
     customer: { 申请人: "JJ代理", 收货人: "JOJO", 联系电话: "18100010002", 收货地址: "北京市北京城区昌平区百善镇测试" },
     goods: { 单价: "0.01", 数量: 2, 实付款: "0.02", 退货数量: 2, 退货金额: "0.02" },
     timeline: [
@@ -114,7 +115,7 @@ const ROWS = [
     at: "2026-09-19 09:35:20", timeout: "-", reason: "不想要了", status: "待买家退货",
     buyerNote: "-", refundNote: "-",
     order: { 应付金额: "¥5.00", 实付金额: "¥5.00", 配送方式: "快递", 物流状态: "已签收" },
-    customer: { 申请人: "林小满", 收货人: "林小满", 联系电话: "13511112222", 收货地址: "广东省广州市越秀区中山五路 33 号" },
+    customer: { 申请人: "苏晚", 收货人: "苏晚", 联系电话: "13511118888", 收货地址: "广东省广州市越秀区中山五路 35 号" },
     goods: { 单价: "5.00", 数量: 1, 实付款: "5.00", 退货数量: 1, 退货金额: "5.00" },
     timeline: [
       { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥5.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-19 09:35:20" },
@@ -367,6 +368,8 @@ export function AfterSales() {
 
   return (
     <>
+      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）的售后由<b style={{ margin: "0 4px" }}>供应商全流程处理</b>，本页不展示；此处处理总部仓直配 / 总部自营 / 自提订单的售后</div>
+
       <div className="filters">
         <div className="row">
           <div className="field"><label>订单编号</label><input className="ctl" placeholder="请输入订单编号" /></div>
@@ -439,7 +442,7 @@ export function AfterSales() {
       </div>
 
       <div className="pager">
-        <span>共{tab === "全部" ? 132 : list.length}条记录</span>
+        <span>共{list.length}条记录</span>
         <span className="pg">‹</span><span className="pg active">1</span><span className="pg">2</span><span className="pg">3</span><span className="pg">4</span><span className="pg">5</span><span className="pg">›</span>
         <select defaultValue="30"><option>30/页</option></select>
         <span className="jump">跳至<input defaultValue="1" />页</span>

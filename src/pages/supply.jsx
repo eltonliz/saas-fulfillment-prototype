@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { SUPPLY_DOCS } from "../data.js";
 import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar } from "../ui.jsx";
-import { supplyStore, diffStore, orderStore, patchDoc, addDiff, ARRIVAL_TIMEOUT_DAYS } from "../store.js";
+import { supplyStore, supplierStore, diffStore, orderStore, patchDoc, addDiff, ARRIVAL_TIMEOUT_DAYS } from "../store.js";
 
 const LEG_LABEL = {
   sup_consumer: "供应商 → 消费者",
@@ -67,7 +67,8 @@ function applyReceive(doc, p) {
   /* 决策 5：补发单收满 → 原供货单同步结案 + 差异单转「补发完成」 */
   if (doc.isMakeup && full && doc.reshipOf) {
     const diff = diffStore.get().find((x) => x.id === doc.reshipOf);
-    if (diff?.supplyNo) patchDoc(diff.supplyNo, { status: "已收货" });
+    const src = diff?.supplyNo ? supplyStore.get().find((x) => x.id === diff.supplyNo) : null;
+    if (src) patchDoc(src.id, { status: "已收货", received: src.qty });
     diffStore.set((ds) => ds.map((x) => (x.id === doc.reshipOf ? { ...x, status: "补发完成" } : x)));
     return `补发单 ${doc.id} 已收货，原供货单 ${diff?.supplyNo || ""} 同步结案，差异单转「补发完成」`;
   }
@@ -121,7 +122,8 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
               <tr key={d.id}>
                 <td><input type="checkbox" checked={sel.has(d.id)} onChange={() => toggleOne(d.id)} /></td>
                 <td className="tw mono">{d.id}</td>
-                <td className="tw">订单支付自动生成<small className="mono">{d.createdAt}</small></td>
+                <td className="tw">{d.source || "订单支付自动生成"}<small className="mono">{d.createdAt}</small>
+                  {d.isMakeup && <small style={{ color: "#f5a623" }}>补发单 · 源差异单 {d.reshipOf}</small>}</td>
                 <td className="tw mono">{d.orderNo}</td>
                 <td><Thumb d={d} /></td>
                 <td className="tw">{LEG_LABEL[d.leg]}</td>
@@ -294,18 +296,25 @@ export function SupplyDiff() {
           okText="审核通过"
           onOk={() => {
             /* 决策 5：审核通过 → 按「谁发货谁补发」生成补发供货单，进对应发货页 */
-            const orig = supplyStore.get().find((d) => d.id === pass.supplyNo);
+            const all = [...supplyStore.get(), ...supplierStore.get()];
+            const orig = all.find((d) => d.id === pass.supplyNo);
             const dt = new Date();
             const ymd = String(dt.getFullYear()).slice(2) + String(dt.getMonth() + 1).padStart(2, "0") + String(dt.getDate()).padStart(2, "0");
-            const reshipId = "FHD" + ymd + String(supplyStore.get().length + 1).padStart(4, "0");
-            supplyStore.set((ds) => [{
+            const used = new Set(all.map((d) => d.id));
+            let seq = 1, reshipId = "FHD" + ymd + String(seq).padStart(4, "0");
+            while (used.has(reshipId)) { seq += 1; reshipId = "FHD" + ymd + String(seq).padStart(4, "0"); }
+            const doc = {
               id: reshipId, leg: orig?.leg || "hq_store", source: "配送差异补发",
               orderNo: orig?.orderNo || "—", product: orig?.product || "补发商品", spec: orig?.spec || "",
               emoji: orig?.emoji || "📦", qty: pass.diffQty ?? 1, sent: 0,
               shipper: pass.shipper, receiver: orig?.receiver || "—", receiverAddr: orig?.receiverAddr || "",
               carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
               isMakeup: true, reshipOf: pass.id,
-            }, ...ds]);
+            };
+            /* 谁发货谁补发：供应商发起的链路推送供应商后台，总部仓链路留在发货管理 */
+            if (doc.leg === "sup_consumer") supplierStore.set((ds) => [doc, ...ds]);
+            else if (["supplier_to_hq", "supplier_inbound"].includes(doc.leg)) { supplyStore.set((ds) => [doc, ...ds]); supplierStore.set((ds) => [doc, ...ds]); }
+            else supplyStore.set((ds) => [doc, ...ds]);
             setRows((rs) => rs.map((r) => (r.id === pass.id ? { ...r, status: "补发中", makeup: reshipId } : r)));
             tip(`差异单 ${pass.id} 审核通过，已生成补发供货单 ${reshipId}`);
             setPass(null);

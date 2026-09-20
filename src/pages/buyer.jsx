@@ -278,7 +278,7 @@ export function BuyerApp() {
           <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: view === "detail" ? 70 : 26, background: "rgba(16,22,29,.82)", color: "#fff", fontSize: 12.5, padding: "7px 14px", borderRadius: 8, zIndex: 60, whiteSpace: "nowrap" }}>{flash}</div>
         )}
 
-        {codeOpen && order && <PickupCodeModal order={order} done={buyerStateOf(order, docs) === "done"} onClose={() => setCodeOpen(false)} />}
+        {codeOpen && order && <PickupCodeModal order={order} done={buyerStateOf(order, docs) === "done"} voided={buyerStateOf(order, docs) === "canceled"} onClose={() => setCodeOpen(false)} />}
       </div>
     </div>
       )}
@@ -407,22 +407,23 @@ function CopyMini({ text }) {
 }
 
 /* 提货码弹层（照设计稿：二维码 + 16 位码 + 复制；已核销时置灰盖「已使用」戳） */
-function PickupCodeModal({ order, done, onClose }) {
+function PickupCodeModal({ order, done, voided, onClose }) {
   const [copied, setCopied] = useState(false);
   const code = pickupCodeOf(order);
+  const dim = done || voided;
   return (
     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.4)", display: "grid", placeItems: "center", padding: 26, zIndex: 40 }}
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div style={{ width: 286, background: "#fff", borderRadius: 16, padding: "18px 18px 16px", position: "relative", textAlign: "center" }}>
-        <div style={{ fontSize: 15.5, fontWeight: 600 }}>{done ? "已提货" : "待提货"}</div>
+        <div style={{ fontSize: 15.5, fontWeight: 600 }}>{done ? "已提货" : voided ? "已退款" : "待提货"}</div>
         <button onClick={onClose} style={{ position: "absolute", right: 10, top: 8, border: 0, background: "none", fontSize: 20, color: "#c0c6cc", cursor: "pointer", lineHeight: 1 }}>×</button>
         <div style={{ position: "relative", width: 170, margin: "16px auto 0" }}>
-          <FakeQR code={code} dim={done} />
-          {done && (
-            <span style={{ position: "absolute", right: -12, bottom: 4, transform: "rotate(-14deg)", border: "2px solid #e0392f", color: "#e0392f", borderRadius: "50%", width: 62, height: 62, display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700, background: "rgba(255,255,255,.75)" }}>已使用</span>
+          <FakeQR code={code} dim={dim} />
+          {(done || voided) && (
+            <span style={{ position: "absolute", right: -12, bottom: 4, transform: "rotate(-14deg)", border: `2px solid ${done ? "#e0392f" : "#9aa4ad"}`, color: done ? "#e0392f" : "#9aa4ad", borderRadius: "50%", width: 62, height: 62, display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700, background: "rgba(255,255,255,.75)" }}>{done ? "已使用" : "已作废"}</span>
           )}
         </div>
-        <div style={{ fontSize: 19, letterSpacing: 1.2, fontWeight: 700, margin: "14px 0 6px", color: done ? "#c2c8ce" : "#10161d", whiteSpace: "nowrap" }}>{fmtPickupCode(code)}</div>
+        <div style={{ fontSize: 19, letterSpacing: 1.2, fontWeight: 700, margin: "14px 0 6px", color: dim ? "#c2c8ce" : "#10161d", whiteSpace: "nowrap" }}>{fmtPickupCode(code)}</div>
         <button className="btn plain sm" style={{ borderRadius: 14 }}
           onClick={() => { try { navigator.clipboard?.writeText(code).catch(() => {}); } catch { /* 非安全上下文下忽略 */ } setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
           {copied ? "已复制" : "复制"}
@@ -430,7 +431,7 @@ function PickupCodeModal({ order, done, onClose }) {
         {copied && (
           <span style={{ position: "absolute", left: "50%", top: "40%", transform: "translate(-50%, -50%)", background: "rgba(16,22,29,.82)", color: "#fff", fontSize: 13.5, padding: "8px 18px", borderRadius: 8 }}>复制成功</span>
         )}
-        <div className="note" style={{ marginTop: 12, textAlign: "center" }}>{done ? "订单已完成" : "请在门店前台出示此码核销"}</div>
+        <div className="note" style={{ marginTop: 12, textAlign: "center" }}>{done ? "订单已完成" : voided ? "订单已退款，提货码已作废" : "请在门店前台出示此码核销"}</div>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ export const SUPPLIERS = [
   { no: "SN00000035", name: "供应商002", contact: "供应商002", phone: "13979554185" },
   { no: "SN00000036", name: "供应商003", contact: "供应商003", phone: "13122223333" },
 ];
-export const SHIP_MODES = ["供应商直配", "总部仓直配"];
+export const SHIP_MODES = ["供应商直配", "总部仓直配", "总部自营"];
 
 /* ---------------- 商品管理 ---------------- */
 const g = (emoji, bg) => ({ emoji, bg });
@@ -24,8 +24,12 @@ export const PRODUCTS = [
   { id: "p5", name: "奶粉(复制)", vid: "共(1)个", intro: true, no: "_CP5374", stock: 115, purchase: "0.00", sale: "0.01", freight: "未设置", status: "在售中", supplier: "供应商001", shipMode: "总部仓直配" },
   { id: "p6", name: "奶粉", vid: "共(1)个", intro: true, no: "_CP6353", stock: 115, purchase: "0.00", sale: "0.01", freight: "未设置", status: "审核中", supplier: "", shipMode: "" },
   { id: "p7", name: "山茶油", vid: "共(0)个", intro: false, no: "-", stock: 0, purchase: "68.00", sale: "128.00", freight: "未设置", status: "审核不通过", supplier: "供应商001", shipMode: "总部仓直配" },
+  /* 总部自营（自有货）：不经供应商，总部仓直接发货 */
+  { id: "p8", name: "儿童书包", vid: "共(1)个", intro: true, no: "_CP8811", stock: 120, purchase: "—", sale: "129.00", freight: "已设置", status: "在售中", supplier: "", shipMode: "总部自营" },
+  { id: "p9", name: "保温饭盒", vid: "共(1)个", intro: true, no: "_CP8812", stock: 86, purchase: "—", sale: "99.00", freight: "已设置", status: "在售中", supplier: "", shipMode: "总部自营" },
+  { id: "p10", name: "文具套装", vid: "共(1)个", intro: false, no: "_CP8813", stock: 240, purchase: "—", sale: "59.00", freight: "未设置", status: "在售中", supplier: "", shipMode: "总部自营" },
 ];
-export const PRODUCT_IMG = { p1: g("🧺", "#eefaf1"), p2: g("📱", "#eef4ff"), p3: g("📱", "#f3f0ff"), p4: g("🍎", "#fff0ee"), p5: g("🥛", "#eef4ff"), p6: g("🥛", "#eef4ff"), p7: g("🫙", "#fff7e8") };
+export const PRODUCT_IMG = { p1: g("🧺", "#eefaf1"), p2: g("📱", "#eef4ff"), p3: g("📱", "#f3f0ff"), p4: g("🍎", "#fff0ee"), p5: g("🥛", "#eef4ff"), p6: g("🥛", "#eef4ff"), p7: g("🫙", "#fff7e8"), p8: g("🎒", "#eef4ff"), p9: g("🍱", "#fdf3e7"), p10: g("✏️", "#f0f7ee") };
 
 /* ---------------- 门店商品 ---------------- */
 export const SHOP_PRODUCTS = [
@@ -104,7 +108,7 @@ export const ORDERS = [
     supplyNo: "FHD2609180006", supplyMode: "总部仓直配",
     shipBlock: "待总部仓收货",
   },
-  /* 一件代发·已发货：供应商已直发消费者，租户侧只读监控物流（F2） */
+  /* 一件代发·已发货：供应商已直发消费者（代发单发货+售后均归供应商，租户后台不展示该类订单） */
   {
     id: "o8", no: "ORD260918000009", product: "苹果", spec: "红富士 / 5 斤装", qty: 2, unitPrice: "¥0.01", emoji: "🍎",
     afterSale: "暂无售后",
@@ -123,7 +127,7 @@ export const ORDERS = [
     buyer: { 昵称: "林小满" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true,
     createdAt: "2026-09-17 11:20:00", status: "已发货",
     payMethod: "微信支付", payTime: "2026-09-17 11:20:02", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609180019", supplyMode: "供应商直配",
+    supplyNo: "FHD2609170019", supplyMode: "供应商直配",
   },
   /* 进销存新增：待收货自提订单 —— 供应商已发门店、在途（货未到店，提货码未开放） */
   {
@@ -178,7 +182,7 @@ export const ORDERS = [
   {
     id: "o15", no: "ORD260918000232", product: "沐浴露", spec: "持久留香 / 500ml", qty: 1, unitPrice: "¥199.00", emoji: "🧴",
     afterSale: "暂无售后", buyerNote: "麻烦早点发货", cancelReason: "超时未支付",
-    amounts: { 商品金额: "199.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "199.00", 实收金额: "190.00" },
+    amounts: { 商品金额: "199.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "199.00", 实收金额: "0" },
     buyer: { 昵称: "苏晚" }, store: "九天门店", delivery: "上门自提",
     createdAt: "2026-09-18 20:33:56", status: "已取消", ops: ["详情", "备注", "分配门店"],
     supplyNo: "", supplyMode: "",
@@ -200,6 +204,7 @@ export const ORDERS = [
     buyer: { 昵称: "林小满", 收件人: "林小满", 收件人电话: "13822223333", 收件人地址: "浙江省杭州市西湖区文一西路 200 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-18 09:40:31", status: "已发货",
     payMethod: "微信支付", payTime: "2026-09-18 09:40:35", ops: ["详情", "备注", "分配门店"],
+    carrier: "顺丰速运", tracking: "SF7712003520", track: "已发货 2026-09-18 15:00:00",
     supplyNo: "", supplyMode: "总部自营",
   },
   {
@@ -255,14 +260,8 @@ export const SUPPLIER_MENU = [
 // （「总部仓 → 消费者」不建供货单：消费者那一跳由订单管理的「发货」完成）
 export const SUPPLY_DOCS = [
   {
-    id: "FHD2609180001", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-18 14:47:36",
-    orderNo: "ORD260918000018", product: "西瓜", spec: "规格: S", emoji: "🍉", qty: 1, sent: 0,
-    shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
-  },
-  {
     id: "FHD2609170002", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 17:09:44",
-    orderNo: "ORD260917000164", product: "什锦果蔬", spec: "规格: 黑色/", emoji: "🧺", qty: 3, sent: 3,
+    orderNo: "ORD260917000164", product: "什锦果蔬", spec: "规格: 黑色/", emoji: "🧺", qty: 1, sent: 1,
     shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
     carrier: "中通快递", tracking: "ZT8800112233", track: "已签收 2026-09-17 17:12:44", status: "已收货", ops: ["详情"],
   },
@@ -315,7 +314,7 @@ export const SUPPLY_DOCS = [
     id: "FHD2609150001", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-15 10:00:00",
     orderNo: "ORD260915000077", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, sent: 2,
     shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "圆通速递", tracking: "YT5598712401", track: "已签收 2026-09-16 09:30:00", status: "已发货", ops: ["详情", "收货"],
+    carrier: "圆通速递", tracking: "YT5598712401", track: "已签收 2026-09-19 09:30:00", status: "已发货", ops: ["详情", "收货"],
   },
   /* F3 演示样本（上游段）：同一订单 ORD260918000033 的「供应商→总仓」单。
      总仓确认收货后，订单管理里该订单才出现「发货」—— 发消费者那一跳属于销售订单，不建供货单。 */
@@ -401,7 +400,7 @@ export const SUPPLY_DOCS = [
     carrier: "顺丰速运", tracking: "SF7712003510", track: "已发货 2026-09-17 19:30:00", status: "已发货", ops: ["详情", "收货"],
   },
   {
-    id: "FHD2609180019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 11:25:00",
+    id: "FHD2609170019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 11:25:00",
     orderNo: "ORD260918000202", product: "沐浴露", spec: "持久留香 / 500ml", emoji: "🧴", qty: 1, sent: 1,
     shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
     carrier: "中通快递", tracking: "ZT8800112244", track: "已签收 2026-09-18 09:10:00", status: "已收货", ops: ["详情"],
@@ -431,7 +430,7 @@ export const SUPPLIER_DOCS = [
   },
   {
     id: "FHD2609170002", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 17:09:44",
-    orderNo: "ORD260917000164", product: "什锦果蔬", spec: "规格: 黑色/", emoji: "🧺", qty: 3, sent: 3,
+    orderNo: "ORD260917000164", product: "什锦果蔬", spec: "规格: 黑色/", emoji: "🧺", qty: 1, sent: 1,
     shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
     carrier: "中通快递", tracking: "ZT8800112233", track: "已签收 2026-09-17 17:12:44", status: "已收货", ops: ["详情"],
   },
@@ -469,19 +468,19 @@ export const SUPPLIER_DOCS = [
   {
     id: "FHD2609170009", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-17 16:40:00",
     orderNo: "ORD260917000140", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 1, sent: 1,
-    shipper: "文轩教育供应商", receiver: "吴桐（消费者）", receiverAddr: "上海市浦东新区世纪大道 100 号",
+    shipper: "供应商002", receiver: "吴桐（消费者）", receiverAddr: "上海市浦东新区世纪大道 100 号",
     carrier: "中通快递", tracking: "ZT8800112299", track: "已签收 2026-09-18 09:10:00", status: "已签收", ops: ["详情"],
   },
   {
     id: "FHD2609170012", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 14:05:00",
     orderNo: "ORD260917000148", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 5, sent: 0,
-    shipper: "文轩教育供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
     carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
   },
   {
     id: "FHD2609170014", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 09:40:00",
     orderNo: "ORD260917000136", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 8, sent: 8,
-    shipper: "文轩教育供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
     carrier: "京东物流", tracking: "JD5566778811", track: "已发货 2026-09-18 08:30:00", status: "已发货", ops: ["详情"],
   },
   {
@@ -505,7 +504,7 @@ export const SUPPLIER_DOCS = [
   {
     id: "FHD2609170018", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 16:02:00",
     orderNo: "ORD260917000152", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 3, sent: 3,
-    shipper: "文轩教育供应商", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
+    shipper: "供应商002", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
     carrier: "顺丰速运", tracking: "SF7712003399", track: "已签收 2026-09-18 09:40:00", status: "收货异常", ops: ["详情"],
   },
   /* 进销存新增：待收货自提订单（o10）的「供应商→门店」任务（在途） */
@@ -535,7 +534,7 @@ export const SUPPLIER_DOCS = [
     carrier: "顺丰速运", tracking: "SF7712003510", track: "已发货 2026-09-17 19:30:00", status: "已发货", ops: ["详情", "收货"],
   },
   {
-    id: "FHD2609180019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 11:25:00",
+    id: "FHD2609170019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 11:25:00",
     orderNo: "ORD260918000202", product: "沐浴露", spec: "持久留香 / 500ml", emoji: "🧴", qty: 1, sent: 1,
     shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
     carrier: "中通快递", tracking: "ZT8800112244", track: "已签收 2026-09-18 09:10:00", status: "已收货", ops: ["详情"],
@@ -547,6 +546,19 @@ export const SUPPLIER_DOCS = [
     carrier: "圆通速递", tracking: "YT5500338811", track: "已签收 2026-09-14 10:20:00", status: "已收货", ops: ["详情"],
   },
 ];
+
+/* 同 id 的供货单在两端是同一张物理单据：共享链路（供应商→总仓 / 供应商→门店）
+   必须两端可见；仅供应商侧「供应商→消费者」、仅租户侧「总部仓→门店」不参与同步 */
+{
+  const SHARED_LEGS = ["supplier_to_hq", "supplier_inbound"];
+  const ids = new Set([...SUPPLY_DOCS, ...SUPPLIER_DOCS].filter((d) => SHARED_LEGS.includes(d.leg)).map((d) => d.id));
+  for (const id of ids) {
+    const a = SUPPLY_DOCS.find((d) => d.id === id);
+    const b = SUPPLIER_DOCS.find((d) => d.id === id);
+    if (a && !b) SUPPLIER_DOCS.push({ ...a });
+    if (b && !a) SUPPLY_DOCS.push({ ...b });
+  }
+}
 
 // 累计实收（只增不减）：与租户侧同口径；部分收货/收货异常单独标
 SUPPLIER_DOCS.forEach((d) => { if (d.received === undefined) d.received = d.status === "已收货" ? d.qty : 0; });
@@ -561,14 +573,14 @@ export const DIFFS = [
   { id: "DIFF2609170001", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609180007", shipper: "九天教育总仓", summary: "画板套装 应收2/实收0 差2", diffQty: 2, status: "待举证", evidence: "—" },
   { id: "DIFF2609170002", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609120002", shipper: "九天教育总仓", summary: "什锦果蔬 应收5/实收4 差1", diffQty: 1, status: "待总部审核", evidence: "少货 · 照片 1 张" },
   { id: "DIFF2609170004", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609140003", shipper: "九天教育总仓", summary: "儿童绘本套装 应收9/实收8 差1", diffQty: 1, status: "补发中", evidence: "少货 · 照片 3 张", makeup: "FHD2609170907" },
-  { id: "DIFF2609170005", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170018", shipper: "文轩教育供应商", summary: "相机 应收3/实收2 差1", diffQty: 1, status: "待举证", evidence: "—" },
+  { id: "DIFF2609170005", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170018", shipper: "供应商002", summary: "相机 应收3/实收2 差1", diffQty: 1, status: "待举证", evidence: "—" },
 ];
 
 /* ==========================================================================
    退货返厂单（本期新增）—— 门店自提链路 F4/F5 的消费者退货，实物退回供应商
    · 路径：F5（供应商→门店）门店直退供应商；F4（供应商→总仓→门店）门店→总部仓→供应商，逐段确认
    · 退款与返厂【解耦】：退款由总部按售后规则独立执行，返厂不阻塞客户退款体验
-   · 与「配送差异」无关：差异是正向履约异常，返厂是售后逆向；与「拒收」也不同，拒收在验收环节且不退款
+   · 与「配送差异」无关：差异是正向履约异常，返厂是售后逆向；退给供应商的实物必须接收（返厂单没有「拒收」状态）
    ========================================================================== */
 export const RETURN_STEPS = ["待返厂", "返厂中", "已返厂"];
 export const RETURNS = [
@@ -582,11 +594,11 @@ export const RETURNS = [
   },
   {
     id: "RTV2609190002", orderNo: "ORD260917000152", supplyNo: "FHD2609170018",
-    store: "九天门店", leg: "supplier_inbound", viaHq: false, returnTo: "文轩教育供应商",
+    store: "九天门店", leg: "supplier_inbound", viaHq: false, returnTo: "供应商002",
     product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 1, reason: "商品与描述不符",
     createdAt: "2026-09-18 16:40:00", status: "返厂中",
     refunded: true, refundNote: "总部已退款 ¥0.01",
-    hops: [{ from: "九天门店", to: "文轩教育供应商", carrier: "顺丰速运", tracking: "SF7712003411", status: "运输中" }],
+    hops: [{ from: "九天门店", to: "供应商002", carrier: "顺丰速运", tracking: "SF7712003411", status: "运输中" }],
   },
   {
     id: "RTV2609190003", orderNo: "ORD260916000121", supplyNo: "FHD2609160003",

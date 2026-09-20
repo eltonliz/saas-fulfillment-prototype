@@ -112,7 +112,7 @@ export function ProductManagement({ onOpenDrawer }) {
                 <td>{p.purchase}</td>
                 <td>{p.sale}</td>
                 <td className="tw"><span className={p.freight === "已设置" ? "" : "mono"}>{p.freight}</span></td>
-                <td className="col-new tw">{p.supplier || <span style={{ color: "#f5a623" }}>未绑定</span>}</td>
+                <td className="col-new tw">{p.supplier || (p.shipMode === "总部自营" ? <span style={{ color: "#999" }}>—（自营无需）</span> : <span style={{ color: "#f5a623" }}>未绑定</span>)}</td>
                 <td className="col-new tw">{p.shipMode || <span style={{ color: "#f5a623" }}>未设置</span>}</td>
                 <td><span className={`tag ${p.status === "在售中" ? "" : p.status === "审核中" ? "warn" : "gray"}`}>{p.status}</span></td>
                 <td>
@@ -131,6 +131,7 @@ export function ProductManagement({ onOpenDrawer }) {
                 </td>
               </tr>
             ))}
+            {!rows.length && <tr><td colSpan={16} style={{ textAlign: "center", padding: 40, color: "#999" }}>暂无数据</td></tr>}
           </tbody>
         </table>
       </div>
@@ -184,13 +185,13 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
                   <Hl label="新增">
                     <div style={{ padding: 10, width: "100%" }}>
                       <div className="field" style={{ marginBottom: 6 }}>
-                        <label><i className="req">*</i>供应商（发货方）</label>
+                        <label>{mode === "总部自营" ? "供应商（发货方）" : <><i className="req">*</i>供应商（发货方）</>}</label>
                         <select className="ctl w-lg" value={supplier} onChange={(e) => setSupplier(e.target.value)}>
                           <option value="">请选择供应商</option>
                           {SUPPLIERS.map((s) => <option key={s.no} value={s.name}>{s.name}（{s.no}）</option>)}
                         </select>
                       </div>
-                      <div className="note">发货主体有源可循：商品必须绑定供应商，付后自动派单才知道该派给谁。仅启用状态的供应商可选。</div>
+                      <div className="note">{mode === "总部自营" ? "总部自营：货为总部自有，无需绑定供应商（此栏可留空）。" : "发货主体有源可循：商品必须绑定供应商，付后自动派单才知道该派给谁。仅启用状态的供应商可选。"}</div>
                     </div>
                   </Hl>
                 </div>
@@ -248,7 +249,7 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
                       2、总部仓直配：货先由供应商仓发给总部仓，然后由总部仓统一发出，配送方式选快递，则订单由总部仓直发给客户；选自提，则订单由总部仓发到客户所选门店，客户到店自提。<br />
                       3、总部自营：货为总部自有（不经供应商），存在总部仓，支付后由总部直接发货给客户或门店，无「待供应商发货 / 待总部仓收货」前置。<br />
                       4、前置仓配送：由各城市前置仓就近发货给客户（暂未开放）<br />
-                      注：模式决定订单由谁来发货、走哪条流转路径。创建后选择了模式将不可修改，该设置针对需要核销的商品有效
+                      注：模式决定订单由谁来发货、走哪条流转路径，对所有商品生效；创建后选择了模式将不可修改
                     </div>
                   </div>
                 </Hl>

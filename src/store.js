@@ -50,9 +50,14 @@ export function daysSince(ts, now = new Date()) {
 /* 返回本次被自动确认的供货单号数组；同时把关联自提订单的提货码置为生效 */
 export function applyArrivalTimeouts(now = new Date()) {
   const fired = [];
+  /* 到店计时以「签收」时间为准（物流未签收才回退到创建时间） */
+  const baseOf = (d) => {
+    const m = String(d.track || "").match(/已签收 (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+    return m ? m[1] : d.createdAt;
+  };
   const apply = (d) => {
     if (!isStoreBound(d) || d.status !== "已发货") return d;
-    if (daysSince(d.createdAt, now) < ARRIVAL_TIMEOUT_DAYS) return d;
+    if (daysSince(baseOf(d), now) < ARRIVAL_TIMEOUT_DAYS) return d;
     if (!fired.includes(d.id)) fired.push(d.id);
     return {
       ...d,
@@ -60,13 +65,25 @@ export function applyArrivalTimeouts(now = new Date()) {
       received: d.qty,                       // 超时按「货齐」处理
       autoConfirmed: true,
       autoConfirmedAt: now.toISOString().slice(0, 19).replace("T", " "),
-      autoConfirmRule: `到店超过 ${ARRIVAL_TIMEOUT_DAYS} 天门店未确认，系统自动确认到货`,
+      autoConfirmRule: `到店签收超过 ${ARRIVAL_TIMEOUT_DAYS} 天门店未确认，系统自动确认到货`,
     };
   };
   supplyStore.set((ds) => ds.map(apply));
   supplierStore.set((ds) => ds.map(apply));   // 同 id 是同一张物理单据，两端同步
   if (fired.length) {
-    orderStore.set((os) => os.map((o) => (fired.includes(o.supplyNo) ? { ...o, pickupReady: true } : o)));
+    /* 补发单到店自动确认 → 与原单结案同口径（决策 5）：源单收货 + 差异单转补发完成 */
+    for (const d of supplyStore.get().filter((x) => fired.includes(x.id))) {
+      if (!(d.isMakeup && d.reshipOf)) continue;
+      const diff = diffStore.get().find((x) => x.id === d.reshipOf);
+      const src = diff?.supplyNo ? supplyStore.get().find((x) => x.id === diff.supplyNo) : null;
+      if (src) {
+        const patch = (ds) => ds.map((x) => (x.id === src.id ? { ...x, status: "已收货", received: x.qty } : x));
+        supplyStore.set(patch); supplierStore.set(patch);
+      }
+      diffStore.set((ds) => ds.map((x) => (x.id === d.reshipOf ? { ...x, status: "补发完成" } : x)));
+    }
+    /* R6：已完成 / 已取消 / 已退款订单不被重新激活提货码 */
+    orderStore.set((os) => os.map((o) => (fired.includes(o.supplyNo) && !["已完成", "已取消", "已全额退款"].includes(o.status) ? { ...o, pickupReady: true } : o)));
   }
   return fired;
 }

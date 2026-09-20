@@ -6,7 +6,7 @@ import { useReqPage } from "./reqnotes.jsx";
 /* ============================================================================
    门店 APP —— 严格 1:1 还原用户 Axure 原型（工作台 / 收货管理 / 发货单详情·确认收货 / 温馨提示）
    ============================================================================ */
-const STORE = { name: "濮源直播间", contact: "赵玉", phone: "13330329788", addr: "广东省广州市荔湾区宝华路76号" };
+const STORE = { name: "濮源直播间", contact: "阿远", phone: "15554174768", addr: "广州市越秀区东风中路 410 号时代地产中心" };
 const SUPPLY_NO = "23441231235554";
 
 const RECEIPT_CARDS = [
@@ -536,10 +536,9 @@ const STORE_NAME = "濮源直播间";
 const RETURN_REASONS = ["七天无理由退货", "商品质量问题", "商品与描述不符", "客户取消（未提货）"];
 /* 可发起返厂的来源（该门店已收货的供货单） */
 const RETURN_SOURCES = [
-  { supplyNo: "FHD2609170017", orderNo: "ORD260917000139", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", returnTo: "供应商002", viaHq: false },
-  { supplyNo: "FHD2609180016", orderNo: "ORD260918000093", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", returnTo: "供应商003", viaHq: false },
-  { supplyNo: "FHD2609180014", orderNo: "ORD260918000101", product: "华为手机", spec: "黑色 / L", emoji: "📱", returnTo: "JOJO供应商", viaHq: true },
-  { supplyNo: "FHD2609170002", orderNo: "ORD260917000164", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", returnTo: "供应商003", viaHq: false },
+  { supplyNo: "FHD2609180016", orderNo: "ORD260918000093", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", returnTo: "供应商003", viaHq: false, qty: 6 },
+  { supplyNo: "FHD2609150002", orderNo: "ORD260915000088", product: "华为手机", spec: "蓝色 / M", emoji: "📱", returnTo: "JOJO供应商", viaHq: false, qty: 1 },
+  { supplyNo: "FHD2609180014", orderNo: "ORD260918000101", product: "华为手机", spec: "黑色 / L", emoji: "📱", returnTo: "JOJO供应商", viaHq: true, qty: 1 },
 ];
 const RET_TONE = (s) => (s === "待返厂" ? "#f5a623" : s === "返厂中" ? "#2f80ed" : "#25c7a5");
 
@@ -693,7 +692,7 @@ function NewReturnSheet({ onClose, onSubmit }) {
           <span className="qty">
             <button className="btn plain sm" onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
             <input value={qty} readOnly style={{ width: 52, textAlign: "center", height: 30 }} />
-            <button className="btn plain sm" onClick={() => setQty((q) => q + 1)}>＋</button>
+            <button className="btn plain sm" onClick={() => setQty((q) => Math.min(src.qty ?? 99, q + 1))}>＋</button>
           </span>
         </div>
 
