@@ -551,21 +551,14 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
   const recv = doc.received ?? 0;
   const remain = doc.qty - recv;
   const [got, setGot] = useState(remain);
-  const [hasIssue, setHasIssue] = useState(false);   // 决策 1：异常独立成维度，不再和数量挤在一个单选里
-  const [reason, setReason] = useState("");
+  const [reasons, setReasons] = useState([]);   // 与门店APP「配货差异原因」同字段（多选）
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState(0);
 
-  /* 决策 3：收货结果由数量【强判】，人工不可覆盖 */
-  const derived = got >= remain ? "正常收货" : "部分收货";
-  /* 异常类型随数量收敛：本次收满剩余应收时不存在「少货」，只余 破损 / 错货 */
-  const canShort = got < remain;
-  const reasonOptions = canShort ? ["少货", "破损", "错货"] : ["破损", "错货"];
-  const reasonVal = reasonOptions.includes(reason) ? reason : "";
-  /* 决策 4：举证并入收货环节——异常说明与照片在这里就要齐 */
-  const issueComplete = reasonVal && note.trim() && photos > 0;
-  const result = hasIssue ? "收货异常" : derived;
-  const canSubmit = !hasIssue || issueComplete;
+  /* 收满剩余应收 → 纯正常收货；实收 ≠ 剩余应收 → 按门店APP配送差异同口径当场举证：原因必选 + 照片至少 1 张 */
+  const shortage = got < remain;
+  const result = shortage ? "收货异常" : "正常收货";
+  const canSubmit = !shortage || (reasons.length > 0 && photos > 0);
 
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -602,58 +595,45 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
             </tbody>
           </table>
 
-          {/* 决策 3：系统按数量强判，只读展示 */}
-          <div className="frow" style={{ marginTop: 18 }}>
-            <label>收货结果</label>
-            <div className="fc">
-              <span className="hl" data-hl="系统强判" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <span className={`tag ${result === "正常收货" ? "" : result === "部分收货" ? "warn" : "danger"}`}>{result}</span>
-                <span className="note" style={{ display: "inline" }}>
-                  {hasIssue
-                    ? "异常已登记：本单按「收货异常」处理，提交后自动生成配送差异单（审核通过后按「谁发货谁补发」）"
-                    : <>由「本次实收 vs 剩余应收」自动判定，不可人工修改{result === "部分收货" && `：已收 ${recv + got} / 应收 ${doc.qty}，待补 ${doc.qty - recv - got} 件`}</>}
+          {/* 收满：只有正常收货，不出现任何异常字段 */}
+          {!shortage && (
+            <div className="frow" style={{ marginTop: 18 }}>
+              <label>收货结果</label>
+              <div className="fc">
+                <span className="hl" data-hl="系统强判" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span className="tag">正常收货</span>
+                  <span className="note" style={{ display: "inline" }}>由「本次实收 vs 剩余应收」自动判定，不可人工修改；收满后本单直接入库</span>
                 </span>
-              </span>
-            </div>
-          </div>
-
-          {/* 决策 4：异常独立维度，勾选即开差异单，且举证必须当场完成 */}
-          <div className="frow">
-            <label>到货异常</label>
-            <div className="fc">
-              <div className="radio-row">
-                <label><input type="radio" checked={!hasIssue} onChange={() => setHasIssue(false)} />无异常</label>
-                <label><input type="radio" checked={hasIssue} onChange={() => setHasIssue(true)} />有异常</label>
-
               </div>
             </div>
-          </div>
+          )}
 
-          {(hasIssue || canShort) && (
+          {/* 实收 ≠ 剩余应收：直接登记异常，字段与门店APP「配送差异」一致 */}
+          {shortage && (
             <>
-              <div className="frow">
-                <label>{hasIssue ? <><i>*</i>异常类型</> : "异常类型"}</label>
+              <div className="frow" style={{ marginTop: 18 }}>
+                <label><i>*</i>配货差异原因</label>
                 <div className="fc">
                   <div className="radio-row">
-                    {reasonOptions.map((r) => (
-                      <label key={r}><input type="radio" checked={reasonVal === r} onChange={() => { setHasIssue(true); setReason(r); }} />{r}</label>
+                    {["少货", "商品破损", "错货", "其他"].map((r) => (
+                      <label key={r}>
+                        <input type="checkbox" checked={reasons.includes(r)}
+                          onChange={() => setReasons((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]))} />{r}
+                      </label>
                     ))}
                   </div>
-                  <div className="note">
-                    {hasIssue
-                      ? (canShort ? "本次未把剩余应收收满：「少货」为典型异常（数量补齐不了时选它开差异单）" : "本次实收已收满剩余应收，「少货」不适用；商品有破损 / 错发请登记")
-                      : "本次少收未满：默认按「部分收货」处理（余货由原发货方补齐）；如判定商品异常，点选上方类型即按「收货异常」开差异单"}
-                  </div>
+                  <div className="note">本次实收 {got} 件 ≠ 剩余应收 {remain} 件：按门店APP配送差异同口径登记，提交后自动生成配送差异单（审核通过后按「谁发货谁补发」）</div>
                 </div>
               </div>
               <div className="frow">
-                <label><i>*</i>异常说明</label>
+                <label>说明</label>
                 <div className="fc">
-                  <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="请描述到货实际情况（必填）" />
+                  <textarea rows={2} maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} placeholder="请输入说明，最多200字" />
+                  <div className="note" style={{ textAlign: "right" }}>{note.length}/200</div>
                 </div>
               </div>
               <div className="frow">
-                <label><i>*</i>举证照片</label>
+                <label><i>*</i>上传图片（最多上传5张）</label>
                 <div className="fc">
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <div className="upload-box" onClick={() => setPhotos((p) => Math.min(5, p + 1))} style={{ cursor: "pointer" }}>
@@ -663,7 +643,7 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
                       <span key={i} style={{ width: 62, height: 62, display: "grid", placeItems: "center", background: "#e8ecef", borderRadius: 4 }}>🧾</span>
                     ))}
                   </div>
-                  <div className="note">最多 5 张；<b>举证在收货环节一次完成</b>，事后不再补传，所以本单直接进「待总部审核」，不走「待举证」。</div>
+                  <div className="note">上传文件（单个不超 5M）；举证在收货环节一次完成，提交后自动开配送差异单并直接进「待总部审核」</div>
                 </div>
               </div>
             </>
@@ -673,7 +653,7 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
           <button className="btn primary" disabled={!canSubmit}
-            onClick={() => onDone({ got, result, reason: reasonVal, note: note.trim(), photos })}>确认收货</button>
+            onClick={() => onDone({ got, result, reason: reasons.join("、"), note: note.trim(), photos })}>确认收货</button>
         </div>
       </div>
     </div>
