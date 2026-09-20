@@ -75,18 +75,23 @@ function applyReceive(doc, p) {
     return `供货单 ${doc.id} 已记收货异常，差异单直接进入「待总部审核」（举证已在收货时完成）`;
   }
 
-  /* 决策 5：补发单收满 → 原供货单同步结案 + 差异单转「补发完成」 */
+  let extra = "";
+
+  /* 决策 5：补发单收满 → 原供货单同步结案 + 差异单转「补发完成」（不早退，继续走激活/生成） */
   if (doc.isMakeup && full && doc.reshipOf) {
     const diff = diffStore.get().find((x) => x.id === doc.reshipOf);
     const src = diff?.supplyNo ? supplyStore.get().find((x) => x.id === diff.supplyNo) : null;
     if (src) patchDoc(src.id, { status: "已收货", received: src.qty });
     diffStore.set((ds) => ds.map((x) => (x.id === doc.reshipOf ? { ...x, status: "补发完成" } : x)));
-    return `补发单 ${doc.id} 已收货，原供货单 ${diff?.supplyNo || ""} 同步结案，差异单转「补发完成」`;
+    extra += `，原供货单 ${diff?.supplyNo || ""} 同步结案，差异单转「补发完成」`;
   }
 
-  /* R4/R5：收满且收货主体是门店 → 关联自提订单提货码激活（与 G2② 自动确认同口径） */
+  /* R4/R5：收满且收货主体是门店 → 关联自提订单提货码激活；R6 守卫已完结订单 */
   if (full && ["supplier_inbound", "hq_store"].includes(doc.leg)) {
-    orderStore.set((os) => os.map((o) => ((o.supplyNo === doc.id || o.no === doc.orderNo) ? { ...o, pickupReady: true } : o)));
+    orderStore.set((os) => os.map((o) => (
+      (o.supplyNo === doc.id || (doc.orderNo && o.no === doc.orderNo)) && !["已完成", "已取消", "已全额退款"].includes(o.status)
+        ? { ...o, pickupReady: true } : o
+    )));
   }
 
   /* F4③：总部仓直配·自提订单，上游收满 → 自动生成「总部仓 → 门店」发货任务（发货管理） */
@@ -97,17 +102,17 @@ function applyReceive(doc, p) {
       if (!exists) {
         const id = newFhdId();
         supplyStore.set((ds) => [{
-          id, leg: "hq_store", source: "上游收货自动生成",
+          id, leg: "hq_store", source: "上游收货自动生成", createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
           orderNo: doc.orderNo, product: doc.product, spec: doc.spec, emoji: doc.emoji,
           qty: doc.qty, sent: 0,
           shipper: "九天教育总仓", receiver: order.store, receiverAddr: STORE_ADDR[order.store] || "",
           carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
         }, ...ds]);
-        return `供货单 ${doc.id} 已收货，系统自动生成「总部仓 → ${order.store}」发货任务 ${id}`;
+        extra += `，系统自动生成「总部仓 → ${order.store}」发货任务 ${id}`;
       }
     }
   }
-  return full ? `供货单 ${doc.id} 已收货` : `供货单 ${doc.id} 部分收货，待补 ${doc.qty - recv} 件`;
+  return full ? `供货单 ${doc.id} 已收货${extra}` : `供货单 ${doc.id} 部分收货，待补 ${doc.qty - recv} 件`;
 }
 
 const Thumb = ({ d }) => (
@@ -328,13 +333,9 @@ export function SupplyDiff() {
             /* 决策 5：审核通过 → 按「谁发货谁补发」生成补发供货单，进对应发货页 */
             const all = [...supplyStore.get(), ...supplierStore.get()];
             const orig = all.find((d) => d.id === pass.supplyNo);
-            const dt = new Date();
-            const ymd = String(dt.getFullYear()).slice(2) + String(dt.getMonth() + 1).padStart(2, "0") + String(dt.getDate()).padStart(2, "0");
-            const used = new Set(all.map((d) => d.id));
-            let seq = 1, reshipId = "FHD" + ymd + String(seq).padStart(4, "0");
-            while (used.has(reshipId)) { seq += 1; reshipId = "FHD" + ymd + String(seq).padStart(4, "0"); }
+            const reshipId = newFhdId();
             const doc = {
-              id: reshipId, leg: orig?.leg || "hq_store", source: "配送差异补发",
+              id: reshipId, leg: orig?.leg || "hq_store", source: "配送差异补发", createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
               orderNo: orig?.orderNo || "—", product: orig?.product || "补发商品", spec: orig?.spec || "",
               emoji: orig?.emoji || "📦", qty: pass.diffQty ?? 1, sent: 0,
               shipper: pass.shipper, receiver: orig?.receiver || "—", receiverAddr: orig?.receiverAddr || "",
@@ -462,7 +463,7 @@ function ShipDrawer({ doc, onClose, onDone }) {
                   <span style={{ display: "inline-flex", alignItems: "center", border: "1px solid #e5e5e5", borderRadius: 3, height: 30 }}>
                     <span style={{ padding: "0 8px", color: "#999", fontSize: 12.5, borderRight: "1px solid #e5e5e5", lineHeight: "28px" }}>发货数</span>
                     <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
-                    <input value={qty} onChange={(e) => setQty(Number(e.target.value.replace(/\D/g, "")) || 0)} style={{ width: 44, height: 28, border: 0, textAlign: "center", padding: 0 }} />
+                    <input value={qty} onChange={(e) => setQty(Math.min(remain, Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 0)))} style={{ width: 44, height: 28, border: 0, textAlign: "center", padding: 0 }} />
                     <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.min(remain, q + 1))}>＋</button>
                   </span>
                 </td>
@@ -516,7 +517,7 @@ function ShipDrawer({ doc, onClose, onDone }) {
         </div>
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" onClick={() => onDone({ qty, carrier, tracking: tracking.trim() })}>确定</button>
+          <button className="btn primary" disabled={qty < 1 || !carrier || !tracking.trim()} onClick={() => onDone({ qty, carrier, tracking: tracking.trim() })}>确定</button>
         </div>
       </div>
     </div>
@@ -608,8 +609,9 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
               <span className="hl" data-hl="系统强判" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                 <span className={`tag ${result === "正常收货" ? "" : result === "部分收货" ? "warn" : "danger"}`}>{result}</span>
                 <span className="note" style={{ display: "inline" }}>
-                  由「本次实收 vs 剩余应收」自动判定，不可人工修改
-                  {result === "部分收货" && `：已收 ${recv + got} / 应收 ${doc.qty}，待补 ${doc.qty - recv - got} 件`}
+                  {hasIssue
+                    ? "异常已登记：本单按「收货异常」处理，提交后自动生成配送差异单（审核通过后按「谁发货谁补发」）"
+                    : <>由「本次实收 vs 剩余应收」自动判定，不可人工修改{result === "部分收货" && `：已收 ${recv + got} / 应收 ${doc.qty}，待补 ${doc.qty - recv - got} 件`}</>}
                 </span>
               </span>
             </div>
@@ -622,22 +624,26 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
               <div className="radio-row">
                 <label><input type="radio" checked={!hasIssue} onChange={() => setHasIssue(false)} />无异常</label>
                 <label><input type="radio" checked={hasIssue} onChange={() => setHasIssue(true)} />有异常</label>
-                {!hasIssue && canShort && <span className="note" style={{ display: "inline" }}>少收未满 → 系统判「部分收货」，余货由原发货方补齐</span>}
+
               </div>
             </div>
           </div>
 
-          {hasIssue && (
+          {(hasIssue || canShort) && (
             <>
               <div className="frow">
-                <label><i>*</i>异常类型</label>
+                <label>{hasIssue ? <><i>*</i>异常类型</> : "异常类型"}</label>
                 <div className="fc">
                   <div className="radio-row">
                     {reasonOptions.map((r) => (
-                      <label key={r}><input type="radio" checked={reasonVal === r} onChange={() => setReason(r)} />{r}</label>
+                      <label key={r}><input type="radio" checked={reasonVal === r} onChange={() => { setHasIssue(true); setReason(r); }} />{r}</label>
                     ))}
                   </div>
-                  <div className="note">{canShort ? "本次未把剩余应收收满：「少货」为典型异常（数量补齐不了时选它开差异单）" : "本次实收已收满剩余应收，「少货」不适用；商品有破损 / 错发请登记"}</div>
+                  <div className="note">
+                    {hasIssue
+                      ? (canShort ? "本次未把剩余应收收满：「少货」为典型异常（数量补齐不了时选它开差异单）" : "本次实收已收满剩余应收，「少货」不适用；商品有破损 / 错发请登记")
+                      : "本次少收未满：默认按「部分收货」处理（余货由原发货方补齐）；如判定商品异常，点选上方类型即按「收货异常」开差异单"}
+                  </div>
                 </div>
               </div>
               <div className="frow">

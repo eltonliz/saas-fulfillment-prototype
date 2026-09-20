@@ -57,7 +57,8 @@ export function applyArrivalTimeouts(now = new Date()) {
   };
   const apply = (d) => {
     if (!isStoreBound(d) || d.status !== "已发货") return d;
-    if (daysSince(baseOf(d), now) < ARRIVAL_TIMEOUT_DAYS) return d;
+    const base = baseOf(d);
+    if (!base || daysSince(base, now) < ARRIVAL_TIMEOUT_DAYS) return d;
     if (!fired.includes(d.id)) fired.push(d.id);
     return {
       ...d,
@@ -82,8 +83,11 @@ export function applyArrivalTimeouts(now = new Date()) {
       }
       diffStore.set((ds) => ds.map((x) => (x.id === d.reshipOf ? { ...x, status: "补发完成" } : x)));
     }
-    /* R6：已完成 / 已取消 / 已退款订单不被重新激活提货码 */
-    orderStore.set((os) => os.map((o) => (fired.includes(o.supplyNo) && !["已完成", "已取消", "已全额退款"].includes(o.status) ? { ...o, pickupReady: true } : o)));
+    /* R6：已完成 / 已取消 / 已退款订单不被重新激活提货码；按 supplyNo 或 orderNo 匹配 */
+    orderStore.set((os) => os.map((o) => {
+      const hit = fired.includes(o.supplyNo) || docsNow.some((d) => d.orderNo && d.orderNo === o.no);
+      return hit && !["已完成", "已取消", "已全额退款"].includes(o.status) ? { ...o, pickupReady: true } : o;
+    }));
   }
   return fired;
 }

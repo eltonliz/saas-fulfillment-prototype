@@ -188,7 +188,7 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
                         <label>{mode === "总部自营" ? "供应商（发货方）" : <><i className="req">*</i>供应商（发货方）</>}</label>
                         <select className="ctl w-lg" value={supplier} onChange={(e) => setSupplier(e.target.value)}>
                           <option value="">请选择供应商</option>
-                          {SUPPLIERS.map((s) => <option key={s.no} value={s.name}>{s.name}（{s.no}）</option>)}
+                          {SUPPLIERS.filter((s) => s.enabled).map((s) => <option key={s.no} value={s.name}>{s.name}（{s.no}）</option>)}
                         </select>
                       </div>
                       <div className="note">{mode === "总部自营" ? "总部自营：货为总部自有，无需绑定供应商（此栏可留空）。" : "发货主体有源可循：商品必须绑定供应商，付后自动派单才知道该派给谁。仅启用状态的供应商可选。"}</div>

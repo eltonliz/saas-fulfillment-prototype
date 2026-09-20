@@ -208,10 +208,10 @@ export function BuyerApp() {
 
                   {/* 售后进度卡（售后中 / 已取消-退款） */}
                   {(st === "aftersale" || refundedCanceled) && (
-                    <div className="mcard" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div className="mcard" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }} onClick={() => say("「售后详情」为示意操作")}>
                       <div>
                         <b style={{ fontSize: 14.5 }}>售后进度</b>
-                        <div className="note" style={{ marginTop: 2 }}>本订单有2条售后申请记录，点击可查看详情</div>
+                        <div className="note" style={{ marginTop: 2 }}>本订单存在售后申请记录，点击可查看详情</div>
                       </div>
                       <span style={{ color: "#c0c6cc", fontSize: 18 }}>›</span>
                     </div>
@@ -370,7 +370,7 @@ function OrderCard({ o, st, say, onOpen, onCode }) {
           <div className="note" style={{ marginTop: 2 }}>{o.spec}</div>
           {st === "ready" && <div style={{ marginTop: 5, color: "#8a949d", fontSize: 12 }}>待提货 请前往门店提货 ›</div>}
           {st === "done" && <div style={{ marginTop: 5, color: "#8a949d", fontSize: 12 }}>{isPickup(o) ? "已提货 订单已完成 ›" : "已签收 订单已完成 ›"}</div>}
-          {st === "aftersale" && <div style={{ marginTop: 5, color: "#f04438", fontSize: 12 }}>售后中 请在6天20时40分内寄回 ›</div>}
+          {st === "aftersale" && <div style={{ marginTop: 5, color: "#f04438", fontSize: 12 }}>{o.afterSaleTip || "售后中 请在6天20时40分内寄回 ›"}</div>}
         </div>
         <div style={{ textAlign: "right", flex: "none" }}>
           <b style={{ fontSize: 13 }}>{o.unitPrice}</b>

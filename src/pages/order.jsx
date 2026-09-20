@@ -19,6 +19,8 @@ const canShipOrder = (o) => {
 };
 
 const STEPS = ["买家下单", "买家付款", "商家发货", "买家签收", "交易完成"];
+/* 发货状态统一口径：有发货记录（部分/全部/物流单）才算已发货 */
+const hasShipped = (o) => !!(o.shippedQty > 0 || o.tracking || ["已发货", "已完成"].includes(o.status));
 
 export function OrderManagement({ onOpenSupply }) {
   const [tab, setTab] = useState("全部");
@@ -128,6 +130,7 @@ export function OrderManagement({ onOpenSupply }) {
                   <div>{o.status}</div>
                   {o.payMethod && <small>支付方式: {o.payMethod}</small>}
                   {o.payTime && <small>支付时间: {o.payTime}</small>}
+                  {o.shippedQty > 0 && o.status === "待发货" && <small style={{ color: "#f5a623" }}>部分发货：已发 {o.shippedQty}/{o.qty} 件，可再发</small>}
                 </td>
                 <td className="tw">{o.orderType || "销售订单"}</td>
                 <td className="tw">{o.buyerNote || "-"}</td>
@@ -169,7 +172,17 @@ export function OrderManagement({ onOpenSupply }) {
           onNote={() => tip("商家备注已保存（仅商家侧可见）")}
         />
       )}
-      {ship && <ShipModal order={ship} onClose={() => setShip(null)} onDone={() => { orderStore.set((os) => os.map((o) => (o.id === ship.id ? { ...o, status: "已发货" } : o))); tip(`订单 ${ship.no} 已发货`); setShip(null); }} />}
+      {ship && <ShipModal order={ship} onClose={() => setShip(null)} onDone={(p) => {
+            const shipped = (ship.shippedQty || 0) + p.qty;
+            const full = shipped >= ship.qty;
+            orderStore.set((os) => os.map((o) => (o.id === ship.id ? {
+              ...o, shippedQty: shipped, carrier: p.carrier, tracking: p.tracking,
+              track: "已发货 " + new Date().toISOString().slice(0, 19).replace("T", " "),
+              status: full ? "已发货" : o.status,
+            } : o)));
+            tip(full ? `订单 ${ship.no} 已发货` : `订单 ${ship.no} 部分发货：已发 ${shipped}/${ship.qty} 件，剩余可再发`);
+            setShip(null);
+          }} />}
       {after && <AfterSalePop order={after} onClose={() => setAfter(null)} />}
       {pickup && <PickupCodePop order={pickup} onClose={() => setPickup(null)} />}
       {track && <OrderTrackModal order={track} onClose={() => setTrack(null)} />}
@@ -202,7 +215,7 @@ function AfterSalePop({ order, onClose }) {
         <div style={{ marginTop: 14, fontSize: 13, lineHeight: 2.2, color: "var(--text-2)" }}>
           <div>售后状态：<span className="tag warn">{order.afterSale}</span></div>
           <div>关联供货单：<span className="mono">{order.supplyNo || "—"}</span></div>
-          <div>发货状态：{order.status === "待发货" ? "未发货" : "已发货"}</div>
+          <div>发货状态：{hasShipped(order) ? "已发货" : "未发货"}</div>
         </div>
         <div className="note" style={{ marginTop: 12, lineHeight: 1.9 }}>
           {order.status === "已全额退款"
@@ -363,7 +376,7 @@ function OrderDetailDrawer({ order, onClose, onShip, onNote }) {
             <div>
               <div style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>付款信息</div>
               <div className="note" style={{ lineHeight: 2.1, fontSize: 13 }}>
-                <div>应付金额： ￥{total}</div><div>实付金额： ￥{order.amounts["实收金额"] || total}</div>
+                <div>应付金额： ￥{total}</div><div>实付金额： ￥{order.amounts["实收金额"] && order.amounts["实收金额"] !== "-" ? order.amounts["实收金额"] : total}</div>
               </div>
             </div>
             <div>
@@ -392,7 +405,7 @@ function OrderDetailDrawer({ order, onClose, onShip, onNote }) {
                   </div>
                 </td>
                 <td className="tw">{order.unitPrice}</td><td className="tw">{order.qty}</td><td className="tw">件</td>
-                <td className="tw">￥{order.amounts["实收金额"] || total}</td><td className="tw">{order.afterSale === "售后处理中" ? "退款中" : "未退款"}</td><td className="tw">{["已发货", "已完成"].includes(order.status) ? "已发货" : "未发货"}</td>
+                <td className="tw">￥{order.amounts["实收金额"] && order.amounts["实收金额"] !== "-" ? order.amounts["实收金额"] : total}</td><td className="tw">{order.afterSale === "售后处理中" ? "退款中" : (order.status === "已全额退款" || order.afterSale === "售后完成") ? "已退款" : "未退款"}</td><td className="tw">{hasShipped(order) ? "已发货" : "未发货"}</td>
               </tr>
             </tbody>
           </table>
@@ -414,7 +427,10 @@ function OrderDetailDrawer({ order, onClose, onShip, onNote }) {
    发货弹窗（1:1 真实后台）
    ============================================================================ */
 function ShipModal({ order, onClose, onDone }) {
-  const [qty, setQty] = useState(order.qty);
+  const remainQty = order.qty - (order.shippedQty || 0);
+  const [qty, setQty] = useState(remainQty);
+  const [carrier, setCarrier] = useState("");
+  const [tracking, setTracking] = useState("");
   const [addr, setAddr] = useState(0);
   const addresses = [
     { name: "张三", phone: "13800138000", addr: "广东省广州市天河区体育西路100号" },
@@ -447,13 +463,13 @@ function ShipModal({ order, onClose, onDone }) {
                 </td>
                 <td className="tw">{order.unitPrice}</td>
                 <td className="tw">{order.qty}</td>
-                <td className="tw mono">{order.qty}</td>
+                <td className="tw mono">{remainQty}</td>
                 <td className="tw">
                   <span style={{ display: "inline-flex", alignItems: "center", border: "1px solid #e5e5e5", borderRadius: 3, height: 30 }}>
                     <span style={{ padding: "0 8px", color: "#999", fontSize: 12.5, borderRight: "1px solid #e5e5e5", lineHeight: "28px" }}>发货数</span>
                     <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
-                    <input value={qty} onChange={(e) => setQty(Number(e.target.value.replace(/\D/g, "")) || 0)} style={{ width: 44, height: 28, border: 0, textAlign: "center", padding: 0 }} />
-                    <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.min(order.qty, q + 1))}>＋</button>
+                    <input value={qty} onChange={(e) => setQty(Math.min(remainQty, Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 0)))} style={{ width: 44, height: 28, border: 0, textAlign: "center", padding: 0 }} />
+                    <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.min(remainQty, q + 1))}>＋</button>
                   </span>
                 </td>
                 <td className="tw">未发货</td>
@@ -493,20 +509,20 @@ function ShipModal({ order, onClose, onDone }) {
           <div style={{ display: "flex", gap: 40, marginTop: 22, alignItems: "center", fontSize: 13, color: "#666" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span>快递公司信息：<i className="req">*</i></span>
-              <select className="ctl" defaultValue="" style={{ width: 220, height: 32, color: "#bbb" }}><option value="">请选择或搜索快递公司</option>
+              <select className="ctl" value={carrier} onChange={(e) => setCarrier(e.target.value)} style={{ width: 220, height: 32, color: carrier ? "#333" : "#bbb" }}><option value="">请选择或搜索快递公司</option>
                 {["顺丰速运", "圆通速递", "中通快递", "京东物流", "韵达快递", "极兔速递"].map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span>快递单号：<i className="req">*</i></span>
-              <input className="ctl" style={{ width: 200, height: 32 }} placeholder="请输入快递单号" />
+              <input className="ctl" style={{ width: 200, height: 32 }} placeholder="请输入快递单号" value={tracking} onChange={(e) => setTracking(e.target.value)} />
             </div>
           </div>
 
         </div>
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" onClick={onDone}>确定</button>
+          <button className="btn primary" disabled={qty < 1 || !carrier || !tracking.trim()} onClick={() => onDone({ qty, carrier, tracking: tracking.trim() })}>确定</button>
         </div>
       </div>
     </div>

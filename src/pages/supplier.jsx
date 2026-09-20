@@ -91,7 +91,7 @@ export function SupTasks({ leg, title, desc }) {
                 <td>
                   <div className="op-col">
                     <button className="gray" onClick={() => setModal({ k: "detail", d })}>详情</button>
-                    {["待发货", "部分收货"].includes(d.status) && <button onClick={() => setModal({ k: "ship", d })}>{d.status === "部分收货" ? "补发" : "发货"}</button>}
+                    {["待发货", "部分收货"].includes(d.status) && <button onClick={() => setModal({ k: "ship", d })}>{d.status === "部分收货" ? "发货（补齐）" : "发货"}</button>}
                     {d.tracking && <button className="gray" onClick={() => setModal({ k: "track", d })}>物流轨迹</button>}
                   </div>
                 </td>
@@ -115,7 +115,7 @@ export function SupTasks({ leg, title, desc }) {
               track: "已发货 " + new Date().toISOString().slice(0, 19).replace("T", " "),
               status: "已发货",
             });
-            tip(`供货单 ${modal.d.id} 已发货 ${p.qty} 件` + (sent < modal.d.qty ? `，剩余 ${modal.d.qty - sent} 件可再发` : ""));
+            tip(`供货单 ${modal.d.id} 已发货 ${sent - (modal.d.sent ?? 0)} 件` + (sent < modal.d.qty ? `，剩余 ${modal.d.qty - sent} 件可再发` : ""));
             setModal(null);
           }}
         />
@@ -305,7 +305,7 @@ export function SupDiff() {
                 <td className="tw mono">{d.supplyNo}</td>
                 <td>{d.summary}</td>
                 <td className="tw">{d.evidence}<div style={{ marginTop: 4 }}><EvidencePhotos evidence={d.evidence} size={30} /></div></td>
-                <td className="tw">{d.status === "补发中" ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
+                <td className="tw">{["补发中", "补发完成"].includes(d.status) ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
                 <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : d.status === "待总部审核" ? "blue" : ""}`}>{d.status}</span></td>
                 <td className="tw">{d.makeup ? <span className="mono" style={{ color: "#25c7a5" }}>{d.makeup}</span> : <span style={{ color: "#999" }}>—</span>}</td>
               </tr>
@@ -626,7 +626,7 @@ export function SupAfterSales() {
                           </span>
                           <div style={{ marginTop: 6, fontSize: 13, color: cur || done ? "#25c7a5" : "#c2c2c2", fontWeight: cur ? 600 : 400, whiteSpace: "nowrap" }}>{s}</div>
                           {i === 0 && <div style={{ marginTop: 2, fontSize: 12, color: "#b6bdc4" }}>{d.timeline[0]?.at}</div>}
-                          {i === steps.length - 1 && d.status !== "待商家处理" && idx !== 1 && <div style={{ marginTop: 2, fontSize: 12, color: "#b6bdc4" }}>{d.timeline[d.timeline.length - 1]?.at}</div>}
+                          {i === steps.length - 1 && idx === 99 && <div style={{ marginTop: 2, fontSize: 12, color: "#b6bdc4" }}>{d.timeline[d.timeline.length - 1]?.at}</div>}
                         </div>
                         {i < steps.length - 1 && <div style={{ flex: 1, height: 1, background: i < idx ? "#25c7a5" : "#e5e5e5", margin: "0 8px", marginBottom: 26 }} />}
                       </div>
@@ -766,7 +766,7 @@ export function SupAfterSales() {
                 </td>
                 <td className="tw mono">{r.asNo}…</td>
                 <td className="tw">{r.way}</td>
-                <td className="tw">{r.ship}</td>
+                <td className="tw">{r.order.物流状态 && r.order.物流状态 !== "-" ? r.order.物流状态 : r.ship}</td>
                 <td className="tw">￥{r.amount}</td>
                 <td className="tw">{r.qty}</td>
                 <td className="tw">￥{r.refund}</td>

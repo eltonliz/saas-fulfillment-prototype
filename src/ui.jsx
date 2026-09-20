@@ -36,11 +36,17 @@ export function BatchBar({ allSel, toggleAll, count, children }) {
 
 /* 物流轨迹抽屉（供货单：租户侧与供应商侧共用） */
 export function TrackDrawer({ doc, onClose }) {
+  const parseAt = (label) => {
+    const m = String(doc.track || "").match(new RegExp(label + " (\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})"));
+    return m ? m[1] : null;
+  };
+  const sentAt = parseAt("已发货");
+  const signedAt = parseAt("已签收");
   const nodes = [
     { t: "已下单", d: "供货物流单已创建，等待承运商揽收", at: doc.createdAt, done: true },
-    { t: "已发货", d: `${doc.carrier} 已揽收，发往 ${doc.receiver}`, at: doc.createdAt, done: true },
+    { t: "已发货", d: `${doc.carrier} 已揽收，发往 ${doc.receiver}`, at: sentAt || "—", done: true },
   ];
-  if (["已收货", "已签收"].includes(doc.status)) nodes.push({ t: "已签收", d: `已送达 ${doc.receiverAddr}`, at: doc.createdAt, done: true });
+  if (signedAt) nodes.push({ t: "已签收", d: `已送达 ${doc.receiverAddr}`, at: signedAt, done: true });
   else nodes.push({ t: "派送中", d: "待收货方签收", at: "—", done: false });
 
   return (

@@ -118,8 +118,13 @@ export function SupplierMaster() {
           row={qual}
           onClose={() => setQual(null)}
           onPassed={() => {
-            setRows((rs) => rs.map((r) => (r.no === qual.no ? { ...r, qual: "已通过" } : r)));
+            setRows((rs) => rs.map((r) => (r.no === qual.no ? { ...r, qual: "已通过", enabled: true } : r)));
             tip(`「${qual.name}」资质审核已通过`);
+            setQual(null);
+          }}
+          onRejected={() => {
+            setRows((rs) => rs.map((r) => (r.no === qual.no ? { ...r, qual: "审核不通过", enabled: false } : r)));
+            tip(`已驳回「${qual.name}」的资质申请`);
             setQual(null);
           }}
         />
@@ -285,7 +290,7 @@ const QUAL_FILES = [
   ["法定代表人身份证", "已上传", "2026-06-23"],
 ];
 
-function SupplierQualDrawer({ row, onClose, onPassed }) {
+function SupplierQualDrawer({ row, onClose, onPassed, onRejected }) {
   const pending = row.qual === "待审核";
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -318,7 +323,7 @@ function SupplierQualDrawer({ row, onClose, onPassed }) {
           </section>
         </div>
         <div className="foot">
-          <button className="btn plain" onClick={onClose}>{pending ? "驳回" : "关闭"}</button>
+          <button className="btn plain" onClick={pending ? onRejected : onClose}>{pending ? "驳回" : "关闭"}</button>
           {pending && <button className="btn primary" onClick={onPassed}>审核通过</button>}
         </div>
       </div>

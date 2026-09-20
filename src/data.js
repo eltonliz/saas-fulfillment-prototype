@@ -4,13 +4,13 @@
 export const PROJECT = { name: "九天教育", status: "营业中", phone: "13300000000" };
 
 export const SUPPLIERS = [
-  { no: "SN00000021", name: "JOJO供应商", contact: "jojo", phone: "18100010002" },
-  { no: "SN00000023", name: "测试供应商资质", contact: "零度", phone: "13144156669" },
-  { no: "SN00000031", name: "测试供应商A", contact: "测试联系人", phone: "13800001111" },
-  { no: "SN00000032", name: "阿萨德", contact: "阿萨德", phone: "13144156669" },
-  { no: "SN00000034", name: "供应商001", contact: "供应商001", phone: "18100010002" },
-  { no: "SN00000035", name: "供应商002", contact: "供应商002", phone: "13979554185" },
-  { no: "SN00000036", name: "供应商003", contact: "供应商003", phone: "13122223333" },
+  { no: "SN00000021", name: "JOJO供应商", contact: "jojo", phone: "18100010002", enabled: true },
+  { no: "SN00000023", name: "测试供应商资质", contact: "零度", phone: "13144156669", enabled: true },
+  { no: "SN00000031", name: "测试供应商A", contact: "测试联系人", phone: "13800001111", enabled: false },
+  { no: "SN00000032", name: "阿萨德", contact: "阿萨德", phone: "13144156669", enabled: false },
+  { no: "SN00000034", name: "供应商001", contact: "供应商001", phone: "18100010002", enabled: true },
+  { no: "SN00000035", name: "供应商002", contact: "供应商002", phone: "13979554185", enabled: true },
+  { no: "SN00000036", name: "供应商003", contact: "供应商003", phone: "13122223333", enabled: true },
 ];
 export const SHIP_MODES = ["供应商直配", "总部仓直配", "总部自营"];
 
@@ -156,6 +156,7 @@ export const ORDERS = [
     buyer: { 昵称: "九九", 收件人: "T1", 收件人电话: "13911112217", 收件人地址: "重庆市重庆郊县丰都县董家镇测试" },
     store: "9071门店", delivery: "快递发货", createdAt: "2026-09-17 17:44:22", status: "售后中",
     payMethod: "微信支付", payTime: "2026-09-17 17:44:24", ops: ["详情", "备注", "分配门店"],
+    carrier: "顺丰速运", tracking: "SF7712003621", track: "已签收 2026-09-17 20:10:00",
     supplyNo: "", supplyMode: "总部仓直配",
   },
   /* 状态补齐：已完成自提订单（提货码已核销 → 买家端「已使用」、订单管理「已完成」） */
@@ -171,7 +172,7 @@ export const ORDERS = [
   /* 状态补齐：售后中自提订单（买家端「售后中」＋售后进度卡；挂起不发货） */
   {
     id: "o14", no: "ORD260918000231", product: "儿童保温杯", spec: "500ml / 蓝", qty: 1, unitPrice: "¥89.00", emoji: "🥤",
-    afterSale: "售后处理中", afterSaleLink: "查看", buyerNote: "麻烦早点发货",
+    afterSale: "售后处理中", afterSaleLink: "查看", buyerNote: "麻烦早点发货", afterSaleTip: "售后中 请等待商家处理 ›",
     amounts: { 商品金额: "89.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "89.00", 实收金额: "89.00" },
     buyer: { 昵称: "徐一诺" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-18 16:10:22", status: "售后中",
@@ -547,6 +548,13 @@ export const SUPPLIER_DOCS = [
   },
 ];
 
+// 累计实收（只增不减）：与租户侧同口径；部分收货/收货异常单独标
+SUPPLIER_DOCS.forEach((d) => { if (d.received === undefined) d.received = d.status === "已收货" ? d.qty : 0; });
+SUPPLIER_DOCS.find((d) => d.id === "FHD2609160009").received = 3; // 收货异常（差异单 DIFF2609170003 来源）
+SUPPLIER_DOCS.find((d) => d.id === "FHD2609170015").received = 6; // 部分收货
+SUPPLIER_DOCS.find((d) => d.id === "FHD2609170017").received = 4; // 部分收货
+SUPPLIER_DOCS.find((d) => d.id === "FHD2609170018").received = 2; // 收货异常（差异单 DIFF2609170005 来源）
+
 /* 同 id 的供货单在两端是同一张物理单据：共享链路（供应商→总仓 / 供应商→门店）
    必须两端可见；仅供应商侧「供应商→消费者」、仅租户侧「总部仓→门店」不参与同步 */
 {
@@ -560,12 +568,6 @@ export const SUPPLIER_DOCS = [
   }
 }
 
-// 累计实收（只增不减）：与租户侧同口径；部分收货/收货异常单独标
-SUPPLIER_DOCS.forEach((d) => { if (d.received === undefined) d.received = d.status === "已收货" ? d.qty : 0; });
-SUPPLIER_DOCS.find((d) => d.id === "FHD2609160009").received = 3; // 收货异常（差异单 DIFF2609170003 来源）
-SUPPLIER_DOCS.find((d) => d.id === "FHD2609170015").received = 6; // 部分收货
-SUPPLIER_DOCS.find((d) => d.id === "FHD2609170017").received = 4; // 部分收货
-SUPPLIER_DOCS.find((d) => d.id === "FHD2609170018").received = 2; // 收货异常（差异单 DIFF2609170005 来源）
 
 /* 配送差异单（双来源，审核均由总部执行） */
 export const DIFFS = [

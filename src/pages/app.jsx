@@ -60,14 +60,14 @@ export function StoreApp() {
 
         <div className="mnav">
           <button className="back" onClick={() => { setView("home"); setConfirm(false); }}>‹</button>
-          <span>{view === "home" ? "工作台" : view === "receipts" ? "收货管理" : view === "receive" ? "发货单详情" : view === "diffs" ? "配送差异" : view === "diffDetail" ? "差异单详情" : view === "returns" ? "退货返厂" : "举证信息"}</span>
+          <span>{view === "home" ? "工作台" : view === "receipts" ? "收货管理" : view === "receive" ? "供货单详情" : view === "diffs" ? "配送差异" : view === "diffDetail" ? "差异单详情" : view === "returns" ? "退货返厂" : "举证信息"}</span>
           {view !== "home" && <span style={{ marginLeft: "auto", color: "#666", fontSize: 18, letterSpacing: 1 }}>⋯</span>}
         </div>
 
         <div className="mscreen">
           {view === "home" && <Home onGo={setView} />}
           {view === "receipts" && <Receipts onOpen={() => setView("receive")} />}
-          {view === "receive" && <Receive onConfirm={() => setConfirm(true)} onBack={() => setView("receipts")} />}
+          {view === "receive" && <Receive onConfirm={(shortage) => (shortage ? setConfirm(true) : setView("receipts"))} onBack={() => setView("receipts")} />}
           {view === "diffs" && <Diffs onDetail={(c) => { setDiffCard(c); setView("diffDetail"); }} onEvidence={(c) => { setDiffCard(c); setView("evidence"); }} />}
           {view === "diffDetail" && <DiffDetail card={diffCard} onBack={() => setView("diffs")} onEvidence={() => setView("evidence")} />}
           {view === "evidence" && <Evidence card={diffCard} onBack={() => setView("diffs")} />}
@@ -378,7 +378,7 @@ function Receive({ onConfirm, onBack }) {
       )}
       <div style={{ display: "flex", gap: 10, paddingBottom: 16 }}>
         <button className="btn plain" style={{ flex: 1 }} onClick={onBack}>取消</button>
-        <button className="btn primary" style={{ flex: 2 }} disabled={shortage && !note.trim()} onClick={onConfirm}>确认收货</button>
+        <button className="btn primary" style={{ flex: 2 }} disabled={shortage && !note.trim()} onClick={() => onConfirm(shortage)}>确认收货</button>
       </div>
     </div>
   );

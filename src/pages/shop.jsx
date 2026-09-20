@@ -85,10 +85,6 @@ export function ShopProduct() {
         <span className="jump">跳至<input defaultValue="1" />页</span>
       </div>
 
-      <div className="filters" style={{ marginTop: 14 }}>
-        <div className="row"><span style={{ color: "#666" }}>▸ 进销存：到店自提链路的门店侧变化</span></div>
-      </div>
-
       {toast}
       {shop && <ProductStoreDrawer row={shop} onClose={() => setShop(null)} onSaved={() => { tip(`「${shop.name}」可售门店已更新`); setShop(null); }} />}
     </>

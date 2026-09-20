@@ -295,7 +295,7 @@ export function AfterSales() {
                           </span>
                           <div style={{ marginTop: 6, fontSize: 13, color: cur || done ? "#25c7a5" : "#c2c2c2", fontWeight: cur ? 600 : 400, whiteSpace: "nowrap" }}>{s}</div>
                           {i === 0 && <div style={{ marginTop: 2, fontSize: 12, color: "#b6bdc4" }}>{d.timeline[0]?.at}</div>}
-                          {i === steps.length - 1 && d.status !== "待商家处理" && idx !== 1 && <div style={{ marginTop: 2, fontSize: 12, color: "#b6bdc4" }}>{d.timeline[d.timeline.length - 1]?.at}</div>}
+                          {i === steps.length - 1 && idx === 99 && <div style={{ marginTop: 2, fontSize: 12, color: "#b6bdc4" }}>{d.timeline[d.timeline.length - 1]?.at}</div>}
                         </div>
                         {i < steps.length - 1 && <div style={{ flex: 1, height: 1, background: i < idx ? "#25c7a5" : "#e5e5e5", margin: "0 8px", marginBottom: 26 }} />}
                       </div>
@@ -419,7 +419,7 @@ export function AfterSales() {
                 </td>
                 <td className="tw mono">{r.asNo}…</td>
                 <td className="tw">{r.way}</td>
-                <td className="tw">{r.ship}</td>
+                <td className="tw">{r.order.物流状态 && r.order.物流状态 !== "-" ? r.order.物流状态 : r.ship}</td>
                 <td className="tw">{r.amount}</td>
                 <td className="tw">{r.qty}</td>
                 <td className="tw" style={{ color: "#f5522e" }}>{r.refund}</td>
