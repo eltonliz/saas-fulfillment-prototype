@@ -217,6 +217,16 @@ export const ORDERS = [
     payMethod: "微信支付", payTime: "2026-09-15 14:22:21", ops: ["详情", "备注", "分配门店"],
     supplyNo: "", supplyMode: "总部自营",
   },
+  /* 总部自营 · 自提单：货在总部仓，总部直发门店（总部自营 → 门店 路径） */
+  {
+    id: "o19", no: "ORD260920000110", product: "儿童书包", spec: "蓝色 / 大号", qty: 1, unitPrice: "¥129.00", emoji: "🎒",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "129.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "129.00", 实收金额: "129.00" },
+    buyer: { 昵称: "苏晚" }, store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-18 11:20:00", status: "已发货",
+    payMethod: "微信支付", payTime: "2026-09-18 11:20:05", ops: ["详情", "备注", "分配门店"],
+    supplyNo: "FHD2609180018", supplyMode: "总部自营",
+  },
 ];
 
 /* 提货码：16 位，按订单号确定性生成（原型固定数据；买家端 / 门店端展示同一码） */
@@ -312,10 +322,11 @@ export const SUPPLY_DOCS = [
   },
   /* G2② 演示样本：货已到门店、门店迟迟不点「确认到货」→ 超过 3 天由系统自动确认并激活提货码 */
   {
+    /* 超时自动确认样本：签收已满 3 天，打开原型即触发（系统自动确认 + 提货码激活） */
     id: "FHD2609150001", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-15 10:00:00",
     orderNo: "ORD260915000077", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, sent: 2,
     shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "圆通速递", tracking: "YT5598712401", track: "已签收 2026-09-19 09:30:00", status: "已发货", ops: ["详情", "收货"],
+    carrier: "圆通速递", tracking: "YT5598712401", track: "已签收 2026-09-15 16:30:00", status: "已发货", ops: ["详情", "收货"],
   },
   /* F3 演示样本（上游段）：同一订单 ORD260918000033 的「供应商→总仓」单。
      总仓确认收货后，订单管理里该订单才出现「发货」—— 发消费者那一跳属于销售订单，不建供货单。 */
@@ -332,6 +343,13 @@ export const SUPPLY_DOCS = [
     orderNo: "ORD260918000021", product: "奶粉(复制)", spec: "800g / 罐", emoji: "🥛", qty: 2, sent: 2,
     shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
     carrier: "顺丰速运", tracking: "SF7712003390", track: "已签收 2026-09-18 15:40:00", status: "已收货", ops: ["详情"],
+  },
+  /* 总部自营 · 自提：总部直发门店（总部自营 → 门店），门店在收货管理确认收货后提货码激活 */
+  {
+    id: "FHD2609180018", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-18 11:20:30",
+    orderNo: "ORD260920000110", product: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", qty: 1, sent: 1,
+    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
+    carrier: "顺丰速运", tracking: "SF7712007701", track: "已发货 2026-09-18 16:40:00", status: "已发货", supplyMode: "总部自营", ops: ["详情", "收货"],
   },
   /* G2② 演示样本：总仓收货登记少收 → 配送差异单 DIFF2609190001（总部上报 · 待供应商审核）的来源单 */
   {
@@ -579,7 +597,7 @@ SUPPLIER_DOCS.find((d) => d.id === "FHD2609170018").received = 2; // 收货异�
 
 /* 配送差异单（双来源，谁被上报谁审核：总部上报 → 供应商审核；门店上报 → 总部审核） */
 export const DIFFS = [
-  { id: "DIFF2609170003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609160009", shipper: "供应商003", summary: "什锦果蔬 应收4/实收3 差1", diffQty: 1, status: "补发中", evidence: "少货 · 照片 2 张", makeup: "FHD2609180013" },
+  { id: "DIFF2609170003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609160009", shipper: "供应商003", summary: "什锦果蔬 应收4/实收3 差1", diffQty: 1, status: "待补发", evidence: "少货 · 照片 2 张", makeup: "FHD2609180013" },
   { id: "DIFF2609170001", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609180007", shipper: "九天教育总仓", summary: "画板套装 应收2/实收0 差2", diffQty: 2, status: "待举证", evidence: "—" },
   { id: "DIFF2609170002", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609120002", shipper: "九天教育总仓", summary: "什锦果蔬 应收5/实收4 差1", diffQty: 1, status: "待总部审核", evidence: "少货 · 照片 1 张" },
   { id: "DIFF2609170004", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609140003", shipper: "九天教育总仓", summary: "儿童绘本套装 应收9/实收8 差1", diffQty: 1, status: "补发中", evidence: "少货 · 照片 3 张", makeup: "FHD2609170907" },

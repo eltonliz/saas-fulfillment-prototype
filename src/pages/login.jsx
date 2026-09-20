@@ -79,7 +79,7 @@ export function SupplierLogin({ onSuccess }) {
         <button className="btn plain" style={{ width: "100%", height: 40, marginTop: 10 }} onClick={() => onSuccess()}>免登录进入（演示）</button>
 
         <div style={{ marginTop: 16, textAlign: "center", color: "#bbb", fontSize: 12 }}>
-          供应商为全局主体，无需切换项目　|　账号由租户在「供应商管理 → 编辑」中开通
+          供应商为全局主体，无需切换项目　|　账号由租户在「供应商管理 → 编辑」中开通　|　演示环境聚合展示多供应商单据，正式版按登录账号隔离
         </div>
       </div>
     </div>

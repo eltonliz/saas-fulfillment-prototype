@@ -153,6 +153,8 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
   const [mode, setMode] = useState(row?.shipMode || "供应商直配");
   const [supplier, setSupplier] = useState(row?.supplier || "");
   const [delivery, setDelivery] = useState("快递");
+  /* 校验：总部自营无需供应商；其余发货模式必须绑定供应商 */
+  const canSave = mode === "总部自营" || !!supplier;
   const done = () => (onSaved || onClose)();
 
   return (
@@ -309,7 +311,7 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
         </div>
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" onClick={done}>保存</button>
+          <button className="btn primary" disabled={!canSave} title={canSave ? "" : "请先选择供应商（总部自营无需供应商）"} onClick={done}>保存</button>
         </div>
       </div>
     </div>

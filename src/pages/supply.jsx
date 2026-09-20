@@ -9,23 +9,29 @@ const LEG_LABEL = {
   supplier_inbound: "供应商 → 门店",
   hq_store: "总部仓 → 门店",
 };
+/* 总部自营的到店单据按业务口径单独显示为「总部自营 → 门店」（货为总部自有、不经供应商） */
+const legLabelOf = (d) => (d.supplyMode === "总部自营" && d.leg === "hq_store" ? "总部自营 → 门店" : LEG_LABEL[d.leg]);
 /* 配送差异状态 Tab —— 按来源分两套业务场景：
    · 总部上报（供应商 → 总仓）：收货异常当场举证开单 → 供应商审核 → 供应商补发 → 总部收货，故无「待举证/待审核」；
    · 门店上报：门店举证 → 总部审核 → 按「谁发货谁补发」补发，与门店APP同一套状态口径。
    供应商后台合并展示两类，用同一个 diffInTab（「待审核」含待供应商审核 / 待总部审核）。 */
 export const DIFF_TABS_BY_SOURCE = {
-  总部上报: ["全部", "待供应商审核", "补发中", "补发完成", "审核不通过", "已关闭"],
+  总部上报: ["全部", "待供应商审核", "待补发", "补发中", "补发完成", "审核不通过", "已关闭"],
   门店上报: ["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"],
 };
 export const DIFF_TABS = ["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"];
+/* 补发状态三段：待补发（补发单已生成未发货）→ 补发中（已发货在途）→ 补发完成（收货闭环） */
 export const diffInTab = (status, tab) =>
   tab === "全部" ? true
     : tab === "待举证" ? status === "待举证"
       : tab === "待审核" ? ["待总部审核", "待供应商审核"].includes(status)
         : tab === "待供应商审核" ? status === "待供应商审核"
-          : tab === "审核通过" ? ["补发中", "补发完成"].includes(status)
-            : tab === "审核不通过" ? status === "审核不通过"
-              : status === "已关闭";
+          : tab === "待补发" ? status === "待补发"
+            : tab === "补发中" ? status === "补发中"
+              : tab === "补发完成" ? status === "补发完成"
+                : tab === "审核通过" ? ["待补发", "补发中", "补发完成"].includes(status)
+                  : tab === "审核不通过" ? status === "审核不通过"
+                    : status === "已关闭";
 /* 总部 = 租户，门店也属于同一租户 —— 权限一致，本租户的供货单一律可见。
    只有「供应商 → 消费者（一件代发）」是供应商独占的，租户侧不显示。
    另：「总部仓 → 消费者」不是供货单 —— 消费者那一跳由订单管理的「发货」完成，
@@ -85,7 +91,7 @@ function applyReceive(doc, p) {
     const byHq = doc.leg === "supplier_to_hq";
     addDiff({
       id: "DIFF" + ymd + String(diffStore.get().length + 1).padStart(4, "0"),
-      source: byHq ? "总部上报" : "门店上报", leg: LEG_LABEL[doc.leg], reporter: byHq ? "总部" : "门店",
+      source: byHq ? "总部上报" : "门店上报", leg: legLabelOf(doc), reporter: byHq ? "总部" : "门店",
       supplyNo: doc.id, shipper: doc.shipper,
       summary: `${doc.product} 应收${doc.qty}/实收${recv}｜${p.reason}`,
       status: byHq ? "待供应商审核" : "待总部审核",
@@ -124,7 +130,7 @@ function applyReceive(doc, p) {
         supplyStore.set((ds) => [{
           id, leg: "hq_store", source: "上游收货自动生成", createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
           orderNo: doc.orderNo, product: doc.product, spec: doc.spec, emoji: doc.emoji,
-          qty: doc.qty, sent: 0,
+          qty: doc.qty, sent: 0, supplyMode: order.supplyMode,
           shipper: "九天教育总仓", receiver: order.store, receiverAddr: STORE_ADDR[order.store] || "",
           carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
         }, ...ds]);
@@ -192,7 +198,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                   <MakeupTag d={d} /></td>
                 <td className="tw mono">{d.orderNo}</td>
                 <td><Thumb d={d} /></td>
-                <td className="tw">{LEG_LABEL[d.leg]}</td>
+                <td className="tw">{legLabelOf(d)}</td>
                 <td className="tw">{d.shipper}</td>
                 <td>{d.receiver}<small>{d.receiverAddr}</small></td>
                 <td className="tw mono">{d.qty}/{d.sent}
@@ -213,7 +219,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                     {mode === "ship" && canShip(d) && (d.isMakeup
                       ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>在配送差异发货</span>
                       : <button onClick={() => onOpen("ship", d)}>发货</button>)}
-                    {mode === "ship" && awaitSupShip(d) && <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>}
+                    {mode === "ship" && awaitSupShip(d) && <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>{d.isMakeup ? "在配送差异发货" : "由供应商发货"}</span>}
                     {mode === "ship" && awaitHqReceive(d) && <span title="总部仓确认收货后本页才可发货" style={{ color: "#f5a623", fontSize: 13, height: 22 }}>待总部仓收货</span>}
                     {mode === "receive" && canReceive(d) && <button onClick={() => onOpen("receive", d)}>收货</button>}
                   </div>
@@ -236,15 +242,16 @@ export function SupplyDispatch() {
   const [toast, tip] = useToast();
   const docs = supplyStore.use();
   const rows = docs.filter(isTenantLeg);
-  const pending = rows.filter((d) => canShip(d)).length;
-  const canShipRows = rows.filter(canShip);
+  const pending = rows.filter((d) => canShip(d) && !d.isMakeup).length;
+  /* 补发单发货收口在配送差异页：批量 / 导入 / 模板不含补发单 */
+  const canShipRows = rows.filter((d) => canShip(d) && !d.isMakeup);
 
   return (
     <>
       <div className="filters">
         <div className="row">
           <div className="field"><label>供货路径</label>
-            <select className="ctl" defaultValue=""><option value="">请选择供货路径</option><option>供应商 → 总仓</option><option>供应商 → 门店</option><option>总部仓 → 门店</option></select>
+            <select className="ctl" defaultValue=""><option value="">请选择供货路径</option><option>供应商 → 总仓</option><option>供应商 → 门店</option><option>总部仓 → 门店</option><option>总部自营 → 门店</option></select>
           </div>
           <div className="field"><label>供货单号</label><input className="ctl w-lg" placeholder="供货单号/销售订单/收货主体" /></div>
           <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button></div>
@@ -262,7 +269,7 @@ export function SupplyDispatch() {
       {modal?.k === "detail" && <DocDetailDrawer doc={modal.d} onClose={() => setModal(null)} />}
       {modal?.k === "track" && <TrackDrawer doc={modal.d} onClose={() => setModal(null)} />}
       {toast}
-      {batch === "template" && <TemplateDrawer onClose={() => setBatch(null)} />}
+      {batch === "template" && <TemplateDrawer rows={canShipRows} onClose={() => setBatch(null)} />}
       {batch === "import" && <ImportDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => tip(`已导入发货 ${applyShipBatch(items)} 单`)} />}
       {batch === "batch" && <BatchShipDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => tip(`已批量发货 ${applyShipBatch(items)} 单`)} />}
     </>
@@ -357,7 +364,7 @@ export function SupplyDiff() {
                   <td className="tw">{d.shipper}</td>
                   <td>{d.summary}</td>
                   <td className="tw">{d.evidence}</td>
-                  <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "补发中" || d.status === "补发完成" ? "" : "gray"}`}>{d.status}</span></td>
+                  <td className="tw"><span className={`tag ${d.status === "待举证" || d.status === "待补发" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "补发中" || d.status === "补发完成" ? "" : "gray"}`}>{d.status}</span></td>
                   <td className="tw">{d.makeup
                     ? <span className="mono" style={{ color: "#25c7a5" }}>
                         {d.makeup}
@@ -382,7 +389,12 @@ export function SupplyDiff() {
       </div>
 
       {toast}
-      {ship && <ShipDrawer doc={ship} onClose={() => setShip(null)} onDone={(p) => { tip(applyShip(ship, p)); setShip(null); }} />}
+      {ship && <ShipDrawer doc={ship} onClose={() => setShip(null)} onDone={(p) => {
+        tip(applyShip(ship, p));
+        /* 补发发货 → 差异单推进：待补发 → 补发中（在途）；到货收货后由收货链路转「补发完成」 */
+        if ((ship.sent ?? 0) + p.qty >= ship.qty) setRows((rs) => rs.map((r) => (r.makeup === ship.id && r.status === "待补发" ? { ...r, status: "补发中" } : r)));
+        setShip(null);
+      }} />}
       {detail && <DiffDetailDrawer row={detail} onClose={() => setDetail(null)} />}
       {pass && (
         <Confirm
@@ -403,7 +415,7 @@ export function SupplyDiff() {
             const doc = {
               id: reshipId, leg: orig?.leg || "hq_store", source: "配送差异补发", createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
               orderNo: orig?.orderNo || "—", product: orig?.product || "补发商品", spec: orig?.spec || "",
-              emoji: orig?.emoji || "📦", qty: pass.diffQty ?? 1, sent: 0,
+              emoji: orig?.emoji || "📦", qty: pass.diffQty ?? 1, sent: 0, supplyMode: orig?.supplyMode,
               shipper: pass.shipper, receiver: orig?.receiver || "—", receiverAddr: orig?.receiverAddr || "",
               carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
               isMakeup: true, reshipOf: pass.id,
@@ -412,8 +424,8 @@ export function SupplyDiff() {
             if (doc.leg === "sup_consumer") supplierStore.set((ds) => [doc, ...ds]);
             else if (["supplier_to_hq", "supplier_inbound"].includes(doc.leg)) { supplyStore.set((ds) => [doc, ...ds]); supplierStore.set((ds) => [doc, ...ds]); }
             else supplyStore.set((ds) => [doc, ...ds]);
-            setRows((rs) => rs.map((r) => (r.id === pass.id ? { ...r, status: "补发中", makeup: reshipId } : r)));
-            tip(`差异单 ${pass.id} 审核通过，已生成补发供货单 ${reshipId}（${doc.leg === "hq_store" ? "在「发货管理」点该单「发货」" : "已在供应商后台发货列表" }）`);
+            setRows((rs) => rs.map((r) => (r.id === pass.id ? { ...r, status: "待补发", makeup: reshipId } : r)));
+            tip(`差异单 ${pass.id} 审核通过，已生成补发供货单 ${reshipId}（${doc.leg === "hq_store" ? "在本页「补发任务」列点「发货」" : "由供应商在其配送差异页发货"}）`);
             setPass(null);
           }}
           onCancel={() => setPass(null)}
@@ -598,7 +610,8 @@ function applyShip(doc, p) {
     carrier: p.carrier || doc.carrier,
     tracking: p.tracking || doc.tracking,
     track: "已发货 " + new Date().toISOString().slice(0, 19).replace("T", " "),
-    status: "已发货",
+    /* 部分发货：未发满保持「待发货」便于继续发；发满转「已发货」 */
+    status: sent >= doc.qty ? "已发货" : "待发货",
   });
   return `供货单 ${doc.id} 已发货 ${p.qty} 件` + (sent < doc.qty ? `，剩余 ${doc.qty - sent} 件可再发` : "");
 }
@@ -1011,7 +1024,7 @@ function DocDetailDrawer({ doc, onClose }) {
           <div className="filters" style={{ marginBottom: 14 }}>
             <div className="row" style={{ gap: 30 }}>
               <div className="field"><label>供货单号</label><b className="mono">{doc.id}</b></div>
-              <div className="field"><label>供货路径</label><b>{LEG_LABEL[doc.leg]}</b></div>
+              <div className="field"><label>供货路径</label><b>{legLabelOf(doc)}</b></div>
               <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{doc.status}</span></div>
             </div>
             {doc.isMakeup && (

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useReturns, setReturns, patchHop } from "../store.js";
+import { useReturns, setReturns, patchHop, diffStore } from "../store.js";
 import { FlowNode, FlowArrow } from "./buyer.jsx";
 import { useReqPage } from "./reqnotes.jsx";
 
@@ -93,7 +93,7 @@ function StoreFlowBoard() {
       <div style={{ marginTop: 8, fontSize: 13.5, color: "#5b6672" }}>入口：工作台宫格（底部 Tab 已移除）　｜　<b style={{ color: "#e0392f" }}>红色</b>箭头为跳转路径</div>
 
       <div style={{ display: "flex", alignItems: "flex-start", marginTop: 28, minWidth: "max-content" }}>
-        <FlowNode idx="①" title="收货管理 · 全部" sub="供应商直配 / 总部仓直配" n="1" dir="store-flow">
+        <FlowNode idx="①" title="收货管理 · 全部" sub="供应商直配 / 总部仓直配 / 总部自营" n="1" dir="store-flow">
           筛选 全部 / 待发货 / 已发货 / 已收货；「已发货」单可 查看物流 / 确认收货。
         </FlowNode>
         <FlowArrow label="查看详情 / 确认收货" id="sa1" />
@@ -215,7 +215,7 @@ function Receipts({ onOpen }) {
   return (
     <div>
       <div style={{ display: "flex", gap: 20, padding: "12px 14px 0", borderBottom: "1px solid #f1f1f1", background: "#fff" }}>
-        {["供应商直配", "总部仓直配"].map((m) => (
+        {["供应商直配", "总部仓直配", "总部自营"].map((m) => (
           <span key={m} onClick={() => setMode(m)}
             style={{ fontSize: 14, paddingBottom: 10, cursor: "pointer", color: mode === m ? "#25c7a5" : "#666", borderBottom: mode === m ? "2px solid #25c7a5" : "2px solid transparent", fontWeight: mode === m ? 600 : 400 }}>
             {m}
@@ -520,12 +520,17 @@ function Evidence({ card, onBack }) {
         </div>
       </div>
 
-      {done && <div className="mcard" style={{ background: "#eefbf8", color: "#25c7a5", textAlign: "center", fontSize: 12.5 }}>举证已提交，等待总部审核</div>}
+      {done && <div className="mcard" style={{ background: "#eefbf8", color: "#25c7a5", textAlign: "center", fontSize: 12.5 }}>举证已提交，等待总部审核（租户后台差异单已转「待总部审核」）</div>}
 
       <div style={{ display: "flex", gap: 10, paddingBottom: 16 }}>
         <button className="btn plain" style={{ flex: 1 }} onClick={onBack}>取消</button>
         <button className="btn primary" style={{ flex: 2 }} disabled={!reasons.length || photos < 1}
-          onClick={() => setDone(true)}>提交</button>
+          onClick={() => {
+            /* 原型桥接：举证提交写入租户后台差异单 —— 最早一笔「待举证」的门店上报单转「待总部审核」 */
+            const target = diffStore.get().find((d) => d.status === "待举证" && d.source === "门店上报");
+            if (target) diffStore.set((ds) => ds.map((x) => (x.id === target.id ? { ...x, status: "待总部审核", evidence: `${reasons.join("、")} · 照片 ${photos} 张` } : x)));
+            setDone(true);
+          }}>提交</button>
       </div>
     </div>
   );

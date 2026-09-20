@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag } from "./supply.jsx";
 import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar } from "../ui.jsx";
-import { supplierStore, supplyStore, diffStore, patchDoc } from "../store.js";
+import { supplierStore, supplyStore, diffStore, orderStore, patchDoc } from "../store.js";
 import { ORDERS } from "../data.js";
 
 const LEG_LABEL = {
@@ -24,8 +24,9 @@ export function SupTasks({ leg, title, desc }) {
   const mine = docs.filter((d) => d.leg === leg);
   const list = mine.filter((d) => (tab === "全部" ? true : d.status === tab));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((d) => d.id));
-  const pending = mine.filter((d) => d.status === "待发货").length;
-  const canShipRows = mine.filter((d) => d.status === "待发货");
+  const pending = mine.filter((d) => d.status === "待发货" && !d.isMakeup).length;
+  /* 补发单发货收口在配送差异页：批量 / 导入 / 模板不含补发单 */
+  const canShipRows = mine.filter((d) => d.status === "待发货" && !d.isMakeup);
   /* 一件代发到消费者，没有「收货」环节；发总仓 / 发门店 才有 */
   const TABS = leg === "sup_consumer"
     ? ["全部", "待发货", "已发货", "已签收"]
@@ -110,15 +111,22 @@ export function SupTasks({ leg, title, desc }) {
           doc={modal.d}
           onClose={() => setModal(null)}
           onDone={(p) => {
-            const sent = Math.min(modal.d.qty, (modal.d.sent ?? 0) + p.qty);
+            /* 不封顶：部分收货的「发货（补齐）」增量要如实计入（与租户侧 applyShip 同口径） */
+            const sent = (modal.d.sent ?? 0) + p.qty;
+            const ts = new Date().toISOString().slice(0, 19).replace("T", " ");
             patchDoc(modal.d.id, {
               sent,
               carrier: p.carrier || modal.d.carrier,
               tracking: p.tracking || modal.d.tracking,
-              track: "已发货 " + new Date().toISOString().slice(0, 19).replace("T", " "),
-              status: "已发货",
+              track: "已发货 " + ts,
+              /* 未发满保持「待发货」便于继续发；发满转「已发货」 */
+              status: sent >= modal.d.qty ? "已发货" : "待发货",
             });
-            tip(`供货单 ${modal.d.id} 已发货 ${sent - (modal.d.sent ?? 0)} 件` + (sent < modal.d.qty ? `，剩余 ${modal.d.qty - sent} 件可再发` : ""));
+            /* 代发（供应商 → 消费者）回写销售订单：订单转「已发货」并生成快递记录，消费者查物流即这条 */
+            if (modal.d.leg === "sup_consumer") {
+              orderStore.set((os) => os.map((o) => (o.no === modal.d.orderNo ? { ...o, status: "已发货", carrier: p.carrier, tracking: p.tracking.trim(), track: "已发货 " + ts } : o)));
+            }
+            tip(`供货单 ${modal.d.id} 已发货 ${p.qty} 件` + (sent < modal.d.qty ? `，剩余 ${modal.d.qty - sent} 件可再发` : ""));
             setModal(null);
           }}
         />
@@ -232,7 +240,7 @@ function SupShipModal({ doc, onClose, onDone }) {
         </div>
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" onClick={() => onDone({ qty, tracking: tracking.trim(), carrier })}>确定</button>
+          <button className="btn primary" disabled={!carrier || !tracking.trim() || qty < 1} onClick={() => onDone({ qty, tracking: tracking.trim(), carrier })}>确定</button>
         </div>
       </div>
     </div>
@@ -315,15 +323,15 @@ export function SupDiff() {
       id: reshipId, leg: orig?.leg || "supplier_to_hq", source: "配送差异补发",
       createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
       orderNo: orig?.orderNo || "—", product: orig?.product || "补发商品", spec: orig?.spec || "",
-      emoji: orig?.emoji || "📦", qty: d.diffQty ?? 1, sent: 0,
+      emoji: orig?.emoji || "📦", qty: d.diffQty ?? 1, sent: 0, supplyMode: orig?.supplyMode,
       shipper: d.shipper, receiver: orig?.receiver || "九天教育总仓", receiverAddr: orig?.receiverAddr || "",
       carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
       isMakeup: true, reshipOf: d.id,
     };
     supplierStore.set((ds) => [doc, ...ds]);
     if (["supplier_to_hq", "supplier_inbound"].includes(doc.leg)) supplyStore.set((ds) => [doc, ...ds]);
-    diffStore.set((ds) => ds.map((x) => (x.id === d.id ? { ...x, status: "补发中", makeup: reshipId } : x)));
-    tip(`差异单 ${d.id} 审核通过，已生成补发供货单 ${reshipId}（在「${doc.leg === "supplier_inbound" ? "发门店" : "发总部仓"}」列表发货）`);
+    diffStore.set((ds) => ds.map((x) => (x.id === d.id ? { ...x, status: "待补发", makeup: reshipId } : x)));
+    tip(`差异单 ${d.id} 审核通过，已生成补发供货单 ${reshipId}（在本页「补发任务」列点「发货」）`);
   };
 
   return (
@@ -347,8 +355,8 @@ export function SupDiff() {
                 <td className="tw mono">{d.supplyNo}</td>
                 <td>{d.summary}</td>
                 <td className="tw">{d.evidence}<div style={{ marginTop: 4 }}><EvidencePhotos evidence={d.evidence} size={30} /></div></td>
-                <td className="tw">{d.status === "审核不通过" ? <span className="tag danger">不通过</span> : ["补发中", "补发完成"].includes(d.status) ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
-                <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "已关闭" ? "gray" : ""}`}>{d.status}</span></td>
+                <td className="tw">{d.status === "审核不通过" ? <span className="tag danger">不通过</span> : ["待补发", "补发中", "补发完成"].includes(d.status) ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
+                <td className="tw"><span className={`tag ${d.status === "待举证" || d.status === "待补发" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "已关闭" ? "gray" : ""}`}>{d.status}</span></td>
                 <td className="tw">{d.makeup
                   ? <span className="mono" style={{ color: "#25c7a5" }}>{d.makeup}<small style={{ display: "block", fontFamily: "inherit" }}>{makeupOf(d) ? `${makeupOf(d).status}${makeupOf(d).tracking ? " · 已发物流" : ""}` : "—"}</small></span>
                   : <span style={{ color: "#999" }}>—</span>}</td>
@@ -371,15 +379,17 @@ export function SupDiff() {
           doc={ship}
           onClose={() => setShip(null)}
           onDone={(p) => {
-            const sent = Math.min(ship.qty, (ship.sent ?? 0) + p.qty);
+            const sent = (ship.sent ?? 0) + p.qty;
             patchDoc(ship.id, {
               sent,
               carrier: p.carrier || ship.carrier,
               tracking: p.tracking || ship.tracking,
               track: "已发货 " + new Date().toISOString().slice(0, 19).replace("T", " "),
-              status: "已发货",
+              status: sent >= ship.qty ? "已发货" : "待发货",
             });
             tip(`补发单 ${ship.id} 已发货 ${p.qty} 件`);
+            /* 补发发货 → 差异单推进：待补发 → 补发中（在途） */
+            if (sent >= ship.qty) diffStore.set((ds) => ds.map((x) => (x.makeup === ship.id && x.status === "待补发" ? { ...x, status: "补发中" } : x)));
             setShip(null);
           }}
         />
