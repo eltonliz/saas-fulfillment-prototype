@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch } from "./supply.jsx";
-import { TrackDrawer, useToast, Confirm, useRowSelect, BatchBar } from "../ui.jsx";
+import { TrackDrawer, useToast, useRowSelect, BatchBar } from "../ui.jsx";
 import { supplierStore, diffStore, patchDoc } from "../store.js";
 
 const LEG_LABEL = {
@@ -787,111 +787,61 @@ function AsNoteModal({ row, onClose, onSaved }) {
   );
 }
 
-/* ---------------- 设置 > 账号管理 ---------------- */
+/* ---------------- 设置 > 账号管理（进销存新增：本供应商唯一账号，自助改密） ---------------- */
 export function SupAccount() {
-  const [rows, setRows] = useState([
-    { name: "JOJO发货员", phone: "18800008888", role: "发货员", status: "已开启" },
-    { name: "李四", phone: "18800008889", role: "发货员", status: "已开启" },
-  ]);
-  const [edit, setEdit] = useState(null);
-  const [add, setAdd] = useState(false);
-  const [toggle, setToggle] = useState(null);
-  const [reset, setReset] = useState(null);
+  const [reset, setReset] = useState(false);
   const [toast, tip] = useToast();
-  const setStatus = (phone, v) => setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: v } : r)));
-  const isOn = (r) => r.status === "已开启";
 
   return (
     <>
       <div className="hl" data-hl="进销存新增" style={{ padding: "8px 12px", marginBottom: 12, fontSize: 12.5, lineHeight: 1.8 }}>
-        进销存新增：供应商账号管理 —— 可开多个操作员账号（发货员），支持重设登录密码
-      </div>
-      <div className="filters">
-        <div className="row">
-          <div className="field"><label>操作员姓名</label><input className="ctl" placeholder="请输入姓名" /></div>
-          <div className="field"><label>账号状态</label><select className="ctl w-sm" defaultValue=""><option value="">请选择</option><option>已开启</option><option>已禁用</option></select></div>
-          <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button><button className="btn primary" onClick={() => setAdd(true)}>新建账号</button></div>
-        </div>
+        进销存新增：供应商账号管理 —— 本供应商一个登录账号（由租户创建 / 重设），可自助修改登录密码
       </div>
       <div className="tbl-wrap">
         <table>
-          <thead><tr><th className="tw">账号绑定主体</th><th className="tw">操作员姓名</th><th className="tw">登录手机号</th><th className="tw">角色</th><th className="tw">账号状态</th><th className="tw">操作</th></tr></thead>
+          <thead><tr><th className="tw">账号绑定主体</th><th className="tw">登录手机号</th><th className="tw">账号状态</th><th className="tw">操作</th></tr></thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.phone}>
-                <td className="tw">JOJO供应商 <span className="mono note" style={{ display: "inline" }}>SN00000021</span></td>
-                <td className="tw">{r.name}</td>
-                <td className="tw mono">{r.phone}</td>
-                <td className="tw">{r.role}</td>
-                <td className="tw"><span className={`tag ${isOn(r) ? "" : "gray"}`}>{r.status}</span></td>
-                <td className="tw"><div className="op-col" style={{ flexDirection: "row", gap: 10 }}>
-                  <button onClick={() => setEdit(r)}>编辑</button>
-                  <button className="gray" onClick={() => setToggle(r)}>{isOn(r) ? "禁用" : "启用"}</button>
-                  <button className="gray" onClick={() => setReset(r)}>重置密码</button>
-                </div></td>
-              </tr>
-            ))}
+            <tr>
+              <td className="tw">JOJO供应商 <span className="mono note" style={{ display: "inline" }}>SN00000021</span></td>
+              <td className="tw mono">18800008888</td>
+              <td className="tw"><span className="tag">已开启</span></td>
+              <td className="tw"><button className="btn link" style={{ padding: 0 }} onClick={() => setReset(true)}>修改密码</button></td>
+            </tr>
           </tbody>
         </table>
       </div>
+      <div className="note" style={{ marginTop: 12, lineHeight: 1.9 }}>
+        账号由租户在「供应商管理」中创建 / 重设；供应商后台支持 <b>账号密码登录</b> 与 <b>账号验证码登录</b>。忘记密码可自助修改，或联系租户重设。
+      </div>
       {toast}
-      {edit && <AccountDrawer row={edit} onClose={() => setEdit(null)} onSaved={() => { tip(`操作员「${edit.name}」已保存`); setEdit(null); }} />}
-      {add && <AccountDrawer row={NEW_OPERATOR} isNew onClose={() => setAdd(false)} onSaved={() => { setAdd(false); tip("操作员账号已创建"); }} />}
-      {toggle && (
-        <Confirm
-          title={isOn(toggle) ? "确认禁用账号" : "确认启用账号"}
-          text={isOn(toggle)
-            ? `禁用后「${toggle.name}」（${toggle.phone}）将无法登录供应商后台发货，已发出的货不受影响。是否继续？`
-            : `启用后「${toggle.name}」（${toggle.phone}）可重新登录供应商后台发货。是否继续？`}
-          okText={isOn(toggle) ? "确认禁用" : "确认启用"}
-          onOk={() => { setStatus(toggle.phone, isOn(toggle) ? "已禁用" : "已开启"); tip(`「${toggle.name}」已${isOn(toggle) ? "禁用" : "启用"}`); setToggle(null); }}
-          onCancel={() => setToggle(null)}
-        />
-      )}
-      {reset && (
-        <Confirm
-          title="重置登录密码"
-          text={`将为操作员「${reset.name}」（${reset.phone}）生成新的随机密码，原密码立即失效，需线下告知本人。是否继续？`}
-          okText="确认重置"
-          onOk={() => { tip(`「${reset.name}」密码已重置，请线下告知`); setReset(null); }}
-          onCancel={() => setReset(null)}
-        />
-      )}
+      {reset && <ChangePwdModal onClose={() => setReset(false)} onSaved={() => { tip("登录密码已修改，下次登录请使用新密码"); setReset(false); }} />}
     </>
   );
 }
 
-const NEW_OPERATOR = { name: "", phone: "", role: "发货员", status: "已开启" };
-
-/* ---------------- 操作员账号抽屉 ---------------- */
-function AccountDrawer({ row, isNew, onClose, onSaved }) {
-  const [role, setRole] = useState(row.role || "发货员");
+/* ---------------- 修改登录密码（自助） ---------------- */
+function ChangePwdModal({ onClose, onSaved }) {
+  const [p1, setP1] = useState("");
+  const [p2, setP2] = useState("");
+  const err = p1 && p1.length < 6 ? "新密码至少 6 位" : p2 && p1 !== p2 ? "两次输入的新密码不一致" : "";
+  const ok = p1.length >= 6 && p1 === p2;
   return (
-    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="drawer" style={{ width: 560 }}>
-        <header>{isNew ? "新建账号" : "编辑账号"}<button className="x" onClick={onClose}>×</button></header>
-        <div className="body">
-          <section className="card">
-            <h3>账号绑定主体</h3>
-            <div className="cbody">
-              <div className="frow"><label>供应商</label><div className="fc"><input value="JOJO供应商（SN00000021）" readOnly /></div></div>
-            </div>
-          </section>
-          <section className="card">
-            <h3>操作员信息</h3>
-            <div className="cbody">
-              <div className="frow"><label><i>*</i>操作员姓名</label><div className="fc"><input defaultValue={row.name} placeholder="请输入操作员姓名" /></div></div>
-              <div className="frow"><label><i>*</i>登录手机号</label><div className="fc"><input defaultValue={row.phone} placeholder="请输入登录手机号" /></div></div>
-              <div className="frow"><label>角色</label><div className="fc">
-                <select value={role} onChange={(e) => setRole(e.target.value)} style={{ maxWidth: 200 }}><option>发货员</option><option>管理员</option></select>
-              </div></div>
-              <div className="frow"><label>登录密码</label><div className="fc"><input type="password" defaultValue={isNew ? "" : "••••••"} placeholder="请输入登录密码" /></div></div>
-            </div>
-          </section>
+    <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="gbox">
+        <b>修改登录密码</b>
+        <p>账号 JOJO供应商（SN00000021）· 登录手机号 18800008888</p>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 13, marginBottom: 6 }}><i style={{ color: "#f5522e" }}>*</i> 新密码</div>
+          <input className="ctl" type="password" style={{ width: "100%" }} placeholder="请设置新密码（至少 6 位）" value={p1} onChange={(e) => setP1(e.target.value)} />
         </div>
-        <div className="foot">
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 13, marginBottom: 6 }}><i style={{ color: "#f5522e" }}>*</i> 确认新密码</div>
+          <input className="ctl" type="password" style={{ width: "100%" }} placeholder="请再次输入新密码" value={p2} onChange={(e) => setP2(e.target.value)} />
+        </div>
+        {err && <div style={{ marginTop: 8, color: "#f5522e", fontSize: 12.5 }}>{err}</div>}
+        <div className="gfoot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" onClick={onSaved}>保存</button>
+          <button className="btn primary" disabled={!ok} onClick={onSaved}>确认修改</button>
         </div>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { RETURN_STEPS } from "../data.js";
 import { useToast, Confirm } from "../ui.jsx";
 import { useReturns, setReturns, patchHop } from "../store.js";
 
-const HOP_TAG = { 待发货: "warn", 运输中: "blue", 已收货: "", 已拒收: "danger" };
+const HOP_TAG = { 待发货: "warn", 运输中: "blue", 已收货: "" };
 
 /* ============================ 租户后台：退货返厂 ============================ */
 export function TenantReturns() {
@@ -25,7 +25,7 @@ export function TenantReturns() {
       </div>
 
       <div className="pills">
-        {["全部", ...RETURN_STEPS, "已拒收"].map((t) => (
+        {["全部", ...RETURN_STEPS].map((t) => (
           <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
         ))}
       </div>
@@ -65,7 +65,7 @@ export function TenantReturns() {
                   </td>
                   <td className="tw">{r.returnTo}</td>
                   <td className="tw">
-                    <span className={`tag ${r.status === "待返厂" ? "warn" : r.status === "已拒收" ? "danger" : r.status === "已返厂" ? "" : "blue"}`}>{r.status}</span>
+                    <span className={`tag ${r.status === "待返厂" ? "warn" : r.status === "已返厂" ? "" : "blue"}`}>{r.status}</span>
                   </td>
                   <td className="tw">
                     <div className="op-col">
@@ -166,7 +166,7 @@ export function SupplierReturns() {
       </div>
 
       <div className="pills">
-        {["全部", ...RETURN_STEPS, "已拒收"].map((t) => (
+        {["全部", ...RETURN_STEPS].map((t) => (
           <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
         ))}
       </div>
@@ -194,7 +194,7 @@ export function SupplierReturns() {
                   <td className="tw">{r.reason}</td>
                   <td className="tw"><span className="tag gray">已脱敏</span><small>仅总部可见</small></td>
                   <td className="tw">
-                    <span className={`tag ${r.status === "待返厂" ? "warn" : r.status === "已拒收" ? "danger" : r.status === "已返厂" ? "" : "blue"}`}>{r.status}</span>
+                    <span className={`tag ${r.status === "待返厂" ? "warn" : r.status === "已返厂" ? "" : "blue"}`}>{r.status}</span>
                   </td>
                   <td className="tw">
                     <div className="op-col">
@@ -247,7 +247,7 @@ function ReturnDetailDrawer({ row, portal, onClose }) {
               <div className="frow"><label>退货原因</label><div className="fc"><input value={row.reason} readOnly /></div></div>
               <div className="frow"><label>退回方</label><div className="fc"><input value={row.returnTo} readOnly /></div></div>
               <div className="frow"><label>当前状态</label><div className="fc">
-                <span className={`tag ${row.status === "待返厂" ? "warn" : row.status === "已拒收" ? "danger" : row.status === "已返厂" ? "" : "blue"}`}>{row.status}</span>
+                <span className={`tag ${row.status === "待返厂" ? "warn" : row.status === "已返厂" ? "" : "blue"}`}>{row.status}</span>
               </div></div>
             </div>
           </section>

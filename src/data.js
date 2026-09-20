@@ -345,13 +345,6 @@ export const SUPPLY_DOCS = [
     shipper: "供应商003", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
     carrier: "中通快递", tracking: "ZT8800112499", track: "已签收 2026-09-18 17:25:00", status: "已收货", ops: ["详情"],
   },
-  /* 退货返厂单 RTV2609190008（已拒收）的来源供货单 */
-  {
-    id: "FHD2609170019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 10:40:00",
-    orderNo: "ORD260917000141", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, sent: 2,
-    shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "圆通速递", tracking: "YT5598712412", track: "已签收 2026-09-18 11:20:00", status: "已收货", ops: ["详情"],
-  },
 ];
 
 // 累计实收（只增不减）：默认已收货=收齐，部分收货/收货异常单独标
@@ -468,13 +461,6 @@ export const SUPPLIER_DOCS = [
     shipper: "供应商003", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
     carrier: "中通快递", tracking: "ZT8800112499", track: "已签收 2026-09-18 17:25:00", status: "已收货", ops: ["详情"],
   },
-  /* 退货返厂单 RTV2609190008（已拒收）的来源供货单 */
-  {
-    id: "FHD2609170019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 10:40:00",
-    orderNo: "ORD260917000141", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, sent: 2,
-    shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "圆通速递", tracking: "YT5598712412", track: "已签收 2026-09-18 11:20:00", status: "已收货", ops: ["详情"],
-  },
 ];
 
 // 累计实收（只增不减）：与租户侧同口径；部分收货/收货异常单独标
@@ -565,14 +551,5 @@ export const RETURNS = [
       { from: "濮源直播间", to: "九天教育总仓", carrier: "韵达快递", tracking: "YD1122334501", status: "运输中" },
       { from: "九天教育总仓", to: "JOJO供应商", carrier: "", tracking: "", status: "待发货" },
     ],
-  },
-  /* 状态补齐：供应商拒收退货（已拒收终态）—— 退款与返厂解耦，拒收不阻塞已完成的退款 */
-  {
-    id: "RTV2609190008", orderNo: "ORD260917000141", supplyNo: "FHD2609170019",
-    store: "9071门店", leg: "supplier_inbound", viaHq: false, returnTo: "供应商002",
-    product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, reason: "商品质量问题",
-    createdAt: "2026-09-18 14:20:00", status: "已拒收",
-    refunded: true, refundNote: "总部已退款 ¥0.02",
-    hops: [{ from: "9071门店", to: "供应商002", carrier: "圆通速递", tracking: "YT5598712412", status: "已拒收" }],
   },
 ];

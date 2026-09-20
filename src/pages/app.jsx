@@ -490,7 +490,7 @@ const RETURN_SOURCES = [
   { supplyNo: "FHD2609180014", orderNo: "ORD260918000101", product: "华为手机", spec: "黑色 / L", emoji: "📱", returnTo: "JOJO供应商", viaHq: true },
   { supplyNo: "FHD2609170002", orderNo: "ORD260917000164", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", returnTo: "供应商003", viaHq: false },
 ];
-const RET_TONE = (s) => (s === "待返厂" ? "#f5a623" : s === "返厂中" ? "#2f80ed" : s === "已拒收" ? "#f5522e" : "#25c7a5");
+const RET_TONE = (s) => (s === "待返厂" ? "#f5a623" : s === "返厂中" ? "#2f80ed" : "#25c7a5");
 
 function Returns() {
   const all = useReturns();

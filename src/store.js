@@ -89,7 +89,6 @@ export const useReturns = returnStore.use;
 export const setReturns = returnStore.set;
 
 export function deriveStatus(hops) {
-  if (hops.some((h) => h.status === "已拒收")) return "已拒收";
   if (hops.every((h) => h.status === "已收货")) return "已返厂";
   if (hops.some((h) => h.status === "运输中" || h.status === "已收货")) return "返厂中";
   return "待返厂";
