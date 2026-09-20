@@ -22,7 +22,10 @@ export function OrderManagement() {
   const [track, setTrack] = useState(null);   // 查看物流（供应商发货的只读监控）
   const [batch, setBatch] = useState(null);   // 批量操作
   const [toast, tip] = useToast();
-  const rows = orderStore.use().filter((o) => (tab === "全部" ? true : o.status === tab));
+  const rows = orderStore.use().filter((o) =>
+    tab === "全部" ? true
+      : tab === "已关闭" ? ["已关闭", "已全额退款"].includes(o.status)
+        : o.status === tab);
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((o) => o.id));
 
   /* 真实行为：列表点「发货」先进订单详情，详情里再点「发货」才开发货弹窗 */
@@ -188,7 +191,9 @@ function AfterSalePop({ order, onClose }) {
         <div className="note" style={{ marginTop: 12, lineHeight: 1.9 }}>
           {order.status === "已全额退款"
             ? "该订单为未发货退款，对应的发货任务已同步关闭。"
-            : "该订单已发货，售后转线下协商。"}
+            : order.status === "售后中"
+              ? "售后处理中：售后单在「交易 → 售后管理」按 同意 → 退款 流程处理，退款原路退回，完成后本订单转「已完成」。"
+              : "该订单已发货，售后转线下协商。"}
         </div>
         <div className="gfoot">
           <button className="btn primary" onClick={onClose}>知道了</button>
@@ -201,17 +206,18 @@ function AfterSalePop({ order, onClose }) {
 /* ---------------- 查看自提码 ---------------- */
 function PickupCodePop({ order, onClose }) {
   const ready = !!order.pickupReady;
+  const used = !!order.pickupUsed;
   return (
     <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="gbox">
         <b>提货码</b>
         <p>订单号 {order.no} · 自提门店 {order.store}</p>
-        <div style={{ margin: "18px 0", textAlign: "center", padding: "16px 0", background: ready ? "#eefbf8" : "#f5f7f8", borderRadius: 6 }}>
-          <div style={{ fontSize: 26, letterSpacing: 4, fontWeight: 700, color: ready ? "#25c7a5" : "#bbb" }}>
+        <div style={{ margin: "18px 0", textAlign: "center", padding: "16px 0", background: ready && !used ? "#eefbf8" : "#f5f7f8", borderRadius: 6 }}>
+          <div style={{ fontSize: 26, letterSpacing: 4, fontWeight: 700, color: ready && !used ? "#25c7a5" : "#bbb" }}>
             {ready ? fmtPickupCode(pickupCodeOf(order)) : "尚不可用"}
           </div>
           <div style={{ fontSize: 12, color: "#999", marginTop: 8 }}>
-            {ready ? "请在门店前台出示此码核销" : "尚未全部到货，提货码不可用"}
+            {used ? "已核销使用，订单已完成" : ready ? "请在门店前台出示此码核销" : "尚未全部到货，提货码不可用"}
           </div>
         </div>
         <div className="note" style={{ lineHeight: 1.9 }}>
@@ -274,6 +280,8 @@ function OrderTrackModal({ order, onClose }) {
    ============================================================================ */
 function OrderDetailDrawer({ order, onClose, onShip, onNote }) {
   const total = order.amounts["应收金额"];
+  /* 步骤条完成度：按订单状态点亮 —— 待付款 1 步；待发货/售后中 2 步；已发货 3 步；已完成 5 步 */
+  const doneN = { 待付款: 1, 待发货: 2, 已发货: 3, 售后中: 2, 已完成: 5, 已全额退款: 2 }[order.status] ?? 2;
 
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -290,7 +298,7 @@ function OrderDetailDrawer({ order, onClose, onShip, onNote }) {
             <div style={{ width: 250, flex: "none" }}>
               <div style={{ fontSize: 22, color: "#333", marginBottom: 8 }}>{order.status}</div>
               <div style={{ color: "#999", fontSize: 13, marginBottom: 14 }}>
-                {order.status === "待发货" ? "买家已付款，待商家发货" : order.status === "已全额退款" ? "已退款" : "—"}
+                {order.status === "待付款" ? "等待买家付款" : order.status === "待发货" ? "买家已付款，待商家发货" : order.status === "已发货" ? "商家已发货，等待买家签收" : order.status === "售后中" ? "售后处理中，订单已挂起" : order.status === "已完成" ? "交易完成" : order.status === "已全额退款" ? "已退款" : "—"}
               </div>
               {order.status === "待发货" && (canShipOrder(order)
                 ? <button className="btn primary" style={{ marginBottom: 14 }} onClick={onShip}>发货</button>
@@ -308,10 +316,10 @@ function OrderDetailDrawer({ order, onClose, onShip, onNote }) {
                   <div style={{ textAlign: "center", width: 96, flex: "none" }}>
                     <span style={{
                       width: 26, height: 26, borderRadius: "50%", display: "grid", placeItems: "center", margin: "0 auto 8px",
-                      background: i < 2 ? "#25c7a5" : "#fff", color: i < 2 ? "#fff" : "#bbb",
-                      border: i < 2 ? "none" : "1px solid #dcdcdc", fontSize: 13,
+                      background: i < doneN ? "#25c7a5" : "#fff", color: i < doneN ? "#fff" : "#bbb",
+                      border: i < doneN ? "none" : "1px solid #dcdcdc", fontSize: 13,
                     }}>{i + 1}</span>
-                    <div style={{ fontSize: 13, color: i < 2 ? "#333" : "#bbb" }}>{s}</div>
+                    <div style={{ fontSize: 13, color: i < doneN ? "#333" : "#bbb" }}>{s}</div>
                     <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>{i === 0 ? order.createdAt : i === 1 ? order.payTime : ""}</div>
                   </div>
                 </React.Fragment>

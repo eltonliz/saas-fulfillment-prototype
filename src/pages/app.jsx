@@ -19,6 +19,7 @@ const RECEIPT_CARDS = [
 const DIFF_CARDS = [
   { id: "CY136465", state: "待举证", skuCount: 22, diffCount: 10, supplyNo: "5000029" },
   { id: "CY1936", state: "待举证", skuCount: 22, diffCount: 5, supplyNo: "5000027" },
+  { id: "CY1943", state: "待审核", skuCount: 22, diffCount: 3, supplyNo: "5000029" },
   { id: "CY1906", state: "审核通过", skuCount: 50, diffCount: 20, supplyNo: "5000018" },
   { id: "CY130", state: "审核不通过", skuCount: 50, diffCount: 20, supplyNo: "5000018" },
   { id: "CY94", state: "已关闭", skuCount: 22, diffCount: 8, supplyNo: "5000014" },

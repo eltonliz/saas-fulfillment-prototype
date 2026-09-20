@@ -29,7 +29,7 @@ export function ProductManagement({ onOpenDrawer }) {
   const products = productStore.use();
   const setProducts = productStore.set;
   const patch = (id, p) => setProducts((ps) => ps.map((x) => (x.id === id ? { ...x, ...p } : x)));
-  const rows = products.filter((p) => (tab === "全部" ? true : p.status === tab))
+  const rows = products.filter((p) => (tab === "全部" ? true : tab === "自定义分类" ? !!p.customCat : p.status === tab))
     .filter((p) => (mode === "全部" ? true : p.shipMode === mode));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((p) => p.id));
 

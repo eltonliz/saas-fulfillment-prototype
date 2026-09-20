@@ -152,14 +152,12 @@ function ForwardDrawer({ row, onClose, onDone }) {
 
 /* ============================ 供应商后台：退货返厂 ============================ */
 export function SupplierReturns() {
-  const ME = "JOJO供应商";
   const rows = useReturns();
   const [tab, setTab] = useState("全部");
   const [detail, setDetail] = useState(null);
   const [accept, setAccept] = useState(null);
   const [toast, tip] = useToast();
-  const mine = rows.filter((r) => r.returnTo === ME);
-  const list = mine.filter((r) => (tab === "全部" ? true : r.status === tab));
+  const list = rows.filter((r) => (tab === "全部" ? true : r.status === tab));
 
   return (
     <>
@@ -168,7 +166,7 @@ export function SupplierReturns() {
       </div>
 
       <div className="pills">
-        {["全部", ...RETURN_STEPS].map((t) => (
+        {["全部", ...RETURN_STEPS, "已拒收"].map((t) => (
           <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
         ))}
       </div>

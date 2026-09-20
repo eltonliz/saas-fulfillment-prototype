@@ -12,12 +12,14 @@ const isPickup = (o) => o.delivery === "上门自提" && !/已全额退款|已�
 /* 自提订单状态：unship 待发货 / shipping 待收货（在途）/ ready 待提货 / done 已完成
    货未到店的按关联供货单的货物流转定状态（流转路径对买家可见） */
 export const buyerStateOf = (o, docs = []) => {
+  if (o.status === "待付款") return "unpaid";
   if (o.pickupUsed) return "done";
   if (o.pickupReady) return "ready";
   const doc = docs.find((d) => (o.supplyNo && d.id === o.supplyNo) || d.orderNo === o.no);
   return doc && doc.status !== "待发货" ? "shipping" : "unship";
 };
 const STATE_META = {
+  unpaid: { label: "待付款", color: "#f5a623", icon: "💰", tip: "订单尚未支付，支付后商家开始备货" },
   unship: { label: "待发货", color: "#25c7a5", icon: "⏳", tip: "商家备货中，货到门店确认后开放提货码" },
   shipping: { label: "待收货", color: "#25c7a5", icon: "🚚", tip: "运输中，货到门店确认后开放提货码" },
   ready: { label: "待提货", color: "#25c7a5", icon: "⏱", tip: "请到自提门店出示提货码" },
@@ -120,7 +122,7 @@ export function BuyerApp() {
                       </div>
                     </div>
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
-                      {["unship", "shipping"].includes(st) ? (
+                      {["unpaid", "unship", "shipping"].includes(st) ? (
                         <span style={{ background: "#f5f7f8", color: "#b9c0c7", borderRadius: 15, padding: "6px 16px", fontSize: 12.5 }}>查看自提码</span>
                       ) : (
                         <button onClick={() => setCodeOpen(true)} style={{ border: 0, background: "#e6f7f2", color: "#25c7a5", borderRadius: 15, padding: "6px 16px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>查看自提码</button>
@@ -273,7 +275,7 @@ function OrderCard({ o, st, onOpen, onCode }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10, paddingTop: 8, borderTop: "1px solid #f5f7f8" }}>
         <span className="note" style={{ marginTop: 0 }}>共 {o.qty} 件　实付 <b style={{ color: "#333" }}>¥{a.实收金额 || "-"}</b></span>
         <span style={{ display: "flex", gap: 8 }}>
-          {st === "done" ? <button style={btnStyle}>去评价</button> : <button style={btnStyle}>申请售后</button>}
+          {st === "done" ? <button style={btnStyle}>去评价</button> : st === "unpaid" ? <button style={btnStyle}>去支付</button> : <button style={btnStyle}>申请售后</button>}
         </span>
       </div>
     </div>

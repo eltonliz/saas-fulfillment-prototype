@@ -18,13 +18,14 @@ export const SHIP_MODES = ["供应商直配", "总部仓直配"];
 const g = (emoji, bg) => ({ emoji, bg });
 export const PRODUCTS = [
   { id: "p1", name: "什锦果蔬", vid: "共(1)个", intro: true, no: "3424", stock: 795, purchase: "10.00", sale: "0.01~3.00", freight: "未设置", status: "在售中", supplier: "供应商003", shipMode: "供应商直配" },
-  { id: "p2", name: "华为手机", vid: "共(0)个", intro: true, no: "-", stock: 294, purchase: "0.00", sale: "0.01~2.00", freight: "已设置", status: "在售中", supplier: "JOJO供应商", shipMode: "总部仓直配" },
+  { id: "p2", name: "华为手机", vid: "共(0)个", intro: true, no: "-", stock: 294, purchase: "0.00", sale: "0.01~2.00", freight: "已设置", status: "在售中", supplier: "JOJO供应商", shipMode: "总部仓直配", customCat: "精选数码" },
   { id: "p3", name: "华为手机(复制)", vid: "共(0)个", intro: true, no: "_CP7784", stock: 292, purchase: "0.00", sale: "0.01", freight: "未设置", status: "已下架", supplier: "JOJO供应商", shipMode: "总部仓直配" },
-  { id: "p4", name: "苹果", vid: "共(0)个", intro: true, no: "23", stock: 200, purchase: "10.00", sale: "0.01~1.00", freight: "未设置", status: "在售中", supplier: "供应商002", shipMode: "供应商直配" },
+  { id: "p4", name: "苹果", vid: "共(0)个", intro: true, no: "23", stock: 200, purchase: "10.00", sale: "0.01~1.00", freight: "未设置", status: "在售中", supplier: "供应商002", shipMode: "供应商直配", customCat: "时令鲜果" },
   { id: "p5", name: "奶粉(复制)", vid: "共(1)个", intro: true, no: "_CP5374", stock: 115, purchase: "0.00", sale: "0.01", freight: "未设置", status: "在售中", supplier: "供应商001", shipMode: "总部仓直配" },
   { id: "p6", name: "奶粉", vid: "共(1)个", intro: true, no: "_CP6353", stock: 115, purchase: "0.00", sale: "0.01", freight: "未设置", status: "审核中", supplier: "", shipMode: "" },
+  { id: "p7", name: "山茶油", vid: "共(0)个", intro: false, no: "-", stock: 0, purchase: "68.00", sale: "128.00", freight: "未设置", status: "审核不通过", supplier: "供应商001", shipMode: "总部仓直配" },
 ];
-export const PRODUCT_IMG = { p1: g("🧺", "#eefaf1"), p2: g("📱", "#eef4ff"), p3: g("📱", "#f3f0ff"), p4: g("🍎", "#fff0ee"), p5: g("🥛", "#eef4ff"), p6: g("🥛", "#eef4ff") };
+export const PRODUCT_IMG = { p1: g("🧺", "#eefaf1"), p2: g("📱", "#eef4ff"), p3: g("📱", "#f3f0ff"), p4: g("🍎", "#fff0ee"), p5: g("🥛", "#eef4ff"), p6: g("🥛", "#eef4ff"), p7: g("🫙", "#fff7e8") };
 
 /* ---------------- 门店商品 ---------------- */
 export const SHOP_PRODUCTS = [
@@ -131,6 +132,35 @@ export const ORDERS = [
     buyer: { 昵称: "徐一诺" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-18 15:30:00", status: "已发货", ops: ["详情", "备注", "分配门店"],
     supplyNo: "FHD2609180012", supplyMode: "供应商直配",
+  },
+  /* 状态补齐：待付款自提订单（未支付 → 不生成发货任务，提货码不可用） */
+  {
+    id: "o11", no: "ORD260919000066", product: "山茶油", spec: "500ml / 瓶", qty: 1, unitPrice: "¥128.00", emoji: "🫙",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "128.00", 邮费: "0", 优惠金额: "-8.00", 积分抵现: "-", 应收金额: "120.00", 实收金额: "-" },
+    buyer: { 昵称: "苏晚" }, store: "九天门店", delivery: "上门自提",
+    createdAt: "2026-09-19 20:15:08", status: "待付款", ops: ["详情", "备注", "分配门店"],
+    supplyNo: "", supplyMode: "",
+  },
+  /* 状态补齐：售后中订单（对应售后管理 ② 号单「待商家退款」，订单挂起） */
+  {
+    id: "o12", no: "ORD260917000147", product: "华为手机", spec: "蓝色/M", qty: 1, unitPrice: "¥1.00", emoji: "📱",
+    afterSale: "售后处理中", afterSaleLink: "查看",
+    amounts: { 商品金额: "1.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "1.00", 实收金额: "1.00" },
+    buyer: { 昵称: "九九", 收件人: "T1", 收件人电话: "13911112217", 收件人地址: "重庆市重庆郊县丰都县董家镇测试" },
+    store: "9071门店", delivery: "快递发货", createdAt: "2026-09-17 17:44:22", status: "售后中",
+    payMethod: "微信支付", payTime: "2026-09-17 17:44:24", ops: ["详情", "备注", "分配门店"],
+    supplyNo: "", supplyMode: "",
+  },
+  /* 状态补齐：已完成自提订单（提货码已核销 → 买家端「已使用」、订单管理「已完成」） */
+  {
+    id: "o13", no: "ORD260913000055", product: "大米", spec: "5kg / 袋", qty: 1, unitPrice: "¥69.00", emoji: "🌾",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "69.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "69.00", 实收金额: "69.00" },
+    buyer: { 昵称: "陆知行" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true, pickupUsed: true,
+    createdAt: "2026-09-13 15:02:41", status: "已完成",
+    payMethod: "微信支付", payTime: "2026-09-13 15:02:43", ops: ["详情", "备注", "分配门店"],
+    supplyNo: "", supplyMode: "供应商直配",
   },
 ];
 
@@ -315,6 +345,13 @@ export const SUPPLY_DOCS = [
     shipper: "供应商003", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
     carrier: "中通快递", tracking: "ZT8800112499", track: "已签收 2026-09-18 17:25:00", status: "已收货", ops: ["详情"],
   },
+  /* 退货返厂单 RTV2609190008（已拒收）的来源供货单 */
+  {
+    id: "FHD2609170019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 10:40:00",
+    orderNo: "ORD260917000141", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, sent: 2,
+    shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
+    carrier: "圆通速递", tracking: "YT5598712412", track: "已签收 2026-09-18 11:20:00", status: "已收货", ops: ["详情"],
+  },
 ];
 
 // 累计实收（只增不减）：默认已收货=收齐，部分收货/收货异常单独标
@@ -431,6 +468,13 @@ export const SUPPLIER_DOCS = [
     shipper: "供应商003", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
     carrier: "中通快递", tracking: "ZT8800112499", track: "已签收 2026-09-18 17:25:00", status: "已收货", ops: ["详情"],
   },
+  /* 退货返厂单 RTV2609190008（已拒收）的来源供货单 */
+  {
+    id: "FHD2609170019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 10:40:00",
+    orderNo: "ORD260917000141", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, sent: 2,
+    shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
+    carrier: "圆通速递", tracking: "YT5598712412", track: "已签收 2026-09-18 11:20:00", status: "已收货", ops: ["详情"],
+  },
 ];
 
 // 累计实收（只增不减）：与租户侧同口径；部分收货/收货异常单独标
@@ -521,5 +565,14 @@ export const RETURNS = [
       { from: "濮源直播间", to: "九天教育总仓", carrier: "韵达快递", tracking: "YD1122334501", status: "运输中" },
       { from: "九天教育总仓", to: "JOJO供应商", carrier: "", tracking: "", status: "待发货" },
     ],
+  },
+  /* 状态补齐：供应商拒收退货（已拒收终态）—— 退款与返厂解耦，拒收不阻塞已完成的退款 */
+  {
+    id: "RTV2609190008", orderNo: "ORD260917000141", supplyNo: "FHD2609170019",
+    store: "9071门店", leg: "supplier_inbound", viaHq: false, returnTo: "供应商002",
+    product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, reason: "商品质量问题",
+    createdAt: "2026-09-18 14:20:00", status: "已拒收",
+    refunded: true, refundNote: "总部已退款 ¥0.02",
+    hops: [{ from: "9071门店", to: "供应商002", carrier: "圆通速递", tracking: "YT5598712412", status: "已拒收" }],
   },
 ];

@@ -26,12 +26,12 @@ const STEPS_OF = (row) =>
 const dispStatus = (r) => (r.status === "待商家签收" && r.returnTo ? "待供应商签收" : r.status);
 const STEP_IDX = (row) =>
   row.status === "售后完成" ? 99
-    : { 待商家处理: 1, 待买家退货: 1, 待商家签收: 2, 待商家退款: 3 }[row.status] ?? 1;
-const TONE = (s) => (s === "待商家处理" ? "warn" : s === "售后关闭" ? "gray" : "blue");
+    : { 待商家处理: 1, 待买家退货: 1, 待商家签收: 2, 待商家退款: 3, 退款中: 3, 退款异常: 3 }[row.status] ?? 1;
+const TONE = (s) => (s === "待商家处理" ? "warn" : s === "售后关闭" ? "gray" : s === "退款异常" ? "danger" : "blue");
 
 const ROWS = [
   {
-    no: "ORD260917000164", product: "什锦果蔬", spec: "黑色/l", emoji: "🧺",
+    no: "ORD260918000211", product: "什锦果蔬", spec: "黑色/l", emoji: "🧺",
     asNo: "R20260918260918000008", way: "仅退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0,
     at: "2026-09-18 17:44:36", timeout: "-", reason: "包裹为空", status: "待商家处理",
     buyerNote: "-", refundNote: "-",
@@ -64,7 +64,7 @@ const ROWS = [
     timeline: [{ t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥0.01", "退款原因：无快递信息", "退款说明：测试"], at: "2026-09-10 14:40:57" }],
   },
   {
-    no: "ORD260915000088", product: "华为手机", spec: "蓝色/M", emoji: "📱",
+    no: "ORD260918000212", product: "华为手机", spec: "蓝色/M", emoji: "📱",
     asNo: "R20260915260915000002", way: "退货退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0,
     at: "2026-09-15 10:22:08", timeout: "-", reason: "商品与描述不符", status: "待商家签收", returnTo: "JOJO供应商",
     buyerNote: "-", refundNote: "-",
@@ -107,6 +107,50 @@ const ROWS = [
       { t: "商家拒绝签收退货", lines: [], at: "2026-09-12 16:29:13" },
       { t: "商家寄回商品", lines: ["退货方式：快递", "物流单号：3323"], at: "2026-09-12 16:30:40" },
       { t: "售后关闭", lines: ["关闭原因：商家寄回拒签商品,买家签收"], at: "2026-09-12 16:41:46" },
+    ],
+  },
+  /* 状态补齐：待买家退货（退货退款已同意，等待买家寄回） */
+  {
+    no: "ORD260918000215", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
+    asNo: "R20260919260919000009", way: "退货退款", ship: "暂无", amount: "¥5.00", qty: 1, refund: "¥5.00", points: 0,
+    at: "2026-09-19 09:35:20", timeout: "-", reason: "不想要了", status: "待买家退货", returnTo: "JOJO供应商",
+    buyerNote: "-", refundNote: "-",
+    order: { 应付金额: "¥5.00", 实付金额: "¥5.00", 配送方式: "快递", 物流状态: "已签收" },
+    customer: { 申请人: "林小满", 收货人: "林小满", 联系电话: "13511112222", 收货地址: "广东省广州市越秀区中山五路 33 号" },
+    goods: { 单价: "5.00", 数量: 1, 实付款: "5.00", 退货数量: 1, 退货金额: "5.00" },
+    timeline: [
+      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥5.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-19 09:35:20" },
+      { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-19 10:02:47" },
+    ],
+  },
+  /* 状态补齐：退款异常（微信原路退款失败，可重新发起） */
+  {
+    no: "ORD260918000216", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺",
+    asNo: "R20260919260919000010", way: "仅退款", ship: "暂无", amount: "¥3.00", qty: 1, refund: "¥3.00", points: 0,
+    at: "2026-09-19 11:20:08", timeout: "-", reason: "包裹为空", status: "退款异常",
+    buyerNote: "-", refundNote: "-",
+    order: { 应付金额: "¥3.00", 实付金额: "¥3.00", 配送方式: "快递", 物流状态: "已签收" },
+    customer: { 申请人: "苏晚", 收货人: "苏晚", 联系电话: "13911112218", 收货地址: "广东省广州市天河区长兴街道 5 栋 205" },
+    goods: { 单价: "3.00", 数量: 1, 实付款: "3.00", 退货数量: 0, 退货金额: "3.00" },
+    timeline: [
+      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥3.00", "退款原因：包裹为空", "退款说明：-"], at: "2026-09-19 11:20:08" },
+      { t: "商家已同意售后申请", lines: [], at: "2026-09-19 11:40:15" },
+      { t: "退款异常", lines: ["失败原因：微信支付账户异常，原路退款未成功", "可点击「重新退款」再次发起"], at: "2026-09-19 12:05:33" },
+    ],
+  },
+  /* 状态补齐：退款中（原路退款处理中，1-3 个工作日到账） */
+  {
+    no: "ORD260918000217", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
+    asNo: "R20260919260919000011", way: "仅退款", ship: "暂无", amount: "¥2.00", qty: 1, refund: "¥2.00", points: 0,
+    at: "2026-09-19 14:08:56", timeout: "-", reason: "拍错/多拍", status: "退款中",
+    buyerNote: "-", refundNote: "-",
+    order: { 应付金额: "¥2.00", 实付金额: "¥2.00", 配送方式: "快递", 物流状态: "已签收" },
+    customer: { 申请人: "陆知行", 收货人: "陆知行", 联系电话: "13511112223", 收货地址: "广东省广州市越秀区中山五路 35 号" },
+    goods: { 单价: "2.00", 数量: 1, 实付款: "2.00", 退货数量: 0, 退货金额: "2.00" },
+    timeline: [
+      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥2.00", "退款原因：拍错/多拍", "退款说明：-"], at: "2026-09-19 14:08:56" },
+      { t: "商家已同意售后申请", lines: [], at: "2026-09-19 14:22:03" },
+      { t: "退款处理中", lines: ["退款方式：原路退回", "预计 1-3 个工作日到账"], at: "2026-09-19 14:30:11" },
     ],
   },
 ];
@@ -183,6 +227,17 @@ export function AfterSales() {
     });
     tip("原路退款完成 → 售后完成");
   };
+  /* 退款异常：重新发起原路退款 */
+  const retryRefund = (row) => {
+    act(row, (r) => {
+      addTimeline(r, "重新发起退款", ["退款方式：原路退回"]);
+      addTimeline(r, "退款完成", [`退款金额：￥${r.refund.replace("¥", "")}`]);
+      addTimeline(r, "售后完成");
+      r.status = "售后完成";
+      return r;
+    });
+    tip("已重新发起退款，退款完成 → 售后完成");
+  };
 
   /* ---------------- 整页售后详情（复刻真实 SaaS） ---------------- */
   if (detail) {
@@ -195,8 +250,10 @@ export function AfterSales() {
         : d.status === "待商家退款" ? "商家已同意，待商家退款"
           : d.status === "待买家退货" ? "商家已同意售后申请，等待买家退货"
             : d.status === "待商家签收" ? (d.returnTo ? "买家已退货，待供应商签收 / 验收（退款仍由总部执行）" : "买家已退货，待商家确认收货")
-              : d.status === "售后完成" ? "商家已完成退款"
-                : "商家拒绝收货已寄回，卖家签收";
+              : d.status === "退款中" ? "退款处理中，预计 1-3 个工作日原路到账"
+                : d.status === "退款异常" ? "原路退款失败（微信支付账户异常），可重新发起退款"
+                  : d.status === "售后完成" ? "商家已完成退款"
+                    : "商家拒绝收货已寄回，卖家签收";
     return (
       <>
         <div className="card">
@@ -224,6 +281,8 @@ export function AfterSales() {
                   {d.status === "待商家签收" && !d.returnTo && <><button className="btn primary" onClick={() => agreeSign(d)}>同意签收退货</button><button className="btn plain" onClick={() => setBack(d)}>拒绝签收退货</button></>}
                   {d.status === "待商家签收" && d.returnTo && <span style={{ fontSize: 12.5, color: "#f5a623" }}>待供应商签收，签收 / 验收在供应商后台操作</span>}
                   {d.status === "待商家退款" && <button className="btn primary" onClick={() => refund(d)}>原路退款</button>}
+                  {d.status === "退款异常" && <><button className="btn primary" onClick={() => retryRefund(d)}>重新退款</button><span style={{ fontSize: 12.5, color: "#f5522e" }}>原路退款失败，请重试</span></>}
+                  {d.status === "退款中" && <span style={{ fontSize: 12.5, color: "#2f80ed" }}>退款处理中，预计 1-3 个工作日到账</span>}
                   {d.status === "售后完成" && <button className="btn primary" onClick={() => tip("退款原路退回，去向可在财务中查看")}>查看退款去向</button>}
                   <span style={{ color: "#25c7a5", fontSize: 13, cursor: "pointer" }} onClick={() => setNote(d)}>备 注</span>
                 </div>
