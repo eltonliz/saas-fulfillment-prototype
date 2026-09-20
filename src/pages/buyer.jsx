@@ -18,7 +18,10 @@ export const buyerStateOf = (o, docs = []) => {
   if (o.status === "售后中") return "aftersale";
   if (o.pickupUsed) return "done";
   if (o.pickupReady) return "ready";
-  const doc = docs.find((d) => (o.supplyNo && d.id === o.supplyNo) || d.orderNo === o.no);
+  if (o.status === "已完成") return "done";     /* 快递单：签收即完成 */
+  if (o.status === "已发货") return "shipping"; /* 快递单：在途 */
+  /* 买家视角只看末段（到店 / 到消费者）的货：「供应商→总仓」上游段不影响买家状态 */
+  const doc = docs.find((d) => ((o.supplyNo && d.id === o.supplyNo) || d.orderNo === o.no) && ["supplier_inbound", "hq_store", "sup_consumer"].includes(d.leg));
   return doc && doc.status !== "待发货" ? "shipping" : "unship";
 };
 const STATE_META = {
@@ -148,7 +151,7 @@ export function BuyerApp() {
             const a = order.amounts || {};
             const si = STORE_INFO[order.store] || {};
             const refundedCanceled = st === "canceled" && order.status === "已全额退款";
-            const showCodeBtn = ["ready", "done"].includes(st) || refundedCanceled;
+            const showCodeBtn = (["ready", "done"].includes(st) || refundedCanceled) && isPickup(order);
             const money = (v, kind) => {
               if (v === undefined || v === null || v === "" || v === "-") return "-";
               const abs = String(v).replace("¥", "").replace(/^-/, "").trim();
@@ -182,15 +185,26 @@ export function BuyerApp() {
                 </div>
 
                 <div style={{ padding: 12 }}>
-                  {/* 自提门店卡：门店名 + 地址 + 联系人电话（照设计稿） */}
-                  <div className="mcard" style={{ display: "flex", gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <b style={{ fontSize: 15 }}>{order.store}</b>
-                      <div className="note" style={{ marginTop: 4 }}>{si.addr || "—"}</div>
-                      <div className="note" style={{ marginTop: 2 }}>{si.contact} {si.phone}</div>
+                  {/* 自提门店卡：门店名 + 地址 + 联系人电话（照设计稿）；快递单改为收货信息卡 */}
+                  {isPickup(order) ? (
+                    <div className="mcard" style={{ display: "flex", gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <b style={{ fontSize: 15 }}>{order.store}</b>
+                        <div className="note" style={{ marginTop: 4 }}>{si.addr || "—"}</div>
+                        <div className="note" style={{ marginTop: 2 }}>{si.contact} {si.phone}</div>
+                      </div>
+                      <span style={{ width: 64, height: 64, borderRadius: 8, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 28, flex: "none" }}>🏪</span>
                     </div>
-                    <span style={{ width: 64, height: 64, borderRadius: 8, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 28, flex: "none" }}>🏪</span>
-                  </div>
+                  ) : (
+                    <div className="mcard" style={{ display: "flex", gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <b style={{ fontSize: 15 }}>{order.buyer?.收货人 || order.buyer?.昵称 || "—"}</b>
+                        <div className="note" style={{ marginTop: 4 }}>{order.buyer?.收件人电话 || "—"}</div>
+                        <div className="note" style={{ marginTop: 2 }}>{order.buyer?.收件人地址 || "—"}</div>
+                      </div>
+                      <span style={{ width: 64, height: 64, borderRadius: 8, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 28, flex: "none" }}>📦</span>
+                    </div>
+                  )}
 
                   {/* 售后进度卡（售后中 / 已取消-退款） */}
                   {(st === "aftersale" || refundedCanceled) && (
@@ -355,7 +369,7 @@ function OrderCard({ o, st, say, onOpen, onCode }) {
           <b style={{ fontSize: 13.5 }}>{o.product}</b>
           <div className="note" style={{ marginTop: 2 }}>{o.spec}</div>
           {st === "ready" && <div style={{ marginTop: 5, color: "#8a949d", fontSize: 12 }}>待提货 请前往门店提货 ›</div>}
-          {st === "done" && <div style={{ marginTop: 5, color: "#8a949d", fontSize: 12 }}>已提货 订单已完成 ›</div>}
+          {st === "done" && <div style={{ marginTop: 5, color: "#8a949d", fontSize: 12 }}>{isPickup(o) ? "已提货 订单已完成 ›" : "已签收 订单已完成 ›"}</div>}
           {st === "aftersale" && <div style={{ marginTop: 5, color: "#f04438", fontSize: 12 }}>售后中 请在6天20时40分内寄回 ›</div>}
         </div>
         <div style={{ textAlign: "right", flex: "none" }}>
@@ -363,7 +377,7 @@ function OrderCard({ o, st, say, onOpen, onCode }) {
           <div className="note" style={{ marginTop: 2 }}>×{o.qty}</div>
         </div>
       </div>
-      {(st === "unship" || st === "shipping") && (
+      {isPickup(o) && (st === "unship" || st === "shipping") && (
         <div className="mhl" data-hl="进销存修改" style={{ margin: "10px 0 0", padding: "9px 9px 5px", fontSize: 11.5, color: "#8a949d", background: "#fff" }}>
           {st === "unship" ? "商家备货中" : "运输中"}，货到门店确认后开放提货码 ›
         </div>

@@ -26,7 +26,9 @@ export function OrderManagement({ onOpenSupply }) {
   const [batch, setBatch] = useState(null);   // 批量操作
   const [toast, tip] = useToast();
   const rows = orderStore.use().filter((o) =>
-    o.supplyMode !== "供应商直配" &&          /* 一件代发单归供应商处理（发货+售后），租户侧不展示 */
+    /* 一件代发（供应商直发消费者·快递）归供应商处理，租户侧不展示；
+       供应商直发门店（自提）单仍在本页跟踪——门店收货确认后转待提货 */
+    !(o.supplyMode === "供应商直配" && o.delivery === "快递发货") &&
     (tab === "全部" ? true
       : tab === "已关闭" ? ["已关闭", "已全额退款", "已取消"].includes(o.status)
         : o.status === tab));
@@ -42,7 +44,7 @@ export function OrderManagement({ onOpenSupply }) {
 
   return (
     <>
-      <div className="alert"><span className="ic">i</span>一件代发（供应商直配）订单的<b style={{ margin: "0 4px" }}>发货与售后均由供应商处理</b>，本页不展示；此处仅看总部/自营订单</div>
+      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）订单的<b style={{ margin: "0 4px" }}>发货与售后均由供应商处理</b>，本页不展示；供应商直发门店（自提）单仍在本页跟踪（门店收货确认后转待提货）</div>
 
       <div className="filters">
         <div className="row">

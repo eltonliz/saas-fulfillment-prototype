@@ -82,7 +82,7 @@ export const ORDERS = [
     amounts: { 商品金额: "0.01", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "0.01", 实收金额: "0.01" },
     buyer: { 昵称: "九九" }, store: "9071门店", delivery: "上门自提",
     createdAt: "2026-09-17 16:52:03", status: "待发货", ops: ["发货", "备注", "分配门店"],
-    supplyNo: "", supplyMode: "总部仓直配", shipBlock: "待总部仓收货",
+    supplyNo: "FHD2609170004", supplyMode: "总部仓直配", shipBlock: "待总部仓收货",
   },
   /* G2② 配套订单：自提单，货已到店但门店未确认 → 提货码待激活 */
   {
@@ -123,7 +123,7 @@ export const ORDERS = [
     buyer: { 昵称: "林小满" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true,
     createdAt: "2026-09-17 11:20:00", status: "已发货",
     payMethod: "微信支付", payTime: "2026-09-17 11:20:02", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "", supplyMode: "供应商直配",
+    supplyNo: "FHD2609180019", supplyMode: "供应商直配",
   },
   /* 进销存新增：待收货自提订单 —— 供应商已发门店、在途（货未到店，提货码未开放） */
   {
@@ -162,7 +162,7 @@ export const ORDERS = [
     buyer: { 昵称: "陆知行" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true, pickupUsed: true,
     createdAt: "2026-09-13 15:02:41", status: "已完成",
     payMethod: "微信支付", payTime: "2026-09-13 15:02:43", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "", supplyMode: "供应商直配",
+    supplyNo: "FHD2609130019", supplyMode: "供应商直配",
   },
   /* 状态补齐：售后中自提订单（买家端「售后中」＋售后进度卡；挂起不发货） */
   {
@@ -394,6 +394,24 @@ export const SUPPLY_DOCS = [
     shipper: "供应商003", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
     carrier: "中通快递", tracking: "ZT8800112499", track: "已签收 2026-09-18 17:25:00", status: "已收货", ops: ["详情"],
   },
+  {
+    id: "FHD2609170004", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 16:55:00",
+    orderNo: "ORD260917000153", product: "华为手机", spec: "规格: 默认", emoji: "📱", qty: 1, sent: 1,
+    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    carrier: "顺丰速运", tracking: "SF7712003510", track: "已发货 2026-09-17 19:30:00", status: "已发货", ops: ["详情", "收货"],
+  },
+  {
+    id: "FHD2609180019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 11:25:00",
+    orderNo: "ORD260918000202", product: "沐浴露", spec: "持久留香 / 500ml", emoji: "🧴", qty: 1, sent: 1,
+    shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
+    carrier: "中通快递", tracking: "ZT8800112244", track: "已签收 2026-09-18 09:10:00", status: "已收货", ops: ["详情"],
+  },
+  {
+    id: "FHD2609130019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-13 15:05:00",
+    orderNo: "ORD260913000055", product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 1, sent: 1,
+    shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
+    carrier: "圆通速递", tracking: "YT5500338811", track: "已签收 2026-09-14 10:20:00", status: "已收货", ops: ["详情"],
+  },
 ];
 
 // 累计实收（只增不减）：默认已收货=收齐，部分收货/收货异常单独标
@@ -509,6 +527,24 @@ export const SUPPLIER_DOCS = [
     orderNo: "ORD260918000093", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 6, sent: 6,
     shipper: "供应商003", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
     carrier: "中通快递", tracking: "ZT8800112499", track: "已签收 2026-09-18 17:25:00", status: "已收货", ops: ["详情"],
+  },
+  {
+    id: "FHD2609170004", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 16:55:00",
+    orderNo: "ORD260917000153", product: "华为手机", spec: "规格: 默认", emoji: "📱", qty: 1, sent: 1,
+    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    carrier: "顺丰速运", tracking: "SF7712003510", track: "已发货 2026-09-17 19:30:00", status: "已发货", ops: ["详情", "收货"],
+  },
+  {
+    id: "FHD2609180019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 11:25:00",
+    orderNo: "ORD260918000202", product: "沐浴露", spec: "持久留香 / 500ml", emoji: "🧴", qty: 1, sent: 1,
+    shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
+    carrier: "中通快递", tracking: "ZT8800112244", track: "已签收 2026-09-18 09:10:00", status: "已收货", ops: ["详情"],
+  },
+  {
+    id: "FHD2609130019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-13 15:05:00",
+    orderNo: "ORD260913000055", product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 1, sent: 1,
+    shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
+    carrier: "圆通速递", tracking: "YT5500338811", track: "已签收 2026-09-14 10:20:00", status: "已收货", ops: ["详情"],
   },
 ];
 
