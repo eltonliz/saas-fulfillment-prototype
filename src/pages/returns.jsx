@@ -20,6 +20,19 @@ export function TenantReturns() {
 
   return (
     <>
+      <div className="filters">
+        <div className="row">
+          <div className="field"><label>返厂单号 / 供货单号</label><input className="ctl w-lg" placeholder="请输入返厂单号或供货单号" /></div>
+          <div className="field"><label>退货门店</label>
+            <select className="ctl" defaultValue="全部"><option>全部</option><option>濮源直播间</option><option>九天门店</option><option>9071门店</option></select>
+          </div>
+          <div className="field"><label>返厂路径</label>
+            <select className="ctl" defaultValue="全部"><option>全部</option><option>门店 → 供应商</option><option>门店 → 总部仓 → 供应商</option></select>
+          </div>
+          <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button></div>
+        </div>
+      </div>
+
       <div className="alert">
         <span className="ic">i</span>
         门店自提链路的消费者退货，实物退回供应商
@@ -164,6 +177,19 @@ export function SupplierReturns() {
 
   return (
     <>
+      <div className="filters">
+        <div className="row">
+          <div className="field"><label>返厂单号</label><input className="ctl w-lg" placeholder="请输入返厂单号" /></div>
+          <div className="field"><label>退货门店</label>
+            <select className="ctl" defaultValue="全部"><option>全部</option><option>濮源直播间</option><option>九天门店</option><option>9071门店</option></select>
+          </div>
+          <div className="field"><label>状态</label>
+            <select className="ctl" defaultValue="全部"><option>全部</option><option>待返厂</option><option>返厂中</option><option>已返厂</option></select>
+          </div>
+          <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button></div>
+        </div>
+      </div>
+
       <div className="alert">
         <span className="ic">i</span>门店自提订单的消费者退货，实物退回给你，你只需确认收到
       </div>

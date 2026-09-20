@@ -289,6 +289,19 @@ export function SupplyReceipt() {
 
   return (
     <>
+      <div className="filters">
+        <div className="row">
+          <div className="field"><label>供货路径</label>
+            <select className="ctl" defaultValue=""><option value="">请选择供货路径</option><option>供应商 → 总仓</option><option>供应商 → 门店</option><option>总部仓 → 门店</option><option>总部自营 → 门店</option></select>
+          </div>
+          <div className="field"><label>供货单号</label><input className="ctl w-lg" placeholder="供货单号/销售订单/收货主体" /></div>
+          <div className="field"><label>收货主体</label>
+            <select className="ctl" defaultValue="全部"><option>全部</option><option>九天教育总仓</option><option>九天门店</option><option>9071门店</option><option>濮源直播间</option></select>
+          </div>
+          <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button></div>
+        </div>
+      </div>
+
       <div className="alert">
         <span className="ic">i</span>确认内部供货到货
       </div>
