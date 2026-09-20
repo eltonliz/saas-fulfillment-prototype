@@ -357,7 +357,25 @@ export function SupplyDiff() {
 }
 
 /* ---------------- 配送差异详情 ---------------- */
+/* 举证照片占位（按「xxx · 照片 N 张」渲染 N 个占位块） */
+export function EvidencePhotos({ evidence, size = 96 }) {
+  const n = Number((String(evidence).match(/照片 (\d+) 张/) || [])[1] || 0);
+  if (!n) return <span className="note">待收货方举证</span>;
+  const reason = String(evidence).split(" · ")[0] || "举证";
+  return (
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} style={{ width: size }}>
+          <div style={{ width: size, height: size, borderRadius: 4, background: "#f4f6f7", border: "1px dashed #cfd6db", display: "grid", placeItems: "center", fontSize: size > 40 ? 26 : 14, color: "#b6bdc4" }}>🖼</div>
+          {size > 40 && <div className="note" style={{ marginTop: 4, textAlign: "center", fontSize: 11 }}>{reason}照片 {i + 1}（占位）</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DiffDetailDrawer({ row, onClose }) {
+  const makeupDoc = row.makeup ? [...supplyStore.get(), ...supplierStore.get()].find((d) => d.id === row.makeup) : null;
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="drawer" style={{ width: 620 }}>
@@ -378,8 +396,16 @@ function DiffDetailDrawer({ row, onClose }) {
             <div className="cbody">
               <div className="frow"><label>差异摘要</label><div className="fc"><input value={row.summary} readOnly /></div></div>
               <div className="frow"><label>举证信息</label><div className="fc"><input value={row.evidence} readOnly /></div></div>
+              <div className="frow"><label>举证照片</label><div className="fc" style={{ paddingTop: 6 }}><EvidencePhotos evidence={row.evidence} /></div></div>
               <div className="frow"><label>当前状态</label><div className="fc"><span className="tag warn">{row.status}</span></div></div>
               {row.makeup && <div className="frow"><label>补发供货单</label><div className="fc"><input className="mono" value={row.makeup} readOnly /></div></div>}
+              {row.makeup && (
+                <div className="frow"><label>补发物流</label><div className="fc">
+                  {makeupDoc && makeupDoc.tracking
+                    ? <span>{makeupDoc.carrier}　<b className="mono">{makeupDoc.tracking}</b>　{makeupDoc.track}</span>
+                    : <span className="note">补发供货单 {row.makeup} 尚未发货</span>}
+                </div></div>
+              )}
             </div>
           </section>
 

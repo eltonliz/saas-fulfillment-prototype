@@ -456,7 +456,7 @@ export const SUPPLIER_DOCS = [
     id: "FHD2609180013", leg: "supplier_to_hq", source: "配送差异补发", createdAt: "2026-09-18 10:00:00",
     orderNo: "ORD260916000145", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺", qty: 1, sent: 0,
     shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "", tracking: "", track: "", status: "待发货", isMakeup: true, reshipOf: "DIFF2609170003", ops: ["详情", "发货"],
+    carrier: "顺丰速运", tracking: "SF7712003610", track: "已发货 2026-09-18 18:20:00", status: "已发货", isMakeup: true, reshipOf: "DIFF2609170003", ops: ["详情", "收货"],
   },
   // —— 以下用于补齐各 Tab 的状态覆盖 ——
   {

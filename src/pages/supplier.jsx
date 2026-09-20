@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal } from "./supply.jsx";
+import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar } from "../ui.jsx";
 import { supplierStore, diffStore, patchDoc } from "../store.js";
 import { ORDERS } from "../data.js";
@@ -304,7 +304,7 @@ export function SupDiff() {
                 <td className="tw">{d.leg}</td>
                 <td className="tw mono">{d.supplyNo}</td>
                 <td>{d.summary}</td>
-                <td className="tw">{d.evidence}</td>
+                <td className="tw">{d.evidence}<div style={{ marginTop: 4 }}><EvidencePhotos evidence={d.evidence} size={30} /></div></td>
                 <td className="tw">{d.status === "补发中" ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
                 <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : d.status === "待总部审核" ? "blue" : ""}`}>{d.status}</span></td>
                 <td className="tw">{d.makeup ? <span className="mono" style={{ color: "#25c7a5" }}>{d.makeup}</span> : <span style={{ color: "#999" }}>—</span>}</td>
