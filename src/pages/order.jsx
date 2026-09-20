@@ -3,14 +3,19 @@ import { useToast, useRowSelect, BatchBar, Confirm } from "../ui.jsx";
 import { orderStore, supplyStore } from "../store.js";
 import { pickupCodeOf, fmtPickupCode } from "../data.js";
 
-/* F3/F4：总部仓直配订单，须等「供应商→总仓」那段确认收货后才可发货；
-   总部自营货在总部仓、无供应商前置，支付后直接可发 */
-const canShipOrder = (o) => {
-  if (o.status !== "待发货") return false;
+/* 自提单的最后一跳（总部仓 → 门店）是内部段，走发货管理（供货单）；
+   订单管理的「发货」只发消费者那一跳（快递单） */
+const upstreamReady = (o) => {
   if (o.supplyMode === "总部自营") return true;
-  if (o.supplyMode !== "总部仓直配") return false;
   const up = supplyStore.get().find((d) => d.leg === "supplier_to_hq" && d.orderNo === o.no);
   return !!up && up.status === "已收货";
+};
+const canShipOrder = (o) => {
+  if (o.status !== "待发货") return false;
+  if (o.delivery === "上门自提") return false;
+  if (o.supplyMode === "总部自营") return true;
+  if (o.supplyMode !== "总部仓直配") return false;
+  return upstreamReady(o);
 };
 
 const STEPS = ["买家下单", "买家付款", "商家发货", "买家签收", "交易完成"];
@@ -136,7 +141,9 @@ export function OrderManagement({ onOpenSupply }) {
                   <div className="op-col">
                     {o.status === "待发货" && (canShipOrder(o)
                       ? <button onClick={() => openDetail(o)}>发货</button>
-                      : <span style={{ color: o.supplyMode === "供应商直配" ? "#bbb" : "#f5a623", fontSize: o.supplyMode === "供应商直配" ? 14 : 13, height: 22 }}>{o.supplyMode === "供应商直配" ? "由供应商发货" : (o.shipBlock || "待总部仓收货")}</span>)}
+                      : o.supplyMode === "供应商直配" ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>
+                        : o.delivery === "上门自提" ? <span style={{ color: "#f5a623", fontSize: 13, height: 22 }}>{upstreamReady(o) ? "总部仓发货（见发货管理）" : "待总部仓收货"}</span>
+                          : <span style={{ color: "#f5a623", fontSize: 13, height: 22 }}>{o.shipBlock || "待总部仓收货"}</span>)}
                     {o.ops.filter((x) => x !== "发货").map((op) => (<button key={op} className="gray" onClick={() => openDetail(o)}>{op}</button>))}
                   </div>
                 </td>

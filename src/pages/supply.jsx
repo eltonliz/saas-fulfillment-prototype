@@ -32,6 +32,17 @@ const canReceive = (d) => ["已发货", "部分收货"].includes(d.status);
    收货提交：数量定状态（决策 3）、异常定差异单（决策 1）、举证并入收货（决策 4）、
    补发闭环终态（决策 5）、预留库存回写字段（决策 6）
    ============================================================================ */
+const STORE_ADDR = { "9071门店": "辽宁省铁岭市银州区工人街 28 号", "九天门店": "广东省广州市荔湾区宝华路 76 号" };
+/* 生成下一个 FHD 单号（跨两端去重） */
+function newFhdId() {
+  const used = new Set([...supplyStore.get(), ...supplierStore.get()].map((d) => d.id));
+  const dt = new Date();
+  const ymd = String(dt.getFullYear()).slice(2) + String(dt.getMonth() + 1).padStart(2, "0") + String(dt.getDate()).padStart(2, "0");
+  let n = 1, id = "FHD" + ymd + String(n).padStart(4, "0");
+  while (used.has(id)) { n += 1; id = "FHD" + ymd + String(n).padStart(4, "0"); }
+  return id;
+}
+
 function applyReceive(doc, p) {
   const recv = (doc.received ?? 0) + p.got;
   const full = recv >= doc.qty;
@@ -76,6 +87,25 @@ function applyReceive(doc, p) {
   /* R4/R5：收满且收货主体是门店 → 关联自提订单提货码激活（与 G2② 自动确认同口径） */
   if (full && ["supplier_inbound", "hq_store"].includes(doc.leg)) {
     orderStore.set((os) => os.map((o) => ((o.supplyNo === doc.id || o.no === doc.orderNo) ? { ...o, pickupReady: true } : o)));
+  }
+
+  /* F4③：总部仓直配·自提订单，上游收满 → 自动生成「总部仓 → 门店」发货任务（发货管理） */
+  if (full && doc.leg === "supplier_to_hq") {
+    const order = orderStore.get().find((o) => o.no === doc.orderNo || o.supplyNo === doc.id);
+    if (order && order.delivery === "上门自提") {
+      const exists = supplyStore.get().some((d) => d.leg === "hq_store" && d.orderNo === doc.orderNo);
+      if (!exists) {
+        const id = newFhdId();
+        supplyStore.set((ds) => [{
+          id, leg: "hq_store", source: "上游收货自动生成",
+          orderNo: doc.orderNo, product: doc.product, spec: doc.spec, emoji: doc.emoji,
+          qty: doc.qty, sent: 0,
+          shipper: "九天教育总仓", receiver: order.store, receiverAddr: STORE_ADDR[order.store] || "",
+          carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
+        }, ...ds]);
+        return `供货单 ${doc.id} 已收货，系统自动生成「总部仓 → ${order.store}」发货任务 ${id}`;
+      }
+    }
   }
   return full ? `供货单 ${doc.id} 已收货` : `供货单 ${doc.id} 部分收货，待补 ${doc.qty - recv} 件`;
 }
