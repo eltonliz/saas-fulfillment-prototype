@@ -150,6 +150,8 @@ td small { display: block; color: var(--text-3); font-size: 12px; }
 .op-col button { border: 0; background: none; color: var(--brand); cursor: pointer; padding: 0; text-align: left; font-size: 14px; height: 22px; }
 .op-col button:hover { text-decoration: underline; }
 .op-col button.gray { color: var(--text-2); }
+.op-col .static { color: var(--brand); font-size: 14px; height: 22px; line-height: 22px; }
+.op-col .static.gray { color: var(--text-2); }
 
 /* ---------- 标签 / 开关 ---------- */
 .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 7px; border-radius: 2px; font-size: 12px; background: var(--brand-soft); color: var(--brand); white-space: nowrap; }

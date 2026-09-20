@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { PRODUCTS, PRODUCT_IMG, SUPPLIERS, SHIP_MODES } from "../data.js";
-import { useToast, useRowSelect, BatchBar, Confirm } from "../ui.jsx";
+import { useRowSelect, BatchBar } from "../ui.jsx";
 import { productStore } from "../store.js";
 
 const Hl = ({ label, children, cell, cls = "" }) => (
@@ -17,18 +17,7 @@ const Field = ({ label, req, children, cls = "" }) => (
 export function ProductManagement({ onOpenDrawer }) {
   const [tab, setTab] = useState("全部");
   const [mode, setMode] = useState("全部");
-  const [edit, setEdit] = useState(null);   // 编辑商品抽屉
-  const [ship, setShip] = useState(null);   // 设置配送方式
-  const [data, setData] = useState(null);   // 经营数据抽屉
-  const [off, setOff] = useState(null);     // 下架二次确认
-  const [audit, setAudit] = useState(null); // 审核（同步真实 SAAS 行操作）
-  const [sort, setSort] = useState(null);   // 排序
-  const [timed, setTimed] = useState(null); // 定时上下架
-  const [del, setDel] = useState(null);     // 删除
-  const [toast, tip] = useToast();
   const products = productStore.use();
-  const setProducts = productStore.set;
-  const patch = (id, p) => setProducts((ps) => ps.map((x) => (x.id === id ? { ...x, ...p } : x)));
   const rows = products.filter((p) => (tab === "全部" ? true : tab === "自定义分类" ? !!p.customCat : p.status === tab))
     .filter((p) => (mode === "全部" ? true : p.shipMode === mode));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((p) => p.id));
@@ -127,18 +116,17 @@ export function ProductManagement({ onOpenDrawer }) {
                 <td className="col-new tw">{p.shipMode || <span style={{ color: "#f5a623" }}>未设置</span>}</td>
                 <td><span className={`tag ${p.status === "在售中" ? "" : p.status === "审核中" ? "warn" : "gray"}`}>{p.status}</span></td>
                 <td>
+                  {/* 列内为原 SaaS 既有操作的展示复刻，原型不提供点击 */}
                   <div className="op-col">
-                    {p.status === "在售中"
-                      ? <button onClick={() => setData(p)}>数据</button>
-                      : <button onClick={() => setEdit(p)}>编辑</button>}
-                    <button onClick={() => setSort(p)}>排序</button>
-                    <button onClick={() => setShip(p)}>设置配送方式</button>
-                    <button onClick={() => setTimed(p)}>定时上下架</button>
-                    {p.status === "审核中" && <button onClick={() => setAudit(p)}>审核</button>}
-                    {p.status === "在售中" && <button className="gray" onClick={() => setOff(p)}>下架</button>}
-                    {p.status === "已下架" && <button onClick={() => { patch(p.id, { status: "在售中" }); tip(`「${p.name}」已上架`); }}>上架</button>}
-                    <button className="gray" onClick={() => tip(`已复制「${p.name}」为草稿`)}>复制</button>
-                    <button className="gray" onClick={() => setDel(p)}>删除</button>
+                    <span className="static">{p.status === "在售中" ? "数据" : "编辑"}</span>
+                    <span className="static">排序</span>
+                    <span className="static">设置配送方式</span>
+                    <span className="static">定时上下架</span>
+                    {p.status === "审核中" && <span className="static">审核</span>}
+                    {p.status === "在售中" && <span className="static gray">下架</span>}
+                    {p.status === "已下架" && <span className="static">上架</span>}
+                    <span className="static gray">复制</span>
+                    <span className="static gray">删除</span>
                   </div>
                 </td>
               </tr>
@@ -155,38 +143,6 @@ export function ProductManagement({ onOpenDrawer }) {
         <span className="jump">跳至<input defaultValue="1" />页</span>
       </div>
 
-      {toast}
-      {edit && <NewProductDrawer row={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); tip(`「${edit.name}」已保存`); }} />}
-      {ship && <ShipModeDrawer row={ship} onClose={() => setShip(null)} onSaved={() => { tip(`「${ship.name}」配送方式已更新`); setShip(null); }} />}
-      {data && <ProductDataDrawer row={data} onClose={() => setData(null)} />}
-      {audit && (
-        <AuditModal
-          row={audit}
-          onClose={() => setAudit(null)}
-          onPass={() => { patch(audit.id, { status: "在售中" }); tip(`「${audit.name}」审核通过，已上架销售`); setAudit(null); }}
-          onReject={() => { patch(audit.id, { status: "审核不通过" }); tip(`「${audit.name}」审核不通过`); setAudit(null); }}
-        />
-      )}
-      {sort && <SortDrawer row={sort} onClose={() => setSort(null)} onSaved={() => { tip(`「${sort.name}」排序已更新`); setSort(null); }} />}
-      {timed && <TimedDrawer row={timed} onClose={() => setTimed(null)} onSaved={() => { tip(`「${timed.name}」定时上下架已设置`); setTimed(null); }} />}
-      {del && (
-        <Confirm
-          title="确认删除"
-          text={`删除后「${del.name}」不可恢复，历史订单中的商品快照不受影响。是否继续？`}
-          okText="确认删除"
-          onOk={() => { setProducts((ps) => ps.filter((x) => x.id !== del.id)); tip(`「${del.name}」已删除`); setDel(null); }}
-          onCancel={() => setDel(null)}
-        />
-      )}
-      {off && (
-        <Confirm
-          title="确认下架"
-          text={`下架后「${off.name}」将从门店与商城下架，已售订单不受影响。是否继续？`}
-          okText="确认下架"
-          onOk={() => { tip(`「${off.name}」已下架`); setOff(null); }}
-          onCancel={() => setOff(null)}
-        />
-      )}
     </>
   );
 }
@@ -354,187 +310,5 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
   );
 }
 
-/* ---------------- 设置配送方式（发货模式创建后不可改） ---------------- */
-function ShipModeDrawer({ row, onClose, onSaved }) {
-  const locked = !!row.shipMode;
-  const [mode, setMode] = useState(row.shipMode || "供应商直配");
-  const [delivery, setDelivery] = useState("快递");
-
-  return (
-    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="drawer" style={{ width: 560 }}>
-        <header>设置配送方式<button className="x" onClick={onClose}>×</button></header>
-        <div className="body">
-          <section className="card">
-            <h3>商品</h3>
-            <div className="cbody">
-              <div className="frow"><label>商品名称</label><div className="fc"><input value={row.name} readOnly /></div></div>
-              <div className="frow"><label>商品编号</label><div className="fc"><input value={row.no} readOnly /></div></div>
-            </div>
-          </section>
-
-          <section className="card">
-            <h3>发货模式</h3>
-            <div className="cbody">
-              {locked && (
-                <div className="note" style={{ padding: 10, marginBottom: 12, background: "#fff7e8", border: "1px solid #f5a623", borderRadius: 3 }}>
-                  该商品创建时已选定发货模式，<b>创建后不可修改</b>；如需变更请使用「复制」另建商品。
-                </div>
-              )}
-              <div className="radio-row">
-                {["供应商直配", "总部仓直配"].map((m) => (
-                  <label key={m} style={{ color: locked && m !== mode ? "#bbb" : undefined }}>
-                    <input type="radio" checked={mode === m} disabled={locked} onChange={() => setMode(m)} />{m}
-                  </label>
-                ))}
-                <label style={{ color: "#bbb" }}><input type="radio" disabled />前置仓配送</label>
-              </div>
-              <div className="note">
-                1、供应商直配：货从供应商仓发出，配送方式选快递，则订单由供应商直发给客户；选自提，则订单由供应商直发到客户所选门店，客户到店自提。<br />
-                2、总部仓直配：货先由供应商仓发给总部仓，然后由总部仓统一发出，配送方式选快递，则订单由总部仓直发给客户；选自提，则订单由总部仓发到客户所选门店，客户到店自提。<br />
-                3、前置仓配送：由各城市前置仓就近发货给客户（暂未开放）<br />
-                注：模式决定订单由谁来发货、走哪条流转路径。创建后选择了模式将不可修改，该设置针对需要核销的商品有效
-              </div>
-            </div>
-          </section>
-
-          <section className="card">
-            <h3>配送方式</h3>
-            <div className="cbody">
-              <div className="radio-row">
-                {["快递", "到店自提"].map((d) => (
-                  <label key={d}><input type="radio" checked={delivery === d} onChange={() => setDelivery(d)} />{d}</label>
-                ))}
-              </div>
-              <div className="note">与发货模式联动：总部仓直配 + 到店自提 ⇒ 供应商→总部仓→门店→客户自提。</div>
-            </div>
-          </section>
-        </div>
-        <div className="foot">
-          <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" onClick={onSaved}>保存</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- 商品经营数据 ---------------- */
-function ProductDataDrawer({ row, onClose }) {
-  const stats = [
-    ["近30天销量", "1,286"], ["近30天销售额", "¥38,580.00"], ["近30天退款", "16 单"],
-    ["可售总库存", String(row.stock)], ["采购价", String(row.purchase)], ["售价", String(row.sale)],
-  ];
-  return (
-    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="drawer" style={{ width: 560 }}>
-        <header>商品数据<button className="x" onClick={onClose}>×</button></header>
-        <div className="body">
-          <section className="card">
-            <h3>商品</h3>
-            <div className="cbody">
-              <div className="frow"><label>商品名称</label><div className="fc"><input value={row.name} readOnly /></div></div>
-              <div className="frow"><label>关联供应商</label><div className="fc"><input value={row.supplier || "未绑定"} readOnly /></div></div>
-              <div className="frow"><label>供货模式</label><div className="fc"><input value={row.shipMode || "未设置"} readOnly /></div></div>
-            </div>
-          </section>
-
-          <section className="card">
-            <h3>经营数据</h3>
-            <div className="cbody">
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
-                {stats.map(([k, v]) => (
-                  <div key={k} style={{ border: "1px solid var(--line)", borderRadius: 4, padding: "12px 14px" }}>
-                    <div style={{ fontSize: 12, color: "var(--text-3)" }}>{k}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{v}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        </div>
-        <div className="foot">
-          <button className="btn plain" onClick={onClose}>关闭</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- 商品审核（复刻真实 SAAS「审核商品」弹窗） ---------------- */
-function AuditModal({ row, onClose, onPass, onReject }) {
-  const [result, setResult] = useState("");
-  const [reason, setReason] = useState("");
-  const needReason = result === "不通过";
-  const ok = result === "通过" || (needReason && reason.trim());
-
-  return (
-    <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="gbox">
-        <b>商品审核</b>
-        <p>{row.name} · 商品编号 {row.no}</p>
-        <div style={{ marginTop: 16 }}>
-          <div className="radio-row">
-            <label><input type="radio" checked={result === "通过"} onChange={() => setResult("通过")} />通过</label>
-            <label><input type="radio" checked={needReason} onChange={() => setResult("不通过")} />不通过</label>
-          </div>
-        </div>
-        {needReason && (
-          <textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)}
-            placeholder="请填写不通过理由（必填）"
-            style={{ width: "100%", marginTop: 12, padding: 10, border: "1px solid var(--line)", borderRadius: 4, fontSize: 13, fontFamily: "inherit", resize: "vertical" }} />
-        )}
-        <div className="gfoot">
-          <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={!ok} onClick={() => (needReason ? onReject() : onPass())}>确定</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- 商品排序（复刻真实 SAAS「排序」弹窗） ---------------- */
-function SortDrawer({ row, onClose, onSaved }) {
-  const [val, setVal] = useState("0");
-  return (
-    <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="gbox">
-        <b>排序</b>
-        <p>{row.name}（列表按排序值升序展示）</p>
-        <input className="ctl" value={val} onChange={(e) => setVal(e.target.value.replace(/[^\d]/g, ""))}
-          style={{ width: "100%", marginTop: 14 }} placeholder="请输入排序值" />
-        <div className="note" style={{ marginTop: 8 }}>数字越小越靠前，默认为 0。</div>
-        <div className="gfoot">
-          <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" onClick={onSaved}>保存</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- 定时上下架（复刻真实 SAAS「定时上下架」弹窗） ---------------- */
-function TimedDrawer({ row, onClose, onSaved }) {
-  const [mode, setMode] = useState("定时上架");
-  return (
-    <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="gbox">
-        <b>定时上下架</b>
-        <p>{row.name}</p>
-        <div className="radio-row" style={{ marginTop: 14 }}>
-          {["定时上架", "定时下架"].map((m) => (
-            <label key={m}><input type="radio" checked={mode === m} onChange={() => setMode(m)} />{m}</label>
-          ))}
-        </div>
-        <div className="field" style={{ marginTop: 14 }}>
-          <label>执行时间</label>
-          <input className="ctl" type="datetime-local" style={{ width: "100%" }} />
-        </div>
-        <div className="gfoot">
-          <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" onClick={onSaved}>保存</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+/* 设置配送方式 / 商品数据 / 审核 / 排序 / 定时上下架 等弹窗为原 SaaS 功能，
+   列表「操作」列仅做展示复刻、不提供点击，对应弹窗暂未接入（保留在 git 历史） */
