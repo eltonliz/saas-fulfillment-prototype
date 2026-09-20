@@ -557,8 +557,12 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
 
   /* 决策 3：收货结果由数量【强判】，人工不可覆盖 */
   const derived = got >= remain ? "正常收货" : "部分收货";
+  /* 异常类型随数量收敛：本次收满剩余应收时不存在「少货」，只余 破损 / 错货 */
+  const canShort = got < remain;
+  const reasonOptions = canShort ? ["少货", "破损", "错货"] : ["破损", "错货"];
+  const reasonVal = reasonOptions.includes(reason) ? reason : "";
   /* 决策 4：举证并入收货环节——异常说明与照片在这里就要齐 */
-  const issueComplete = reason && note.trim() && photos > 0;
+  const issueComplete = reasonVal && note.trim() && photos > 0;
   const result = hasIssue ? "收货异常" : derived;
   const canSubmit = !hasIssue || issueComplete;
 
@@ -617,7 +621,8 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
             <div className="fc">
               <div className="radio-row">
                 <label><input type="radio" checked={!hasIssue} onChange={() => setHasIssue(false)} />无异常</label>
-                <label><input type="radio" checked={hasIssue} onChange={() => setHasIssue(true)} />有异常（破损 / 错货 / 少货）</label>
+                <label><input type="radio" checked={hasIssue} onChange={() => setHasIssue(true)} />有异常</label>
+                {!hasIssue && canShort && <span className="note" style={{ display: "inline" }}>少收未满 → 系统判「部分收货」，余货由原发货方补齐</span>}
               </div>
             </div>
           </div>
@@ -628,10 +633,11 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
                 <label><i>*</i>异常类型</label>
                 <div className="fc">
                   <div className="radio-row">
-                    {["破损", "错货", "少货"].map((r) => (
-                      <label key={r}><input type="radio" checked={reason === r} onChange={() => setReason(r)} />{r}</label>
+                    {reasonOptions.map((r) => (
+                      <label key={r}><input type="radio" checked={reasonVal === r} onChange={() => setReason(r)} />{r}</label>
                     ))}
                   </div>
+                  <div className="note">{canShort ? "本次未把剩余应收收满：「少货」为典型异常（数量补齐不了时选它开差异单）" : "本次实收已收满剩余应收，「少货」不适用；商品有破损 / 错发请登记"}</div>
                 </div>
               </div>
               <div className="frow">
@@ -661,7 +667,7 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
           <button className="btn primary" disabled={!canSubmit}
-            onClick={() => onDone({ got, result, reason, note: note.trim(), photos })}>确认收货</button>
+            onClick={() => onDone({ got, result, reason: reasonVal, note: note.trim(), photos })}>确认收货</button>
         </div>
       </div>
     </div>
