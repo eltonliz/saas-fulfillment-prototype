@@ -235,18 +235,22 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
               <div className="frow"><label>按单限购</label><div className="fc"><input className="ctl w-xs" placeholder="0" /><div className="note">单笔订单限制购买的数量</div></div></div>
 
               <div className="frow"><label>发货模式</label><div className="fc">
-                <div className="radio-row">
-                  {["供应商直配", "总部仓直配"].map((m) => (
-                    <label key={m}><input type="radio" checked={mode === m} onChange={() => setMode(m)} />{m}</label>
-                  ))}
-                  <label style={{ color: "#bbb" }}><input type="radio" disabled />前置仓配送</label>
-                </div>
-                <div className="note">
-                  1、供应商直配：货从供应商仓发出，配送方式选快递，则订单由供应商直发给客户；选自提，则订单由供应商直发到客户所选门店，客户到店自提。<br />
-                  2、总部仓直配：货先由供应商仓发给总部仓，然后由总部仓统一发出，配送方式选快递，则订单由总部仓直发给客户；选自提，则订单由总部仓发到客户所选门店，客户到店自提。<br />
-                  3、前置仓配送：由各城市前置仓就近发货给客户（暂未开放）<br />
-                  注：模式决定订单由谁来发货、走哪条流转路径。创建后选择了模式将不可修改，该设置针对需要核销的商品有效
-                </div>
+                <Hl label="改动：决定由谁发货 · 走哪条链路">
+                  <div style={{ padding: 10, width: "100%" }}>
+                    <div className="radio-row">
+                      {["供应商直配", "总部仓直配"].map((m) => (
+                        <label key={m}><input type="radio" checked={mode === m} onChange={() => setMode(m)} />{m}</label>
+                      ))}
+                      <label style={{ color: "#bbb" }}><input type="radio" disabled />前置仓配送</label>
+                    </div>
+                    <div className="note">
+                      1、供应商直配：货从供应商仓发出，配送方式选快递，则订单由供应商直发给客户；选自提，则订单由供应商直发到客户所选门店，客户到店自提。<br />
+                      2、总部仓直配：货先由供应商仓发给总部仓，然后由总部仓统一发出，配送方式选快递，则订单由总部仓直发给客户；选自提，则订单由总部仓发到客户所选门店，客户到店自提。<br />
+                      3、前置仓配送：由各城市前置仓就近发货给客户（暂未开放）<br />
+                      注：模式决定订单由谁来发货、走哪条流转路径。创建后选择了模式将不可修改，该设置针对需要核销的商品有效
+                    </div>
+                  </div>
+                </Hl>
               </div></div>
             </div>
           </section>
