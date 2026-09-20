@@ -35,6 +35,25 @@ export function SupTasks({ leg, title, desc }) {
 
   return (
     <>
+      <div className="filters">
+        <div className="row">
+          <div className="field"><label>供货单号 / 销售订单</label><input className="ctl w-lg" placeholder="请输入供货单号或销售订单号" /></div>
+          {leg === "sup_consumer" ? (
+            <div className="field"><label>收货人</label><input className="ctl" placeholder="请输入收货人" /></div>
+          ) : (
+            <div className="field"><label>收货主体</label>
+              <select className="ctl" defaultValue="全部">
+                <option>全部</option>
+                {leg === "supplier_to_hq"
+                  ? <option>九天教育总仓</option>
+                  : <><option>九天门店</option><option>9071门店</option><option>濮源直播间</option></>}
+              </select>
+            </div>
+          )}
+          <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button></div>
+        </div>
+      </div>
+
       <div className="alert"><span className="ic">i</span>{desc}</div>
       {pending > 0 && (
         <div className="alert" style={{ background: "#fff7e8", color: "#b7791f" }}>
@@ -343,6 +362,16 @@ export function SupDiff() {
 
   return (
     <>
+      <div className="filters">
+        <div className="row">
+          <div className="field"><label>差异单号 / 供货单号</label><input className="ctl w-lg" placeholder="请输入差异单号或供货单号" /></div>
+          <div className="field"><label>来源链路</label>
+            <select className="ctl" defaultValue="全部"><option>全部</option><option>供应商 → 总仓</option><option>供应商 → 门店</option></select>
+          </div>
+          <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button></div>
+        </div>
+      </div>
+
       <div className="alert"><span className="ic">i</span><b>谁被上报谁审核</b>：总部上报（供应商 → 总仓）由本方审核、审核通过后补发；门店上报由总部审核，本方只读知情、执行补发任务</div>
       <div className="pills" style={{ marginTop: 12 }}>
         {DIFF_TABS.map((t) => (
