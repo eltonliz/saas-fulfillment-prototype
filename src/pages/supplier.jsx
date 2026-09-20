@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId } from "./supply.jsx";
+import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, DOC_KINDS, kindIn, MakeupTag } from "./supply.jsx";
 import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar } from "../ui.jsx";
 import { supplierStore, supplyStore, diffStore, patchDoc } from "../store.js";
 import { ORDERS } from "../data.js";
@@ -17,12 +17,13 @@ const priceOf = (doc) => { const u = ORDERS.find((o) => o.no === doc.orderNo)?.u
 /* ---------------- 供应商供货任务列表（三个页面共用，含发货/详情/物流轨迹） ---------------- */
 export function SupTasks({ leg, title, desc }) {
   const [tab, setTab] = useState("全部");
+  const [kind, setKind] = useState("全部");
   const [modal, setModal] = useState(null);
   const [batch, setBatch] = useState(null);
   const [toast, tip] = useToast();
   const docs = supplierStore.use();
   const mine = docs.filter((d) => d.leg === leg);
-  const list = mine.filter((d) => (tab === "全部" ? true : d.status === tab));
+  const list = mine.filter((d) => (tab === "全部" ? true : d.status === tab) && kindIn(d, kind));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((d) => d.id));
   const pending = mine.filter((d) => d.status === "待发货").length;
   const canShipRows = mine.filter((d) => d.status === "待发货");
@@ -41,6 +42,12 @@ export function SupTasks({ leg, title, desc }) {
         </div>
       )}
 
+      <div className="pills" style={{ marginBottom: 6 }}>
+        <span className="note" style={{ alignSelf: "center", marginRight: 8 }}>单类型</span>
+        {DOC_KINDS.map((k) => (
+          <span key={k} className={`pill ${kind === k ? "active" : ""}`} onClick={() => setKind(k)}>{k}</span>
+        ))}
+      </div>
       <div className="pills">
         {TABS.map((t) => (
           <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
@@ -68,7 +75,7 @@ export function SupTasks({ leg, title, desc }) {
                 <td><input type="checkbox" checked={sel.has(d.id)} onChange={() => toggleOne(d.id)} /></td>
                 <td className="tw mono">
                   {d.id}
-                  {d.isMakeup && <small style={{ color: "#f5a623" }}>补发单 · 源差异单 {d.reshipOf}</small>}
+                  <MakeupTag d={d} />
                 </td>
                 <td className="tw mono">{d.orderNo}</td>
                 <td>
@@ -249,6 +256,12 @@ function SupDocDrawer({ doc, onClose, onTrack }) {
               <div className="field"><label>供货路径</label><b>{LEG_LABEL[doc.leg]}</b></div>
               <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{doc.status}</span></div>
             </div>
+            {doc.isMakeup && (
+              <div className="row"><div className="field"><label>单据类型</label>
+                <span className="tag" style={{ marginRight: 8 }}>补发单</span>
+                <span className="note" style={{ display: "inline" }}>源差异单 <span className="mono">{doc.reshipOf}</span>　原供货单 <span className="mono">{diffStore.get().find((x) => x.id === doc.reshipOf)?.supplyNo || "—"}</span></span>
+              </div></div>
+            )}
           </div>
 
           {doc.status === "收货异常" && <ReceiveAbnormal doc={doc} ro />}
@@ -286,7 +299,7 @@ function SupDocDrawer({ doc, onClose, onTrack }) {
 }
 
 /* ---------------- 配送差异（总部上报单由本方审核，门店上报单只读+补发） ---------------- */
-export function SupDiff() {
+export function SupDiff({ onOpenSupply }) {
   const all = diffStore.use();
   const docs = supplierStore.use();
   const [tab, setTab] = useState("全部");
@@ -345,6 +358,7 @@ export function SupDiff() {
                 <td className="tw">
                   <div className="op-col">
                     {d.status === "待供应商审核" && <button onClick={() => setAudit(d)}>审核</button>}
+                    {d.makeup && makeupOf(d)?.status === "待发货" && <button onClick={() => onOpenSupply && onOpenSupply(d.makeup)}>去发货</button>}
                   </div>
                 </td>
               </tr>

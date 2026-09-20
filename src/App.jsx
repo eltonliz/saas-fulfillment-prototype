@@ -161,7 +161,7 @@ export function App() {
             {page === "一件代发" && <SupDirect />}
             {page === "发总部仓" && <SupToHq />}
             {page === "发门店" && <SupToStore />}
-            {page === "配送差异" && <SupDiff />}
+            {page === "配送差异" && <SupDiff onOpenSupply={gotoMakeup} />}
             {page === "售后处理" && <SupAfterSales />}
             {page === "退货返厂" && <SupplierReturns />}
             {page === "账号管理" && <SupAccount />}

@@ -18,6 +18,9 @@ export const DIFF_TABS_BY_SOURCE = {
   门店上报: ["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"],
 };
 export const DIFF_TABS = ["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"];
+/* 单类型：配送差异补发单与正常单分开查看 —— 补发单统一回「对应业务线」的发货 / 收货列表操作 */
+export const DOC_KINDS = ["全部", "正常单", "补发单"];
+export const kindIn = (d, kind) => (kind === "补发单" ? !!d.isMakeup : kind === "正常单" ? !d.isMakeup : true);
 export const diffInTab = (status, tab) =>
   tab === "全部" ? true
     : tab === "待举证" ? status === "待举证"
@@ -135,6 +138,17 @@ function applyReceive(doc, p) {
   return full ? `供货单 ${doc.id} 已收货${extra}` : `供货单 ${doc.id} 部分收货，待补 ${doc.qty - recv} 件`;
 }
 
+/* 补发单标记（列表通用）：补发单 + 源差异单 + 原供货单，关联关系一眼可见 */
+export function MakeupTag({ d }) {
+  if (!d.isMakeup) return null;
+  const orig = diffStore.get().find((x) => x.id === d.reshipOf)?.supplyNo;
+  return (
+    <small style={{ color: "#f5a623" }}>
+      补发单 · 源差异单 {d.reshipOf}{orig && <> · 原供货单 <span className="mono">{orig}</span></>}
+    </small>
+  );
+}
+
 const Thumb = ({ d }) => (
   <div className="prod-cell">
     <span className="thumb" style={{ background: "#f4f7f6" }}>{d.emoji}</span>
@@ -143,10 +157,17 @@ const Thumb = ({ d }) => (
 );
 
 function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
-  const list = rows.filter((d) => (tab === "全部" ? true : d.status === tab));
+  const [kind, setKind] = useState("全部");
+  const list = rows.filter((d) => (tab === "全部" ? true : d.status === tab) && kindIn(d, kind));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((d) => d.id));
   return (
     <>
+      <div className="pills" style={{ marginBottom: 6 }}>
+        <span className="note" style={{ alignSelf: "center", marginRight: 8 }}>单类型</span>
+        {DOC_KINDS.map((k) => (
+          <span key={k} className={`pill ${kind === k ? "active" : ""}`} onClick={() => setKind(k)}>{k}</span>
+        ))}
+      </div>
       <div className="pills">
         {tabs.map((t) => (
           <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
@@ -178,7 +199,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                 <td><input type="checkbox" checked={sel.has(d.id)} onChange={() => toggleOne(d.id)} /></td>
                 <td className="tw mono">{d.id}</td>
                 <td className="tw">{d.source || "订单支付自动生成"}<small className="mono">{d.createdAt}</small>
-                  {d.isMakeup && <small style={{ color: "#f5a623" }}>补发单 · 源差异单 {d.reshipOf}</small>}</td>
+                  <MakeupTag d={d} /></td>
                 <td className="tw mono">{d.orderNo}</td>
                 <td><Thumb d={d} /></td>
                 <td className="tw">{LEG_LABEL[d.leg]}</td>
@@ -344,7 +365,7 @@ export function SupplyDiff({ onOpenSupply }) {
                   <td className="tw">{d.evidence}</td>
                   <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "补发中" || d.status === "补发完成" ? "" : "gray"}`}>{d.status}</span></td>
                   <td className="tw">{d.makeup
-                    ? <span className="mono" onClick={() => onOpenSupply && onOpenSupply(d.makeup)} style={{ color: "#25c7a5", cursor: "pointer" }}>
+                    ? <span className="mono" onClick={mk?.leg === "hq_store" ? () => onOpenSupply && onOpenSupply(d.makeup) : undefined} style={{ color: "#25c7a5", cursor: mk?.leg === "hq_store" ? "pointer" : "default" }}>
                         {d.makeup}
                         <small style={{ display: "block", fontFamily: "inherit" }}>{mk ? `${mk.status}${mk.tracking ? " · 已发物流" : ""}` : "—"}</small>
                       </span>
@@ -353,7 +374,9 @@ export function SupplyDiff({ onOpenSupply }) {
                     <div className="op-col">
                       <button className="gray" onClick={() => setDetail(d)}>详情</button>
                       {d.status === "待总部审核" && <button onClick={() => setPass(d)}>审核</button>}
-                      {d.makeup && mk?.status === "待发货" && <button onClick={() => onOpenSupply && onOpenSupply(d.makeup)}>去发货</button>}
+                      {/* 谁发货谁补发：总部仓链路（补发单在此列表）才有「去发货」；供应商链路由供应商发货，租户侧只读监控 */}
+                      {d.makeup && mk?.leg === "hq_store" && mk?.status === "待发货" && <button onClick={() => onOpenSupply && onOpenSupply(d.makeup)}>去发货</button>}
+                      {d.makeup && mk && mk.leg !== "hq_store" && mk.status === "待发货" && <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>}
                     </div>
                   </td>
                 </tr>
@@ -453,7 +476,7 @@ function DiffDetailDrawer({ row, onClose, onOpenSupply }) {
                   {makeupDoc && makeupDoc.tracking
                     ? <span>{makeupDoc.carrier}　<b className="mono">{makeupDoc.tracking}</b>　{makeupDoc.track}</span>
                     : <span className="note">补发供货单 {row.makeup} 尚未发货（{makeupDoc?.leg === "hq_store" ? "总部仓链路 → 在「发货管理」点「发货」" : "供应商链路 → 供应商后台发货列表"}）</span>}
-                  {onOpenSupply && makeupDoc?.status === "待发货" && (
+                  {onOpenSupply && makeupDoc?.leg === "hq_store" && makeupDoc?.status === "待发货" && (
                     <div style={{ marginTop: 8 }}><button className="btn primary sm" onClick={() => { onOpenSupply(row.makeup); onClose(); }}>去发货</button></div>
                   )}
                 </div></div>
@@ -999,6 +1022,12 @@ function DocDetailDrawer({ doc, onClose }) {
               <div className="field"><label>供货路径</label><b>{LEG_LABEL[doc.leg]}</b></div>
               <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{doc.status}</span></div>
             </div>
+            {doc.isMakeup && (
+              <div className="row"><div className="field"><label>单据类型</label>
+                <span className="tag" style={{ marginRight: 8 }}>补发单</span>
+                <span className="note" style={{ display: "inline" }}>源差异单 <span className="mono">{doc.reshipOf}</span>　原供货单 <span className="mono">{diffStore.get().find((x) => x.id === doc.reshipOf)?.supplyNo || "—"}</span></span>
+              </div></div>
+            )}
             <div className="row" style={{ gap: 30 }}>
               <div className="field"><label>发货主体</label><b>{doc.shipper}</b></div>
               <div className="field"><label>收货主体</label><b>{doc.receiver}</b></div>
