@@ -18,9 +18,6 @@ export const DIFF_TABS_BY_SOURCE = {
   门店上报: ["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"],
 };
 export const DIFF_TABS = ["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"];
-/* 单类型：配送差异补发单与正常单分开查看 —— 补发单统一回「对应业务线」的发货 / 收货列表操作 */
-export const DOC_KINDS = ["全部", "正常单", "补发单"];
-export const kindIn = (d, kind) => (kind === "补发单" ? !!d.isMakeup : kind === "正常单" ? !d.isMakeup : true);
 export const diffInTab = (status, tab) =>
   tab === "全部" ? true
     : tab === "待举证" ? status === "待举证"
@@ -157,17 +154,10 @@ const Thumb = ({ d }) => (
 );
 
 function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
-  const [kind, setKind] = useState("全部");
-  const list = rows.filter((d) => (tab === "全部" ? true : d.status === tab) && kindIn(d, kind));
+  const list = rows.filter((d) => (tab === "全部" ? true : d.status === tab));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((d) => d.id));
   return (
     <>
-      <div className="pills" style={{ marginBottom: 6 }}>
-        <span className="note" style={{ alignSelf: "center", marginRight: 8 }}>单类型</span>
-        {DOC_KINDS.map((k) => (
-          <span key={k} className={`pill ${kind === k ? "active" : ""}`} onClick={() => setKind(k)}>{k}</span>
-        ))}
-      </div>
       <div className="pills">
         {tabs.map((t) => (
           <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
@@ -219,7 +209,10 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                 <td>
                   <div className="op-col">
                     <button className="gray" onClick={() => onOpen("detail", d)}>详情</button>
-                    {mode === "ship" && canShip(d) && <button onClick={() => onOpen("ship", d)}>发货</button>}
+                    {/* 补发单的发货操作收口在配送差异页，本列表只读监控 */}
+                    {mode === "ship" && canShip(d) && (d.isMakeup
+                      ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>在配送差异发货</span>
+                      : <button onClick={() => onOpen("ship", d)}>发货</button>)}
                     {mode === "ship" && awaitSupShip(d) && <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>}
                     {mode === "ship" && awaitHqReceive(d) && <span title="总部仓确认收货后本页才可发货" style={{ color: "#f5a623", fontSize: 13, height: 22 }}>待总部仓收货</span>}
                     {mode === "receive" && canReceive(d) && <button onClick={() => onOpen("receive", d)}>收货</button>}
@@ -309,7 +302,7 @@ export function SupplyReceipt() {
 }
 
 /* ============================ 配送差异 ============================ */
-export function SupplyDiff({ onOpenSupply }) {
+export function SupplyDiff() {
   const [source, setSource] = useState("总部上报");
   const [tab, setTab] = useState("全部");
   const rows = diffStore.use();
@@ -318,6 +311,7 @@ export function SupplyDiff({ onOpenSupply }) {
   const setRows = diffStore.set;
   const [detail, setDetail] = useState(null);
   const [pass, setPass] = useState(null);
+  const [ship, setShip] = useState(null);   // 补发单发货：差异单在配送差异页内闭环
   const [toast, tip] = useToast();
   /* 两套来源的状态 Tab 不同：总部上报走「供应商审核」，门店上报走「总部审核 + 举证」 */
   const tabs = DIFF_TABS_BY_SOURCE[source];
@@ -365,7 +359,7 @@ export function SupplyDiff({ onOpenSupply }) {
                   <td className="tw">{d.evidence}</td>
                   <td className="tw"><span className={`tag ${d.status === "待举证" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "补发中" || d.status === "补发完成" ? "" : "gray"}`}>{d.status}</span></td>
                   <td className="tw">{d.makeup
-                    ? <span className="mono" onClick={mk?.leg === "hq_store" ? () => onOpenSupply && onOpenSupply(d.makeup) : undefined} style={{ color: "#25c7a5", cursor: mk?.leg === "hq_store" ? "pointer" : "default" }}>
+                    ? <span className="mono" style={{ color: "#25c7a5" }}>
                         {d.makeup}
                         <small style={{ display: "block", fontFamily: "inherit" }}>{mk ? `${mk.status}${mk.tracking ? " · 已发物流" : ""}` : "—"}</small>
                       </span>
@@ -374,8 +368,8 @@ export function SupplyDiff({ onOpenSupply }) {
                     <div className="op-col">
                       <button className="gray" onClick={() => setDetail(d)}>详情</button>
                       {d.status === "待总部审核" && <button onClick={() => setPass(d)}>审核</button>}
-                      {/* 谁发货谁补发：总部仓链路（补发单在此列表）才有「去发货」；供应商链路由供应商发货，租户侧只读监控 */}
-                      {d.makeup && mk?.leg === "hq_store" && mk?.status === "待发货" && <button onClick={() => onOpenSupply && onOpenSupply(d.makeup)}>去发货</button>}
+                      {/* 补发单闭环在配送差异页：本方为发货责任方（总部仓链路）→ 本页直接发货；供应商链路由供应商在其配送差异页发货 */}
+                      {d.makeup && mk?.leg === "hq_store" && mk?.status === "待发货" && <button onClick={() => setShip(mk)}>发货</button>}
                       {d.makeup && mk && mk.leg !== "hq_store" && mk.status === "待发货" && <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>}
                     </div>
                   </td>
@@ -388,7 +382,8 @@ export function SupplyDiff({ onOpenSupply }) {
       </div>
 
       {toast}
-      {detail && <DiffDetailDrawer row={detail} onClose={() => setDetail(null)} onOpenSupply={onOpenSupply} />}
+      {ship && <ShipDrawer doc={ship} onClose={() => setShip(null)} onDone={(p) => { tip(applyShip(ship, p)); setShip(null); }} />}
+      {detail && <DiffDetailDrawer row={detail} onClose={() => setDetail(null)} />}
       {pass && (
         <Confirm
           title="审核配送差异"
@@ -446,7 +441,7 @@ export function EvidencePhotos({ evidence, size = 96 }) {
   );
 }
 
-function DiffDetailDrawer({ row, onClose, onOpenSupply }) {
+function DiffDetailDrawer({ row, onClose }) {
   const makeupDoc = row.makeup ? [...supplyStore.get(), ...supplierStore.get()].find((d) => d.id === row.makeup) : null;
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -475,10 +470,7 @@ function DiffDetailDrawer({ row, onClose, onOpenSupply }) {
                 <div className="frow"><label>补发物流</label><div className="fc">
                   {makeupDoc && makeupDoc.tracking
                     ? <span>{makeupDoc.carrier}　<b className="mono">{makeupDoc.tracking}</b>　{makeupDoc.track}</span>
-                    : <span className="note">补发供货单 {row.makeup} 尚未发货（{makeupDoc?.leg === "hq_store" ? "总部仓链路 → 在「发货管理」点「发货」" : "供应商链路 → 供应商后台发货列表"}）</span>}
-                  {onOpenSupply && makeupDoc?.leg === "hq_store" && makeupDoc?.status === "待发货" && (
-                    <div style={{ marginTop: 8 }}><button className="btn primary sm" onClick={() => { onOpenSupply(row.makeup); onClose(); }}>去发货</button></div>
-                  )}
+                    : <span className="note">补发供货单 {row.makeup} 尚未发货（{makeupDoc?.leg === "hq_store" ? "在配送差异列表点「发货」提交物流" : "由供应商在其配送差异页发货"}）</span>}
                 </div></div>
               )}
             </div>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, DOC_KINDS, kindIn, MakeupTag } from "./supply.jsx";
+import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag } from "./supply.jsx";
 import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar } from "../ui.jsx";
 import { supplierStore, supplyStore, diffStore, patchDoc } from "../store.js";
 import { ORDERS } from "../data.js";
@@ -17,13 +17,12 @@ const priceOf = (doc) => { const u = ORDERS.find((o) => o.no === doc.orderNo)?.u
 /* ---------------- 供应商供货任务列表（三个页面共用，含发货/详情/物流轨迹） ---------------- */
 export function SupTasks({ leg, title, desc }) {
   const [tab, setTab] = useState("全部");
-  const [kind, setKind] = useState("全部");
   const [modal, setModal] = useState(null);
   const [batch, setBatch] = useState(null);
   const [toast, tip] = useToast();
   const docs = supplierStore.use();
   const mine = docs.filter((d) => d.leg === leg);
-  const list = mine.filter((d) => (tab === "全部" ? true : d.status === tab) && kindIn(d, kind));
+  const list = mine.filter((d) => (tab === "全部" ? true : d.status === tab));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((d) => d.id));
   const pending = mine.filter((d) => d.status === "待发货").length;
   const canShipRows = mine.filter((d) => d.status === "待发货");
@@ -42,12 +41,6 @@ export function SupTasks({ leg, title, desc }) {
         </div>
       )}
 
-      <div className="pills" style={{ marginBottom: 6 }}>
-        <span className="note" style={{ alignSelf: "center", marginRight: 8 }}>单类型</span>
-        {DOC_KINDS.map((k) => (
-          <span key={k} className={`pill ${kind === k ? "active" : ""}`} onClick={() => setKind(k)}>{k}</span>
-        ))}
-      </div>
       <div className="pills">
         {TABS.map((t) => (
           <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
@@ -98,7 +91,10 @@ export function SupTasks({ leg, title, desc }) {
                 <td>
                   <div className="op-col">
                     <button className="gray" onClick={() => setModal({ k: "detail", d })}>详情</button>
-                    {["待发货", "部分收货"].includes(d.status) && <button onClick={() => setModal({ k: "ship", d })}>{d.status === "部分收货" ? "发货（补齐）" : "发货"}</button>}
+                    {/* 补发单的发货操作收口在配送差异页，本列表只读监控 */}
+                    {["待发货", "部分收货"].includes(d.status) && (d.isMakeup
+                      ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>在配送差异发货</span>
+                      : <button onClick={() => setModal({ k: "ship", d })}>{d.status === "部分收货" ? "发货（补齐）" : "发货"}</button>)}
                     {d.tracking && <button className="gray" onClick={() => setModal({ k: "track", d })}>物流轨迹</button>}
                   </div>
                 </td>
@@ -299,11 +295,12 @@ function SupDocDrawer({ doc, onClose, onTrack }) {
 }
 
 /* ---------------- 配送差异（总部上报单由本方审核，门店上报单只读+补发） ---------------- */
-export function SupDiff({ onOpenSupply }) {
+export function SupDiff() {
   const all = diffStore.use();
   const docs = supplierStore.use();
   const [tab, setTab] = useState("全部");
   const [audit, setAudit] = useState(null);
+  const [ship, setShip] = useState(null);   // 本方补发单：差异单在配送差异页内直接发货
   const [toast, tip] = useToast();
   /* 与门店端 / 租户后台同一套状态 Tab；两种来源合并展示：
      总部上报（供应商 → 总仓）：本方审核 → 本方补发；门店上报：总部审核后本方执行补发 */
@@ -358,7 +355,7 @@ export function SupDiff({ onOpenSupply }) {
                 <td className="tw">
                   <div className="op-col">
                     {d.status === "待供应商审核" && <button onClick={() => setAudit(d)}>审核</button>}
-                    {d.makeup && makeupOf(d)?.status === "待发货" && <button onClick={() => onOpenSupply && onOpenSupply(d.makeup)}>去发货</button>}
+                    {d.makeup && makeupOf(d)?.status === "待发货" && <button onClick={() => setShip(makeupOf(d))}>发货</button>}
                   </div>
                 </td>
               </tr>
@@ -369,6 +366,24 @@ export function SupDiff({ onOpenSupply }) {
       </div>
 
       {toast}
+      {ship && (
+        <SupShipModal
+          doc={ship}
+          onClose={() => setShip(null)}
+          onDone={(p) => {
+            const sent = Math.min(ship.qty, (ship.sent ?? 0) + p.qty);
+            patchDoc(ship.id, {
+              sent,
+              carrier: p.carrier || ship.carrier,
+              tracking: p.tracking || ship.tracking,
+              track: "已发货 " + new Date().toISOString().slice(0, 19).replace("T", " "),
+              status: "已发货",
+            });
+            tip(`补发单 ${ship.id} 已发货 ${p.qty} 件`);
+            setShip(null);
+          }}
+        />
+      )}
       {audit && (
         <Confirm
           title="审核配送差异"
