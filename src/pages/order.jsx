@@ -3,10 +3,13 @@ import { useToast, useRowSelect, BatchBar, Confirm } from "../ui.jsx";
 import { orderStore, supplyStore } from "../store.js";
 import { pickupCodeOf, fmtPickupCode } from "../data.js";
 
-/* F3/F4：总部仓直配订单，须等「供应商→总仓」那段确认收货后才可发货 */
+/* F3/F4：总部仓直配订单，须等「供应商→总仓」那段确认收货后才可发货；
+   总部自营货在总部仓、无供应商前置，支付后直接可发 */
 const canShipOrder = (o) => {
   if (o.canShip) return true;
-  if (o.supplyMode !== "总部仓直配" || o.status !== "待发货") return false;
+  if (o.status !== "待发货") return false;
+  if (o.supplyMode === "总部自营") return true;
+  if (o.supplyMode !== "总部仓直配") return false;
   const up = supplyStore.get().find((d) => d.leg === "supplier_to_hq" && d.orderNo === o.no);
   return !!up && up.status === "已收货";
 };
@@ -23,9 +26,10 @@ export function OrderManagement({ onOpenSupply }) {
   const [batch, setBatch] = useState(null);   // 批量操作
   const [toast, tip] = useToast();
   const rows = orderStore.use().filter((o) =>
-    tab === "全部" ? true
+    o.supplyMode !== "供应商直配" &&          /* 一件代发单归供应商处理（发货+售后），租户侧不展示 */
+    (tab === "全部" ? true
       : tab === "已关闭" ? ["已关闭", "已全额退款", "已取消"].includes(o.status)
-        : o.status === tab);
+        : o.status === tab));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((o) => o.id));
 
   /* 真实行为：列表点「发货」先进订单详情，详情里再点「发货」才开发货弹窗 */
@@ -38,6 +42,8 @@ export function OrderManagement({ onOpenSupply }) {
 
   return (
     <>
+      <div className="alert"><span className="ic">i</span>一件代发（供应商直配）订单的<b style={{ margin: "0 4px" }}>发货与售后均由供应商处理</b>，本页不展示；此处仅看总部/自营订单</div>
+
       <div className="filters">
         <div className="row">
           <div className="field">
@@ -121,7 +127,8 @@ export function OrderManagement({ onOpenSupply }) {
                 <td className="tw">{o.buyerNote || "-"}</td>
                 <td className="col-new">
                   {o.supplyNo ? (<><span onClick={() => onOpenSupply && onOpenSupply(o.supplyNo)} className="mono" style={{ color: "#25c7a5", cursor: "pointer" }}>{o.supplyNo}</span><small style={{ color: "#999" }}>{o.supplyMode}</small></>)
-                    : (<span style={{ color: "#f5a623" }}>{o.supplyMode ? `待派单 · ${o.supplyMode}` : "—"}</span>)}
+                    : o.supplyMode === "总部自营" ? (<span className="hl" data-hl="新增：总部自营·无前置供货单" style={{ color: "#25c7a5" }}>自营直发</span>)
+                      : (<span style={{ color: "#f5a623" }}>{o.supplyMode ? `待派单 · ${o.supplyMode}` : "—"}</span>)}
                 </td>
                 <td>
                   <div className="op-col">

@@ -20,10 +20,8 @@ const inTab = (status, tab) =>
 
 const STEPS_OF = (row) =>
   row.status === "售后关闭" ? ["买家维权", "售后关闭"]
-    : row.way === "退货退款" ? ["买家维权", "待商家处理", row.returnTo ? "待供应商签收" : "待商家签收", "待商家退款", "售后完成"]
+    : row.way === "退货退款" ? ["买家维权", "待商家处理", "待商家签收", "待商家退款", "售后完成"]
       : ["买家维权", "待商家处理", "待商家退款", "售后完成"];
-/* 进销存：一件代发的退货退回供应商，签收 / 验收在供应商后台 */
-const dispStatus = (r) => (r.status === "待商家签收" && r.returnTo ? "待供应商签收" : r.status);
 const STEP_IDX = (row) =>
   row.status === "售后完成" ? 99
     : { 待商家处理: 1, 待买家退货: 1, 待商家签收: 2, 待商家退款: 3, 退款中: 3, 退款异常: 3 }[row.status] ?? 1;
@@ -56,7 +54,7 @@ const ROWS = [
   {
     no: "ORD260910000069", product: "华为手机", spec: "蓝色/S", emoji: "📱",
     asNo: "R20260910260910000004", way: "退货退款", ship: "暂无", amount: "¥0.01", qty: 1, refund: "¥0.01", points: 0,
-    at: "2026-09-10 14:40:57", timeout: "-", reason: "无快递信息", status: "待商家处理", returnTo: "JOJO供应商",
+    at: "2026-09-10 14:40:57", timeout: "-", reason: "无快递信息", status: "待商家处理",
     buyerNote: "测试", refundNote: "测试",
     order: { 应付金额: "¥0.01", 实付金额: "¥0.01", 配送方式: "快递", 物流状态: "已签收" },
     customer: { 申请人: "JJ代理", 收货人: "JOJO", 联系电话: "18100010002", 收货地址: "北京市北京城区昌平区百善镇测试" },
@@ -66,7 +64,7 @@ const ROWS = [
   {
     no: "ORD260918000212", product: "华为手机", spec: "蓝色/M", emoji: "📱",
     asNo: "R20260915260915000002", way: "退货退款", ship: "暂无", amount: "¥1.00", qty: 1, refund: "¥1.00", points: 0,
-    at: "2026-09-15 10:22:08", timeout: "-", reason: "商品与描述不符", status: "待商家签收", returnTo: "JOJO供应商",
+    at: "2026-09-15 10:22:08", timeout: "-", reason: "商品与描述不符", status: "待商家签收",
     buyerNote: "-", refundNote: "-",
     order: { 应付金额: "¥1.00", 实付金额: "¥1.00", 配送方式: "快递", 物流状态: "已签收" },
     customer: { 申请人: "店员10", 收货人: "欧耶", 联系电话: "13580530583", 收货地址: "安徽省蚌埠市蚌山区宏业村街道 234234234" },
@@ -95,7 +93,7 @@ const ROWS = [
   {
     no: "ORD260912000016", product: "西瓜", spec: "S", emoji: "🍉",
     asNo: "R20260912260912000004", way: "退货退款", ship: "暂无", amount: "¥0.02", qty: 2, refund: "¥0.02", points: 0,
-    at: "2026-09-12 15:18:34", timeout: "-", reason: "不想要了", status: "售后关闭", returnTo: "JOJO供应商",
+    at: "2026-09-12 15:18:34", timeout: "-", reason: "不想要了", status: "售后关闭",
     buyerNote: "-", refundNote: "-",
     order: { 应付金额: "¥0.02", 实付金额: "¥0.02", 配送方式: "顺丰速运", 物流状态: "已发货" },
     customer: { 申请人: "JJ代理", 收货人: "JOJO", 联系电话: "18100010002", 收货地址: "北京市北京城区昌平区百善镇测试" },
@@ -113,7 +111,7 @@ const ROWS = [
   {
     no: "ORD260918000215", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
     asNo: "R20260919260919000009", way: "退货退款", ship: "暂无", amount: "¥5.00", qty: 1, refund: "¥5.00", points: 0,
-    at: "2026-09-19 09:35:20", timeout: "-", reason: "不想要了", status: "待买家退货", returnTo: "JOJO供应商",
+    at: "2026-09-19 09:35:20", timeout: "-", reason: "不想要了", status: "待买家退货",
     buyerNote: "-", refundNote: "-",
     order: { 应付金额: "¥5.00", 实付金额: "¥5.00", 配送方式: "快递", 物流状态: "已签收" },
     customer: { 申请人: "林小满", 收货人: "林小满", 联系电话: "13511112222", 收货地址: "广东省广州市越秀区中山五路 33 号" },
@@ -186,7 +184,7 @@ export function AfterSales() {
       }
       return r;
     });
-    tip(row.way === "仅退款" ? "已同意 → 待商家退款" : "已同意 → 等待买家退货（流转供应商签收）");
+    tip(row.way === "仅退款" ? "已同意 → 待商家退款" : "已同意 → 等待买家退货");
   };
   const refuseApply = (row) => {
     act(row, (r) => {
@@ -244,12 +242,12 @@ export function AfterSales() {
     const d = detail;
     const steps = STEPS_OF(d);
     const idx = STEP_IDX(d);
-    const dStatus = dispStatus(d);
+    const dStatus = d.status;
     const desc =
       d.status === "待商家处理" ? "买家已发起售后申请，等待商家处理"
         : d.status === "待商家退款" ? "商家已同意，待商家退款"
           : d.status === "待买家退货" ? "商家已同意售后申请，等待买家退货"
-            : d.status === "待商家签收" ? (d.returnTo ? "买家已退货，待供应商签收 / 验收（退款仍由总部执行）" : "买家已退货，待商家确认收货")
+            : d.status === "待商家签收" ? "买家已退货，待商家确认收货"
               : d.status === "退款中" ? "退款处理中，预计 1-3 个工作日原路到账"
                 : d.status === "退款异常" ? "原路退款失败（微信支付账户异常），可重新发起退款"
                   : d.status === "售后完成" ? "商家已完成退款"
@@ -271,15 +269,9 @@ export function AfterSales() {
               <div style={{ width: 340, flex: "none", padding: "18px 20px", borderRight: "1px solid var(--line)" }}>
                 <b style={{ fontSize: 15, color: "#25c7a5" }}>{dStatus}</b>
                 <div style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>{desc}</div>
-                {d.returnTo && (
-                  <div className="mhl" data-hl="新增：退货对象" style={{ marginTop: 16, marginBottom: 0, padding: "8px 10px", fontSize: 12.5, color: "var(--text-2)" }}>
-                    退货对象：<b>{d.returnTo}</b>（一件代发 · 签收 / 验收在供应商后台）
-                  </div>
-                )}
                 <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   {d.status === "待商家处理" && <><button className="btn primary" onClick={() => agree(d)}>同意</button><button className="btn plain" onClick={() => refuseApply(d)}>拒绝</button></>}
-                  {d.status === "待商家签收" && !d.returnTo && <><button className="btn primary" onClick={() => agreeSign(d)}>同意签收退货</button><button className="btn plain" onClick={() => setBack(d)}>拒绝签收退货</button></>}
-                  {d.status === "待商家签收" && d.returnTo && <span style={{ fontSize: 12.5, color: "#f5a623" }}>待供应商签收，签收 / 验收在供应商后台操作</span>}
+                  {d.status === "待商家签收" && <><button className="btn primary" onClick={() => agreeSign(d)}>同意签收退货</button><button className="btn plain" onClick={() => setBack(d)}>拒绝签收退货</button></>}
                   {d.status === "待商家退款" && <button className="btn primary" onClick={() => refund(d)}>原路退款</button>}
                   {d.status === "退款异常" && <><button className="btn primary" onClick={() => retryRefund(d)}>重新退款</button><span style={{ fontSize: 12.5, color: "#f5522e" }}>原路退款失败，请重试</span></>}
                   {d.status === "退款中" && <span style={{ fontSize: 12.5, color: "#2f80ed" }}>退款处理中，预计 1-3 个工作日到账</span>}
@@ -432,7 +424,7 @@ export function AfterSales() {
                 <td className="tw mono">{r.at}</td>
                 <td className="tw">{r.timeout}</td>
                 <td className="tw">{r.reason}</td>
-                <td className="tw"><span className={`tag ${TONE(r.status)}`}>{dispStatus(r)}</span></td>
+                <td className="tw"><span className={`tag ${TONE(r.status)}`}>{r.status}</span></td>
                 <td className="tw">
                   <div className="op-col">
                     <span style={{ color: "#f5a623", fontSize: 13, height: 20 }}>★★★★★</span>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar } from "../ui.jsx";
 import { supplierStore, diffStore, patchDoc } from "../store.js";
+import { ORDERS } from "../data.js";
 
 const LEG_LABEL = {
   sup_consumer: "供应商 → 消费者",
@@ -9,6 +10,9 @@ const LEG_LABEL = {
   supplier_inbound: "供应商 → 门店",
 };
 const CARRIERS = ["顺丰速运", "圆通速递", "中通快递", "京东物流", "韵达快递", "极兔速递"];
+
+/* 一件代发金额对供应商开放（发货 / 售后处理都需要），取关联订单单价 */
+const priceOf = (doc) => { const u = ORDERS.find((o) => o.no === doc.orderNo)?.unitPrice; return u ? u.replace("¥", "") : "—"; };
 
 /* ---------------- 供应商供货任务列表（三个页面共用，含发货/详情/物流轨迹） ---------------- */
 export function SupTasks({ leg, title, desc }) {
@@ -162,7 +166,7 @@ function SupShipModal({ doc, onClose, onDone }) {
                     <div><div>{doc.product}</div><small>{doc.spec}</small></div>
                   </div>
                 </td>
-                <td className="tw"><span className="tag gray">已脱敏</span></td>
+                <td className="tw">{doc.leg === "sup_consumer" ? priceOf(doc) : <span className="tag gray">已脱敏</span>}</td>
                 <td className="tw">{doc.qty}</td>
                 <td className="tw mono">{remain}</td>
                 <td className="tw">
@@ -314,9 +318,9 @@ export function SupDiff() {
 
 /* ---------------- 售后处理 ----------------
    复刻 SaaS「售后管理」页（列表 + 整页详情），并按进销存修改：
-   · 一件代发的签收在供应商侧操作（待供应商签收 → 同意签收退货 / 拒绝签收退货）
-   · 退货退回本供应商；总部（租户）负责审核与退款，供应商不参与
-   · 金额与消费者信息对供应商脱敏（仅总部可见） */
+   · 一件代发售后的审核、签收验收、退款均由供应商处理（待商家处理 → 同意/拒绝；待供应商签收 → 签收/拒签；待退款 → 退款）
+   · 退款原路退回买家，钱款不经过供应商账户
+   · 金额对供应商开放（处理售后需要）；消费者信息仍脱敏 */
 const AS_TABS = ["全部", "待商家处理", "待商家收货", "待买家处理", "退款异常", "退款中", "退款成功"];
 const asInTab = (status, tab) =>
   tab === "全部" ? true
@@ -340,13 +344,14 @@ const AS_ROWS = [
   {
     no: "ORD260917000140", asNo: "R20260918260918000021", product: "相机", spec: "银色 / 标准版", emoji: "📷",
     way: "退货退款", ship: "暂无", qty: 1, points: 0, reason: "不想要了",
+    amount: "189.00", refund: "189.00",
     at: "2026-09-17 16:05:12", timeout: "-", status: "待商家签收",
     buyerNote: "-", refundNote: "-",
-    order: { 配送方式: "快递", 物流状态: "已签收" },
+    order: { 应付金额: "￥189.00", 实付金额: "￥189.00", 配送方式: "快递", 物流状态: "已签收" },
     customer: {},
-    goods: { 数量: 1, 退货数量: 1 },
+    goods: { 单价: "189.00", 数量: 1, 实付款: "189.00", 退货数量: 1, 退货金额: "189.00" },
     timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：已脱敏（仅总部可见）", "退款原因：不想要了", "退款说明：-"], at: "2026-09-17 16:05:12" },
+      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥189.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-17 16:05:12" },
       { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-17 17:20:33" },
       { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：SF7712003402"], at: "2026-09-18 14:22:09" },
     ],
@@ -354,25 +359,27 @@ const AS_ROWS = [
   {
     no: "ORD260915000121", asNo: "R20260917260917000022", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
     way: "仅退款", ship: "暂无", qty: 1, points: 0, reason: "拍错/多拍",
+    amount: "29.90", refund: "29.90",
     at: "2026-09-15 16:22:41", timeout: "-", status: "待商家处理",
     buyerNote: "-", refundNote: "-",
-    order: { 配送方式: "快递", 物流状态: "已签收" },
+    order: { 应付金额: "￥29.90", 实付金额: "￥29.90", 配送方式: "快递", 物流状态: "已签收" },
     customer: {},
-    goods: { 数量: 1, 退货数量: 0 },
+    goods: { 单价: "29.90", 数量: 1, 实付款: "29.90", 退货数量: 0, 退货金额: "29.90" },
     timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：已脱敏（仅总部可见）", "退款原因：拍错/多拍", "退款说明：-"], at: "2026-09-15 16:22:41" },
+      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥29.90", "退款原因：拍错/多拍", "退款说明：-"], at: "2026-09-15 16:22:41" },
     ],
   },
   {
     no: "ORD260918000213", asNo: "R20260918260918000023", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
     way: "退货退款", ship: "暂无", qty: 1, points: 0, reason: "商品与描述不符",
+    amount: "29.90", refund: "29.90",
     at: "2026-09-17 10:05:33", timeout: "-", status: "待商家退款",
     buyerNote: "-", refundNote: "-",
-    order: { 配送方式: "快递", 物流状态: "已签收" },
+    order: { 应付金额: "￥29.90", 实付金额: "￥29.90", 配送方式: "快递", 物流状态: "已签收" },
     customer: {},
-    goods: { 数量: 1, 退货数量: 1 },
+    goods: { 单价: "29.90", 数量: 1, 实付款: "29.90", 退货数量: 1, 退货金额: "29.90" },
     timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：已脱敏（仅总部可见）", "退款原因：商品与描述不符", "退款说明：-"], at: "2026-09-17 10:05:33" },
+      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥29.90", "退款原因：商品与描述不符", "退款说明：-"], at: "2026-09-17 10:05:33" },
       { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-17 11:12:08" },
       { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：2585"], at: "2026-09-18 10:26:47" },
       { t: "商家已同意签收退货", lines: [], at: "2026-09-18 11:02:19" },
@@ -381,13 +388,14 @@ const AS_ROWS = [
   {
     no: "ORD260918000214", asNo: "R20260918260918000024", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺",
     way: "退货退款", ship: "暂无", qty: 1, points: 0, reason: "不想要了",
+    amount: "99.00", refund: "99.00",
     at: "2026-09-18 14:30:12", timeout: "-", status: "售后关闭",
     buyerNote: "-", refundNote: "-",
-    order: { 配送方式: "快递", 物流状态: "已签收" },
+    order: { 应付金额: "￥99.00", 实付金额: "￥99.00", 配送方式: "快递", 物流状态: "已签收" },
     customer: {},
-    goods: { 数量: 1, 退货数量: 1 },
+    goods: { 单价: "99.00", 数量: 1, 实付款: "99.00", 退货数量: 1, 退货金额: "99.00" },
     timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：已脱敏（仅总部可见）", "退款原因：不想要了", "退款说明：-"], at: "2026-09-18 14:30:12" },
+      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥99.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-18 14:30:12" },
       { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-18 15:02:40" },
       { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：3322"], at: "2026-09-19 09:12:33" },
       { t: "商家拒绝签收退货", lines: [], at: "2026-09-19 09:40:15" },
@@ -395,60 +403,64 @@ const AS_ROWS = [
       { t: "售后关闭", lines: ["关闭原因：商家寄回拒签商品,买家签收"], at: "2026-09-19 10:02:48" },
     ],
   },
-  /* 状态补齐：待买家退货 / 退款异常 / 退款中 / 售后完成 —— 供应商侧均为只读知情 */
+  /* 状态补齐：待买家退货 / 退款异常 / 退款中 / 售后完成 —— 均由供应商处理 */
   {
     no: "ORD260918000221", asNo: "R20260919260919000025", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺",
     way: "退货退款", ship: "暂无", qty: 1, points: 0, reason: "不想要了",
+    amount: "99.00", refund: "99.00",
     at: "2026-09-19 09:35:20", timeout: "-", status: "待买家退货",
     buyerNote: "-", refundNote: "-",
-    order: { 配送方式: "快递", 物流状态: "已签收" },
+    order: { 应付金额: "￥99.00", 实付金额: "￥99.00", 配送方式: "快递", 物流状态: "已签收" },
     customer: {},
-    goods: { 数量: 1, 退货数量: 1 },
+    goods: { 单价: "99.00", 数量: 1, 实付款: "99.00", 退货数量: 1, 退货金额: "99.00" },
     timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：已脱敏（仅总部可见）", "退款原因：不想要了", "退款说明：-"], at: "2026-09-19 09:35:20" },
+      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥99.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-19 09:35:20" },
       { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-19 10:02:47" },
     ],
   },
   {
     no: "ORD260918000222", asNo: "R20260919260919000026", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
     way: "仅退款", ship: "暂无", qty: 1, points: 0, reason: "包裹为空",
+    amount: "29.90", refund: "29.90",
     at: "2026-09-19 11:20:08", timeout: "-", status: "退款异常",
     buyerNote: "-", refundNote: "-",
-    order: { 配送方式: "快递", 物流状态: "已签收" },
+    order: { 应付金额: "￥29.90", 实付金额: "￥29.90", 配送方式: "快递", 物流状态: "已签收" },
     customer: {},
-    goods: { 数量: 1, 退货数量: 0 },
+    goods: { 单价: "29.90", 数量: 1, 实付款: "29.90", 退货数量: 0, 退货金额: "29.90" },
     timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：已脱敏（仅总部可见）", "退款原因：包裹为空", "退款说明：-"], at: "2026-09-19 11:20:08" },
+      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥29.90", "退款原因：包裹为空", "退款说明：-"], at: "2026-09-19 11:20:08" },
       { t: "商家已同意售后申请", lines: [], at: "2026-09-19 11:40:15" },
-      { t: "退款异常", lines: ["失败原因：买家支付账户异常，原路退款未成功", "由总部（租户）重新发起退款"], at: "2026-09-19 12:05:33" },
+      { t: "退款异常", lines: ["失败原因：买家支付账户异常，原路退款未成功", "可点击「重新退款」再次发起退款"], at: "2026-09-19 12:05:33" },
     ],
   },
   {
     no: "ORD260918000223", asNo: "R20260919260919000027", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺",
     way: "仅退款", ship: "暂无", qty: 1, points: 0, reason: "拍错/多拍",
+    amount: "99.00", refund: "99.00",
     at: "2026-09-19 14:08:56", timeout: "-", status: "退款中",
     buyerNote: "-", refundNote: "-",
-    order: { 配送方式: "快递", 物流状态: "已签收" },
+    order: { 应付金额: "￥99.00", 实付金额: "￥99.00", 配送方式: "快递", 物流状态: "已签收" },
     customer: {},
-    goods: { 数量: 1, 退货数量: 0 },
+    goods: { 单价: "99.00", 数量: 1, 实付款: "99.00", 退货数量: 0, 退货金额: "99.00" },
     timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：已脱敏（仅总部可见）", "退款原因：拍错/多拍", "退款说明：-"], at: "2026-09-19 14:08:56" },
+      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥99.00", "退款原因：拍错/多拍", "退款说明：-"], at: "2026-09-19 14:08:56" },
       { t: "商家已同意售后申请", lines: [], at: "2026-09-19 14:22:03" },
-      { t: "退款处理中", lines: ["退款方式：原路退回", "由总部（租户）执行，预计 1-3 个工作日到账"], at: "2026-09-19 14:30:11" },
+      { t: "退款处理中", lines: ["退款方式：原路退回", "预计 1-3 个工作日到账"], at: "2026-09-19 14:30:11" },
     ],
   },
   {
     no: "ORD260918000224", asNo: "R20260919260919000028", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
     way: "仅退款", ship: "暂无", qty: 1, points: 0, reason: "不想要了",
+    amount: "29.90", refund: "29.90",
     at: "2026-09-18 09:12:40", timeout: "-", status: "售后完成",
     buyerNote: "-", refundNote: "-",
-    order: { 配送方式: "快递", 物流状态: "已签收" },
+    order: { 应付金额: "￥29.90", 实付金额: "￥29.90", 配送方式: "快递", 物流状态: "已签收" },
     customer: {},
-    goods: { 数量: 1, 退货数量: 0 },
+    goods: { 单价: "29.90", 数量: 1, 实付款: "29.90", 退货数量: 0, 退货金额: "29.90" },
     timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：已脱敏（仅总部可见）", "退款原因：不想要了", "退款说明：-"], at: "2026-09-18 09:12:40" },
+      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥29.90", "退款原因：不想要了", "退款说明：-"], at: "2026-09-18 09:12:40" },
       { t: "商家已同意售后申请", lines: [], at: "2026-09-18 09:40:02" },
-      { t: "退款完成", lines: ["退款方式：原路退回", "退款金额：已脱敏（仅总部可见）"], at: "2026-09-18 10:15:27" },
+      { t: "退款完成", lines: ["退款方式：原路退回", "退款金额：￥29.90"], at: "2026-09-18 10:15:27" },
       { t: "售后完成", lines: [], at: "2026-09-18 10:15:28" },
     ],
   },
@@ -475,7 +487,7 @@ export function SupAfterSales() {
   /* 待供应商签收：同意签收退货 / 拒绝签收退货（举证照片 + 退回物流单号） */
   const sign = (row) => {
     act(row, (r) => { add(r, "商家已同意签收退货"); r.status = "待商家退款"; return r; });
-    tip("已同意签收退货 → 待商家退款（退款由总部执行）");
+    tip("已同意签收退货 → 待商家退款");
   };
   const refuse = (row, backNo) => {
     act(row, (r) => {
@@ -489,18 +501,54 @@ export function SupAfterSales() {
     tip("已拒绝签收 → 商品寄回 → 售后关闭");
   };
 
+  /* 变更：一件代发售后归供应商全流程处理 —— 审核 → 签收验收 → 退款（原路退回） */
+  const agreeApply = (row) => {
+    act(row, (r) => {
+      add(r, "商家已同意售后申请" + (r.way === "退货退款" ? "，等待买家退货" : ""));
+      r.status = r.way === "退货退款" ? "待买家退货" : "待商家退款";
+      return r;
+    });
+    tip(row.way === "退货退款" ? "已同意 → 等待买家退货" : "已同意 → 待商家退款");
+  };
+  const refuseApply = (row) => {
+    act(row, (r) => {
+      add(r, "商家拒绝售后申请");
+      add(r, "售后关闭", ["关闭原因：商家拒绝售后申请"]);
+      r.status = "售后关闭";
+      return r;
+    });
+    tip("已拒绝 → 售后关闭");
+  };
+  const refundNow = (row) => {
+    act(row, (r) => {
+      add(r, "商家已退款", ["退款方式：原路退回", "退款金额：￥" + r.refund]);
+      add(r, "退款完成", []);
+      r.status = "售后完成";
+      return r;
+    });
+    tip("已退款（原路退回）→ 售后完成");
+  };
+  const retryRefund = (row) => {
+    act(row, (r) => {
+      add(r, "重新发起退款", ["退款方式：原路退回", "退款金额：￥" + r.refund]);
+      r.status = "退款中";
+      return r;
+    });
+    tip("已重新发起退款 → 退款中");
+  };;
+
   /* ---------------- 整页售后详情（复刻 SaaS + 进销存修改） ---------------- */
   if (detail) {
     const d = detail;
     const steps = AS_STEPS_OF(d);
     const idx = AS_STEP_IDX(d);
     const desc =
-      d.status === "待商家处理" ? "买家已发起售后申请，等待总部（租户）审核"
-        : d.status === "待商家退款" ? "供应商已签收，待总部退款"
-          : d.status === "待商家签收" ? "买家已退货，待供应商签收 / 验收（退款仍由总部执行）"
-            : d.status === "退款中" ? "退款处理中（总部退款），预计 1-3 个工作日到账"
-              : d.status === "退款异常" ? "原路退款失败，由总部（租户）重新发起退款"
-                : d.status === "售后完成" ? "总部已完成退款"
+      d.status === "待商家处理" ? "买家已发起售后申请，等待本供应商处理"
+        : d.status === "待商家退款" ? "已签收退货，待退款"
+          : d.status === "待商家签收" ? "买家已退货，待本供应商签收 / 验收"
+            : d.status === "退款中" ? "退款处理中，预计 1-3 个工作日到账"
+              : d.status === "退款异常" ? "原路退款失败，可重新发起退款"
+                : d.status === "售后完成" ? "退款已完成（原路退回）"
                   : d.status === "售后关闭" ? "商家拒绝收货已寄回，卖家签收"
                     : "等待买家退货，退货寄回本供应商";
     return (
@@ -522,18 +570,32 @@ export function SupAfterSales() {
                 <div style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>{desc}</div>
                 <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   {d.status === "待商家签收" && (
-                    <span className="hl" data-hl="新增：供应商签收">
+                    <span className="hl" data-hl="供应商签收">
                       <button className="btn primary" onClick={() => sign(d)}>同意签收退货</button>
                       <button className="btn plain" style={{ marginLeft: 10 }} onClick={() => setBack(d)}>拒绝签收退货</button>
                     </span>
                   )}
-                  {["待商家处理", "待买家退货", "待商家退款", "退款中", "退款异常", "售后完成"].includes(d.status) && (
-                    <span style={{ fontSize: 12.5, color: d.status === "退款异常" ? "#f5522e" : "#f5a623" }}>
-                      {d.status === "待商家处理" ? "等待总部（租户）审核，供应商暂不可操作"
-                        : d.status === "待买家退货" ? "等待买家退货，退货寄回本供应商"
-                          : d.status === "退款异常" ? "退款异常，等待总部（租户）处理"
-                            : d.status === "退款中" ? "退款处理中（总部退款），预计 1-3 个工作日到账"
-                              : "退款由总部（租户）执行，供应商不参与"}
+                  {d.status === "待商家处理" && (
+                    <span className="hl" data-hl="改动：代发售后由供应商处理">
+                      <button className="btn primary" onClick={() => agreeApply(d)}>同意售后申请</button>
+                      <button className="btn plain" style={{ marginLeft: 10 }} onClick={() => refuseApply(d)}>拒绝</button>
+                    </span>
+                  )}
+                  {d.status === "待商家退款" && (
+                    <span className="hl" data-hl="改动：退款在供应商侧执行">
+                      <button className="btn primary" onClick={() => refundNow(d)}>确认退款</button>
+                    </span>
+                  )}
+                  {d.status === "退款异常" && (
+                    <span className="hl" data-hl="改动：退款在供应商侧执行">
+                      <button className="btn primary" onClick={() => retryRefund(d)}>重新退款</button>
+                    </span>
+                  )}
+                  {["待买家退货", "退款中", "售后完成"].includes(d.status) && (
+                    <span style={{ fontSize: 12.5, color: "#f5a623" }}>
+                      {d.status === "待买家退货" ? "等待买家退货，退货寄回本供应商"
+                        : d.status === "退款中" ? "退款处理中，预计 1-3 个工作日到账"
+                          : "退款已完成，原路退回买家"}
                     </span>
                   )}
                   <span style={{ color: "#25c7a5", fontSize: 13, cursor: "pointer" }} onClick={() => setNote(d)}>备 注</span>
@@ -578,7 +640,7 @@ export function SupAfterSales() {
                 <b style={{ fontSize: 13.5 }}>售后申请信息</b>
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9, fontSize: 13, color: "var(--text-2)" }}>
                   <div><span className="note">售后类型：</span>{d.way}</div>
-                  <div><span className="note">退款金额：</span>{MASK} <small style={{ color: "#b6bdc4" }}>仅总部可见</small></div>
+                  <div><span className="note">退款金额：</span><b>￥{d.refund}</b></div>
                   <div><span className="note">退还积分：</span>{d.points}</div>
                   <div><span className="note">退款原因：</span>{d.reason}</div>
                   <div><span className="note">退款说明：</span>{d.refundNote}</div>
@@ -587,8 +649,8 @@ export function SupAfterSales() {
               <div style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 4, padding: "14px 18px" }}>
                 <b style={{ fontSize: 13.5 }}>订单信息</b>
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9, fontSize: 13, color: "var(--text-2)" }}>
-                  <div><span className="note">应付金额：</span>{MASK}</div>
-                  <div><span className="note">实付金额：</span>{MASK}</div>
+                  <div><span className="note">应付金额：</span>{d.order.应付金额}</div>
+                  <div><span className="note">实付金额：</span>{d.order.实付金额}</div>
                   <div><span className="note">配送方式：</span>{d.order.配送方式}</div>
                   <div><span className="note">物流状态：</span>{d.order.物流状态}</div>
                 </div>
@@ -610,7 +672,7 @@ export function SupAfterSales() {
                 <thead><tr><th>商品</th><th className="tw">单价(元)</th><th className="tw">数量</th><th className="tw">实付款</th><th className="tw">退货数量</th><th className="tw">退货金额</th></tr></thead>
                 <tbody><tr>
                   <td><div className="prod-cell"><span className="thumb" style={{ background: "#f4f7f6" }}>{d.emoji}</span><div><div>{d.product}</div><small>规格：{d.spec}</small></div></div></td>
-                  <td className="tw">{MASK}</td><td className="tw">{d.goods.数量}</td><td className="tw">{MASK}</td><td className="tw">{d.goods.退货数量}</td><td className="tw">{MASK}</td>
+                  <td className="tw">￥{d.goods.单价}</td><td className="tw">{d.goods.数量}</td><td className="tw">￥{d.goods.实付款}</td><td className="tw">{d.goods.退货数量}</td><td className="tw">￥{d.goods.退货金额}</td>
                 </tr></tbody>
               </table>
             </div>
@@ -648,7 +710,7 @@ export function SupAfterSales() {
 
   return (
     <>
-      <div className="alert"><span className="ic">i</span>一件代发退货：<b style={{ margin: "0 4px" }}>总部审核 · 供应商签收验收 · 总部退款</b>（金额与消费者信息已脱敏）</div>
+      <div className="alert"><span className="ic">i</span>一件代发售后由<b style={{ margin: "0 4px" }}>供应商全程处理：审核 · 签收验收 · 退款（原路退回）</b>金额已开放，消费者信息仍脱敏</div>
 
       <div className="filters">
         <div className="row">
@@ -700,9 +762,9 @@ export function SupAfterSales() {
                 <td className="tw mono">{r.asNo}…</td>
                 <td className="tw">{r.way}</td>
                 <td className="tw">{r.ship}</td>
-                <td className="tw">{MASK}</td>
+                <td className="tw">￥{r.amount}</td>
                 <td className="tw">{r.qty}</td>
-                <td className="tw">{MASK}</td>
+                <td className="tw">￥{r.refund}</td>
                 <td className="tw">{r.points}</td>
                 <td className="tw mono">{r.at}</td>
                 <td className="tw">{r.timeout}</td>
