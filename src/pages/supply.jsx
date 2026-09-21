@@ -160,7 +160,9 @@ const Thumb = ({ d }) => (
 );
 
 function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
-  const list = rows.filter((d) => (tab === "全部" ? true : d.status === tab));
+  /* 收货管理为收货方视角：单据「已发货」在收货侧显示为「待收货」（数据层状态不变） */
+  const statusText = (d) => (mode === "receive" && d.status === "已发货" ? "待收货" : d.status);
+  const list = rows.filter((d) => (tab === "全部" ? true : statusText(d) === tab));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((d) => d.id));
   const pg = usePaged(list);
   return (
@@ -210,7 +212,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                 <td className="tw mono">{d.tracking ? <>{d.carrier}<small>{d.tracking}</small></> : "-"}</td>
                 <td className="tw">{d.track ? <span onClick={() => onOpen("track", d)} style={{ color: "#25c7a5", cursor: "pointer" }}>查看物流轨迹</span> : "-"}</td>
                 <td className="tw">
-                  <span className={`tag ${d.status === "待发货" ? "warn" : d.status === "已发货" ? "blue" : d.status === "收货异常" ? "danger" : ""}`}>{d.status}</span>
+                  <span className={`tag ${d.status === "待发货" ? "warn" : d.status === "已发货" ? "blue" : d.status === "收货异常" ? "danger" : ""}`}>{statusText(d)}</span>
                   {d.autoConfirmed && <small style={{ color: "#2f80ed" }}>系统自动确认</small>}
                 </td>
                 <td>
@@ -312,7 +314,7 @@ export function SupplyReceipt() {
           —— 对应的自提订单<b style={{ margin: "0 4px" }}>提货码已随之激活</b>
         </div>
       )}
-      <DocTable rows={rows} tab={tab} setTab={setTab} tabs={["全部", "已发货", "部分收货", "已收货", "收货异常"]} mode="receive" onOpen={(k, d) => setModal({ k, d })} />
+      <DocTable rows={rows} tab={tab} setTab={setTab} tabs={["全部", "待收货", "部分收货", "已收货", "收货异常"]} mode="receive" onOpen={(k, d) => setModal({ k, d })} />
 
       {modal?.k === "receive" && <ReceiveDrawer doc={modal.d} onClose={() => setModal(null)} onDone={(p) => { tip(applyReceive(modal.d, p)); setModal(null); }} />}
       {modal?.k === "ship" && <ShipDrawer doc={modal.d} onClose={() => setModal(null)} onDone={(p) => { tip(applyShip(modal.d, p)); setModal(null); }} />}
