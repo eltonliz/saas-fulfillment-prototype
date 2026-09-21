@@ -1,20 +1,20 @@
 import React, { useState } from "react";
 import { useToast, useRowSelect, BatchBar, Confirm, usePaged, Pager } from "../ui.jsx";
 import { orderStore, supplyStore } from "../store.js";
-import { pickupCodeOf, fmtPickupCode } from "../data.js";
+import { pickupCodeOf, fmtPickupCode, supplyLabelOf } from "../data.js";
 
 /* 自提单的最后一跳（总部仓 → 门店）是内部段，走发货管理（供货单）；
    订单管理的「发货」只发消费者那一跳（快递单） */
 const upstreamReady = (o) => {
-  if (o.supplyMode === "总部自营") return true;
+  if (o.goodsSource === "总部自有") return true;
   const up = supplyStore.get().find((d) => d.leg === "supplier_to_hq" && d.orderNo === o.no);
   return !!up && up.status === "已收货";
 };
 const canShipOrder = (o) => {
   if (o.status !== "待发货") return false;
   if (o.delivery === "上门自提") return false;
-  if (o.supplyMode === "总部自营") return true;
-  if (o.supplyMode !== "总部仓直配") return false;
+  if (o.goodsSource === "总部自有") return true;
+  if (o.supplyMode !== "总部仓发货") return false;
   return upstreamReady(o);
 };
 
@@ -136,9 +136,9 @@ export function OrderManagement({ onOpenSupply }) {
                 <td className="tw">{o.orderType || "销售订单"}</td>
                 <td className="tw">{o.buyerNote || "-"}</td>
                 <td className="col-new">
-                  {o.supplyNo ? (<><span onClick={() => onOpenSupply && onOpenSupply(o.supplyNo)} className="mono" style={{ color: "#25c7a5", cursor: "pointer" }}>{o.supplyNo}</span><small style={{ color: "#999" }}>{o.supplyMode}</small></>)
-                    : o.supplyMode === "总部自营" ? (<span className="hl" data-hl="新增：总部自营·无前置供货单" style={{ color: "#25c7a5" }}>自营直发</span>)
-                      : o.supplyMode ? (<span style={{ color: o.status === "待发货" ? "#f5a623" : "#999" }}>{o.status === "待发货" ? `待派单 · ${o.supplyMode}` : o.supplyMode}</span>)
+                  {o.supplyNo ? (<><span onClick={() => onOpenSupply && onOpenSupply(o.supplyNo)} className="mono" style={{ color: "#25c7a5", cursor: "pointer" }}>{o.supplyNo}</span><small style={{ color: "#999" }}>{supplyLabelOf(o)}</small></>)
+                    : o.goodsSource === "总部自有" ? (<span className="hl" data-hl="新增：自有货·无前置供货单" style={{ color: "#25c7a5" }}>自有货直发</span>)
+                      : o.supplyMode ? (<span style={{ color: o.status === "待发货" ? "#f5a623" : "#999" }}>{o.status === "待发货" ? `待派单 · ${supplyLabelOf(o)}` : supplyLabelOf(o)}</span>)
                         : (<span style={{ color: "#999" }}>—</span>)}
                 </td>
                 <td>

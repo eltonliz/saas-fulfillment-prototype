@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { SHOP_PRODUCTS, PRODUCTS } from "../data.js";
+import { SHOP_PRODUCTS, PRODUCTS, modeLabelOf } from "../data.js";
 import { useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 
-const modeOf = (name) => (PRODUCTS.find((p) => p.name.replace("(复制)", "") === name.replace("(复制)", "")) || {}).shipMode || "";
+const modeOf = (name) => modeLabelOf(PRODUCTS.find((p) => p.name.replace("(复制)", "") === name.replace("(复制)", "")));
 
 export function ShopProduct() {
   const [vis, setVis] = useState(() => Object.fromEntries(SHOP_PRODUCTS.map((p) => [p.id, p.visible])));

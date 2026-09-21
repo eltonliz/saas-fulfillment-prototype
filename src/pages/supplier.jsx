@@ -349,7 +349,7 @@ export function SupDiff() {
       id: reshipId, leg: orig?.leg || "supplier_to_hq", source: "配送差异补发",
       createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
       orderNo: orig?.orderNo || "—", product: orig?.product || "补发商品", spec: orig?.spec || "",
-      emoji: orig?.emoji || "📦", qty: d.diffQty ?? 1, sent: 0, supplyMode: orig?.supplyMode,
+      emoji: orig?.emoji || "📦", qty: d.diffQty ?? 1, sent: 0, supplyMode: orig?.supplyMode, goodsSource: orig?.goodsSource,
       shipper: d.shipper, receiver: orig?.receiver || "九天教育总仓", receiverAddr: orig?.receiverAddr || "",
       carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
       isMakeup: true, reshipOf: d.id,

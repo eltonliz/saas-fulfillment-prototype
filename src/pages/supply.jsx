@@ -9,8 +9,8 @@ const LEG_LABEL = {
   supplier_inbound: "供应商 → 门店",
   hq_store: "总部仓 → 门店",
 };
-/* 总部自营的到店单据按业务口径单独显示为「总部自营 → 门店」（货为总部自有、不经供应商） */
-const legLabelOf = (d) => (d.supplyMode === "总部自营" && d.leg === "hq_store" ? "总部自营 → 门店" : LEG_LABEL[d.leg]);
+/* 自有货的到店单据按业务口径单独显示为「总部自有 → 门店」（货为总部自有、不经供应商） */
+const legLabelOf = (d) => (d.goodsSource === "总部自有" && d.leg === "hq_store" ? "总部自有 → 门店" : LEG_LABEL[d.leg]);
 /* 配送差异状态 Tab —— 按来源分两套业务场景：
    · 总部上报（供应商 → 总仓）：收货异常当场举证开单 → 供应商审核 → 供应商补发 → 总部收货，故无「待举证/待审核」；
    · 门店上报：门店举证 → 总部审核 → 按「谁发货谁补发」补发，与门店APP同一套状态口径。
@@ -40,7 +40,7 @@ const TENANT_LEGS = ["supplier_to_hq", "supplier_inbound", "hq_store"];
 const RECEIVE_LEGS = ["supplier_to_hq", "supplier_inbound", "hq_store"];
 const isTenantLeg = (d) => TENANT_LEGS.includes(d.leg);
 const isSelfShip = (d) => d.leg === "hq_store";
-/* F3/F4：总部仓直配的下游段，必须等同一订单「供应商→总仓」那段确认收货后才可发货 */
+/* F3/F4：总部仓发货（供应商供货）的下游段，必须等同一订单「供应商→总仓」那段确认收货后才可发货 */
 const upstreamReady = (d) => {
   if (d.leg !== "hq_store") return true;
   const up = supplyStore.get().find((x) => x.leg === "supplier_to_hq" && x.orderNo === d.orderNo);
@@ -120,7 +120,7 @@ function applyReceive(doc, p) {
     )));
   }
 
-  /* F4③：总部仓直配·自提订单，上游收满 → 自动生成「总部仓 → 门店」发货任务（发货管理） */
+  /* F4③：总部仓发货（供应商供货）·自提订单，上游收满 → 自动生成「总部仓 → 门店」发货任务（发货管理） */
   if (full && doc.leg === "supplier_to_hq") {
     const order = orderStore.get().find((o) => o.no === doc.orderNo || o.supplyNo === doc.id);
     if (order && order.delivery === "上门自提") {
@@ -130,7 +130,7 @@ function applyReceive(doc, p) {
         supplyStore.set((ds) => [{
           id, leg: "hq_store", source: "上游收货自动生成", createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
           orderNo: doc.orderNo, product: doc.product, spec: doc.spec, emoji: doc.emoji,
-          qty: doc.qty, sent: 0, supplyMode: order.supplyMode,
+          qty: doc.qty, sent: 0, supplyMode: order.supplyMode, goodsSource: order.goodsSource,
           shipper: "九天教育总仓", receiver: order.store, receiverAddr: STORE_ADDR[order.store] || "",
           carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
         }, ...ds]);
@@ -253,7 +253,7 @@ export function SupplyDispatch() {
       <div className="filters">
         <div className="row">
           <div className="field"><label>供货路径</label>
-            <select className="ctl" defaultValue=""><option value="">请选择供货路径</option><option>供应商 → 总仓</option><option>供应商 → 门店</option><option>总部仓 → 门店</option><option>总部自营 → 门店</option></select>
+            <select className="ctl" defaultValue=""><option value="">请选择供货路径</option><option>供应商 → 总仓</option><option>供应商 → 门店</option><option>总部仓 → 门店</option><option>总部自有 → 门店</option></select>
           </div>
           <div className="field"><label>供货单号</label><input className="ctl w-lg" placeholder="供货单号/销售订单/收货主体" /></div>
           <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button></div>
@@ -292,7 +292,7 @@ export function SupplyReceipt() {
       <div className="filters">
         <div className="row">
           <div className="field"><label>供货路径</label>
-            <select className="ctl" defaultValue=""><option value="">请选择供货路径</option><option>供应商 → 总仓</option><option>供应商 → 门店</option><option>总部仓 → 门店</option><option>总部自营 → 门店</option></select>
+            <select className="ctl" defaultValue=""><option value="">请选择供货路径</option><option>供应商 → 总仓</option><option>供应商 → 门店</option><option>总部仓 → 门店</option><option>总部自有 → 门店</option></select>
           </div>
           <div className="field"><label>供货单号</label><input className="ctl w-lg" placeholder="供货单号/销售订单/收货主体" /></div>
           <div className="field"><label>收货主体</label>
@@ -432,7 +432,7 @@ export function SupplyDiff() {
             const doc = {
               id: reshipId, leg: orig?.leg || "hq_store", source: "配送差异补发", createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
               orderNo: orig?.orderNo || "—", product: orig?.product || "补发商品", spec: orig?.spec || "",
-              emoji: orig?.emoji || "📦", qty: pass.diffQty ?? 1, sent: 0, supplyMode: orig?.supplyMode,
+              emoji: orig?.emoji || "📦", qty: pass.diffQty ?? 1, sent: 0, supplyMode: orig?.supplyMode, goodsSource: orig?.goodsSource,
               shipper: pass.shipper, receiver: orig?.receiver || "—", receiverAddr: orig?.receiverAddr || "",
               carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
               isMakeup: true, reshipOf: pass.id,

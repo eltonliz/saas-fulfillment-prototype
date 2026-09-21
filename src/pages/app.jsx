@@ -10,9 +10,15 @@ const STORE = { name: "濮源直播间", contact: "阿远", phone: "15554174768"
 const SUPPLY_NO = "23441231235554";
 
 const RECEIPT_CARDS = [
-  { id: "c1", state: "待发货", qty: "132件", no: "DB20260420106", acts: ["查看详情"] },
-  { id: "c2", state: "已发货", qty: "132件", no: "DB20260420108", acts: ["查看详情", "查看物流", "确认收货"] },
-  { id: "c3", state: "已收货", qty: "132件", no: "DB20260420109", acts: ["查看详情"] },
+  { id: "c1", mode: "供应商直配", state: "待发货", qty: "132件", no: "DB20260420106", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留" },
+  { id: "c2", mode: "供应商直配", state: "已发货", qty: "132件", no: "DB20260420108", acts: ["查看详情", "查看物流", "确认收货"], name: "得佑婴幼儿手口湿巾 弱酸无残留" },
+  { id: "c3", mode: "供应商直配", state: "已收货", qty: "132件", no: "DB20260420109", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留" },
+  /* 总部仓发货（供应商供货）：货先到总仓，再由总仓发到门店 */
+  { id: "c4", mode: "总部仓发货", state: "待发货", qty: "40件", no: "FHD2609180005", acts: ["查看详情"], name: "儿童保温杯 316不锈钢" },
+  { id: "c5", mode: "总部仓发货", state: "已发货", qty: "40件", no: "FHD2609180006", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童保温杯 316不锈钢" },
+  /* 总部仓发货 · 自有货：不经供应商，总部仓直发门店 */
+  { id: "c6", mode: "总部仓发货 · 自有货", state: "已发货", qty: "20件", no: "FHD2609180018", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童书包" },
+  { id: "c7", mode: "总部仓发货 · 自有货", state: "已收货", qty: "15件", no: "FHD2609180017", acts: ["查看详情"], name: "保温饭盒" },
 ];
 
 /* 配送差异单（照 Axure 原型的差异页字段） */
@@ -93,7 +99,7 @@ function StoreFlowBoard() {
       <div style={{ marginTop: 8, fontSize: 13.5, color: "#5b6672" }}>入口：工作台宫格（底部 Tab 已移除）　｜　<b style={{ color: "#e0392f" }}>红色</b>箭头为跳转路径</div>
 
       <div style={{ display: "flex", alignItems: "flex-start", marginTop: 28, minWidth: "max-content" }}>
-        <FlowNode idx="①" title="收货管理 · 全部" sub="供应商直配 / 总部仓直配 / 总部自营" n="1" dir="store-flow">
+        <FlowNode idx="①" title="收货管理 · 全部" sub="供应商直配 / 总部仓发货（含自有货）" n="1" dir="store-flow">
           筛选 全部 / 待发货 / 已发货 / 已收货；「已发货」单可 查看物流 / 确认收货。
         </FlowNode>
         <FlowArrow label="查看详情 / 确认收货" id="sa1" />
@@ -215,7 +221,7 @@ function Receipts({ onOpen }) {
   return (
     <div>
       <div style={{ display: "flex", gap: 20, padding: "12px 14px 0", borderBottom: "1px solid #f1f1f1", background: "#fff" }}>
-        {["供应商直配", "总部仓直配", "总部自营"].map((m) => (
+        {["供应商直配", "总部仓发货", "总部仓发货 · 自有货"].map((m) => (
           <span key={m} onClick={() => setMode(m)}
             style={{ fontSize: 14, paddingBottom: 10, cursor: "pointer", color: mode === m ? "#25c7a5" : "#666", borderBottom: mode === m ? "2px solid #25c7a5" : "2px solid transparent", fontWeight: mode === m ? 600 : 400 }}>
             {m}
@@ -234,10 +240,10 @@ function Receipts({ onOpen }) {
       </div>
 
       <div className="mpad">
-        {RECEIPT_CARDS.filter((c) => chip === "全部" || c.state === chip).map((c) => (
+        {RECEIPT_CARDS.filter((c) => c.mode === mode).filter((c) => chip === "全部" || c.state === chip).map((c) => (
           <div className="mcard" key={c.id}>
             <div className="hd"><b>供货单信息</b><span style={{ color: c.state === "待发货" ? "#f5a623" : c.state === "已发货" ? "#2f80ed" : "#25c7a5", fontSize: 12.5 }}>{c.state}</span></div>
-            <div className="mrow"><span>商品名称</span><b>得佑婴幼儿手口湿巾 弱酸无残留</b></div>
+            <div className="mrow"><span>商品名称</span><b>{c.name}</b></div>
             <div className="mrow"><span>发货数量</span><b>{c.qty}</b></div>
             <div className="mrow"><span>供货单号</span><b className="mono">{c.no}</b></div>
             <div className="macts">

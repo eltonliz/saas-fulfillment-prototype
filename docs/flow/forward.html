@@ -52,11 +52,11 @@
   <div class="frame">
     <p class="eyebrow">进销存 · 业务流程图 / FORWARD FULFILLMENT</p>
     <h1>正向履约主流程</h1>
-    <p class="sub">五条履约链路：一件代发 · 总仓直达 · 总仓中转自提 · 直配门店自提 · 总部自营（自有货）　｜　货物全程：供应商 / 总部仓自有货 →（总部仓）→（门店）→ 客户</p>
+    <p class="sub">五条履约链路：一件代发 · 总仓直达 · 总仓中转自提 · 直配门店自提 · 总仓自有货　｜　货物全程：供应商 / 总部仓自有货 →（总部仓）→（门店）→ 客户</p>
 
     <svg viewBox="0 0 1280 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="forward-flow-title forward-flow-desc">
       <title id="forward-flow-title">正向履约主流程</title>
-      <desc id="forward-flow-desc">泳道图：客户下单付款后，系统按供货模式自动派单；供应商发货可直达消费者（一件代发）、发总部仓或直配门店；经总部仓的链路收货转发后直奔消费者（总仓直达）或发门店；门店确认全部到货后系统激活提货码，客户到店由门店核销完成订单。总部自营链路的货为总部自有（不经供应商），支付后由总部仓快递直发客户、或发门店转自提。</desc>
+      <desc id="forward-flow-desc">泳道图：客户下单付款后，系统按供货模式自动派单；供应商发货可直达消费者（一件代发）、发总部仓或直配门店；经总部仓的链路收货转发后直奔消费者（总仓直达）或发门店；门店确认全部到货后系统激活提货码，客户到店由门店核销完成订单。总部仓发货 · 自有货链路的货为总部自有（不经供应商），支付后由总部仓快递直发客户、或发门店转自提。</desc>
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
         <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
@@ -102,9 +102,9 @@
       <path d="M918,476 H1024 Q1032,476 1032,468 V220 Q1032,212 1040,212 H1064" fill="none" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
       <!-- 9. 系统激活提货码 → 门店核销提货码 -->
       <path d="M1130,240 V440" fill="none" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
-      <!-- 10. 总部自营发货 → 消费者签收（快递直发） -->
+      <!-- 10. 自有货发货 → 消费者签收（快递直发） -->
       <path d="M1016,360 V96 Q1016,88 1008,88 H906 Q898,88 898,96 V108" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- 11. 总部自营发货 → 门店确认到货（自提发门店） -->
+      <!-- 11. 自有货发货 → 门店确认到货（自提发门店） -->
       <path d="M1046,416 V490 Q1046,498 1038,498 H930" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
 
       <!-- Arrow labels (masked, 6px+ above the stroke) -->
@@ -119,7 +119,7 @@
       <rect x="777" y="366" width="56" height="16" rx="2" fill="#f5f5f5"/>
       <text x="805" y="378" fill="#7a8399" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">发门店</text>
       <rect x="944" y="290" width="64" height="16" rx="2" fill="#f5f5f5"/>
-      <text x="976" y="302" fill="#7a8399" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">总部自营</text>
+      <text x="976" y="302" fill="#7a8399" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">自有货</text>
 
       <!-- Steps -->
       <!-- 客户下单付款 -->
@@ -142,9 +142,9 @@
       <text x="700" y="384" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">总部仓收货转发</text>
       <text x="700" y="402" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">登记实收 · 再发</text>
 
-      <!-- 总部自营发货（自有货 · 无供应商段） -->
+      <!-- 自有货发货（无供应商段） -->
       <rect x="950" y="360" width="132" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
-      <text x="1016" y="384" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">总部自营发货</text>
+      <text x="1016" y="384" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">自有货发货</text>
       <text x="1016" y="402" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">自有货 · 直接发出</text>
 
       <!-- 门店确认到货 -->
