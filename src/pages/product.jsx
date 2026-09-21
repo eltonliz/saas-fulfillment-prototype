@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { PRODUCTS, PRODUCT_IMG, SUPPLIERS, SHIP_MODES, GOODS_SOURCES, modeLabelOf } from "../data.js";
+import { PRODUCTS, PRODUCT_IMG, SUPPLIERS, GOODS_SOURCES, modeLabelOf } from "../data.js";
 import { useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 import { productStore } from "../store.js";
 
@@ -19,7 +19,7 @@ export function ProductManagement({ onOpenDrawer }) {
   const [mode, setMode] = useState("全部");
   const products = productStore.use();
   const rows = products.filter((p) => (tab === "全部" ? true : tab === "自定义分类" ? !!p.customCat : p.status === tab))
-    .filter((p) => (mode === "全部" ? true : p.shipMode === mode));
+    .filter((p) => (mode === "全部" ? true : modeLabelOf(p) === mode));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((p) => p.id));
   const pg = usePaged(rows);
 
@@ -60,7 +60,7 @@ export function ProductManagement({ onOpenDrawer }) {
             <span className="field"><label>供货模式</label>
               <select className="ctl w-sm" value={mode} onChange={(e) => setMode(e.target.value)}>
                 <option>全部</option>
-                {SHIP_MODES.map((m) => <option key={m}>{m}</option>)}
+                {["供应商直配", "总部仓直配", "总部仓直配 · 自有货"].map((m) => <option key={m}>{m}</option>)}
               </select>
             </span>
           </span>
