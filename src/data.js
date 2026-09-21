@@ -165,7 +165,7 @@ export const ORDERS = [
     store: "9071门店", delivery: "快递发货", createdAt: "2026-09-17 17:44:22", status: "售后中",
     payMethod: "微信支付", payTime: "2026-09-17 17:44:24", ops: ["详情", "备注", "分配门店"],
     carrier: "顺丰速运", tracking: "SF7712003621", track: "已签收 2026-09-17 20:10:00",
-    supplyNo: "", supplyMode: "总部仓直配", goodsSource: "供应商供货",
+    supplyNo: "FHD2609170021", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
   /* 状态补齐：已完成自提订单（提货码已核销 → 买家端「已使用」、订单管理「已完成」） */
   {
@@ -234,6 +234,16 @@ export const ORDERS = [
     createdAt: "2026-09-18 11:20:00", status: "已发货",
     payMethod: "微信支付", payTime: "2026-09-18 11:20:05", ops: ["详情", "备注", "分配门店"],
     supplyNo: "FHD2609180018", supplyMode: "总部仓直配", goodsSource: "总部自有",
+  },
+  /* 自提样本（F4 链路）：供应商 → 总仓（FHD2609180008）→ 总仓 → 门店（FHD2609180004），门店收货后提货码激活 */
+  {
+    id: "o20", no: "ORD260918000012", product: "奶粉(复制)", spec: "800g / 罐", qty: 2, unitPrice: "¥268.00", emoji: "🥛",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "536.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "536.00", 实收金额: "536.00" },
+    buyer: { 昵称: "王悦" }, store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-18 09:31:20", status: "待发货",
+    payMethod: "微信支付", payTime: "2026-09-18 09:31:22", ops: ["详情", "备注", "分配门店"],
+    supplyNo: "FHD2609180008", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
 ];
 
@@ -493,6 +503,19 @@ export const SUPPLIER_DOCS = [
     shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
     carrier: "", tracking: "", track: "", status: "待发货", isMakeup: true, reshipOf: "DIFF2609170003", ops: ["详情", "发货"],
   },
+  /* 补发单（对应差异种子）：一张在途「补发中」、一张已收货「补发完成」 */
+  {
+    id: "FHD2609180030", leg: "supplier_to_hq", source: "配送差异补发", createdAt: "2026-09-18 14:00:00",
+    orderNo: "ORD260917000136", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 1, sent: 1,
+    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    carrier: "顺丰速运", tracking: "SF7712007788", track: "已发货 2026-09-18 18:10:00", status: "已发货", isMakeup: true, reshipOf: "DIFF2609170010", ops: ["详情", "收货"],
+  },
+  {
+    id: "FHD2609160010", leg: "supplier_to_hq", source: "配送差异补发", createdAt: "2026-09-16 15:00:00",
+    orderNo: "ORD260918000012", product: "奶粉(复制)", spec: "800g / 罐", emoji: "🥛", qty: 1, sent: 1,
+    shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    carrier: "中通快递", tracking: "ZT8800112560", track: "已签收 2026-09-17 11:20:00", status: "已收货", isMakeup: true, reshipOf: "DIFF2609160001", ops: ["详情"],
+  },
   // —— 以下用于补齐各 Tab 的状态覆盖 ——
   {
     id: "FHD2609180010", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-18 11:20:03",
@@ -614,6 +637,11 @@ export const DIFFS = [
   { id: "DIFF2609190002", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180009", shipper: "JOJO供应商", summary: "奶粉(复制) 应收2/实收1 差1", diffQty: 1, status: "已关闭", evidence: "少货 · 照片 1 张" },
   /* 总部上报样例：总仓收货登记少收（举证随收货完成），待供应商审核 → 通过后供应商补发 */
   { id: "DIFF2609190001", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180017", shipper: "供应商001", summary: "奶粉 应收6/实收5 差1", diffQty: 1, status: "待供应商审核", evidence: "少货 · 照片 2 张" },
+  /* Tab 状态覆盖补齐：总部上报的 补发中 / 补发完成 / 审核不通过，门店上报的 已关闭 */
+  { id: "DIFF2609170010", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609170014", shipper: "供应商002", summary: "相机 应收8/实收7 差1", diffQty: 1, status: "补发中", evidence: "少货 · 照片 2 张", makeup: "FHD2609180030" },
+  { id: "DIFF2609160001", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180008", shipper: "JOJO供应商", summary: "奶粉(复制) 应收2/实收1 差1", diffQty: 1, status: "补发完成", evidence: "少货 · 照片 1 张", makeup: "FHD2609160010" },
+  { id: "DIFF2609150003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609170004", shipper: "供应商002", summary: "华为手机 应收1/实收1 错货 1 件", diffQty: 1, status: "审核不通过", evidence: "错货 · 照片 2 张" },
+  { id: "DIFF2609140001", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170017", shipper: "供应商002", summary: "苹果 应收6/实收5 差1", diffQty: 1, status: "已关闭", evidence: "少货 · 照片 2 张" },
 ];
 
 /* ==========================================================================

@@ -68,7 +68,8 @@ export function newFhdId() {
 
 function applyReceive(doc, p) {
   const recv = (doc.received ?? 0) + p.got;
-  const full = recv >= doc.qty;
+  /* 收满基准 = 已发数量（供应商未发齐的部分属「未发」，不按少收判） */
+  const full = recv >= (doc.sent ?? doc.qty);
   const status = p.result === "收货异常" ? "收货异常" : full ? "已收货" : "部分收货";
 
   patchDoc(doc.id, {
@@ -323,7 +324,7 @@ export function SupplyReceipt() {
 
       {modal?.k === "receive" && <ReceiveDrawer doc={modal.d} onClose={() => setModal(null)} onDone={(p) => { tip(applyReceive(modal.d, p)); setModal(null); }} />}
       {modal?.k === "ship" && <ShipDrawer doc={modal.d} onClose={() => setModal(null)} onDone={(p) => { tip(applyShip(modal.d, p)); setModal(null); }} />}
-      {modal?.k === "detail" && <DocDetailDrawer doc={modal.d} onClose={() => setModal(null)} />}
+      {modal?.k === "detail" && <DocDetailDrawer doc={modal.d} onClose={() => setModal(null)} mode="receive" />}
       {modal?.k === "track" && <TrackDrawer doc={modal.d} onClose={() => setModal(null)} />}
       {toast}
     </>
@@ -652,7 +653,7 @@ export function applyShipBatch(items) {
 /* ============================ 收货抽屉（累计实收 F9 / R2 / R3） ============================ */
 function ReceiveDrawer({ doc, onClose, onDone }) {
   const recv = doc.received ?? 0;
-  const remain = doc.qty - recv;
+  const remain = Math.max(0, (doc.sent ?? doc.qty) - recv);
   const [got, setGot] = useState(remain);
   const [reasons, setReasons] = useState([]);   // 与门店APP「配货差异原因」同字段（多选）
   const [note, setNote] = useState("");
@@ -1039,7 +1040,7 @@ export function ReceiveAbnormal({ doc, ro }) {
   );
 }
 
-function DocDetailDrawer({ doc, onClose }) {
+function DocDetailDrawer({ doc, onClose, mode }) {
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="drawer" style={{ width: 720 }}>
@@ -1049,7 +1050,7 @@ function DocDetailDrawer({ doc, onClose }) {
             <div className="row" style={{ gap: 30 }}>
               <div className="field"><label>供货单号</label><b className="mono">{doc.id}</b></div>
               <div className="field"><label>供货路径</label><b>{legLabelOf(doc)}</b></div>
-              <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{doc.status}</span></div>
+              <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{mode === "receive" && ["已发货", "部分收货"].includes(doc.status) ? "待收货" : doc.status}</span></div>
             </div>
             {doc.isMakeup && (
               <div className="row"><div className="field"><label>单据类型</label>

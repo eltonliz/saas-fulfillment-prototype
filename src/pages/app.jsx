@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useReturns, setReturns, patchHop, diffStore } from "../store.js";
+import { useReturns, setReturns, patchHop, diffStore, addDiff } from "../store.js";
 import { FlowNode, FlowArrow } from "./buyer.jsx";
 import { useReqPage } from "./reqnotes.jsx";
 
@@ -62,10 +62,38 @@ export function StoreApp() {
   const [diffCard, setDiffCard] = useState(null);   // 当前查看的配送差异单
   const [cards, setCards] = useState(RECEIPT_CARDS); // 收货管理卡片（确认收货后状态流转）
   const [receiptCard, setReceiptCard] = useState(null); // 当前查看/收货的供货单
+  const [phoneDiffs, setPhoneDiffs] = useState(DIFF_CARDS); // 配送差异卡（举证提交后转「待审核」）
+  const [pendingReceipt, setPendingReceipt] = useState(null); // 少收待温馨提示确认的收货结果
   useReqPage("app:" + view);
-  /* 确认收货：卡片转「已收货」；有少发时先经温馨提示（确认后才落账） */
-  const commitReceipt = () => {
-    setCards((cs) => cs.map((c) => (c.id === receiptCard.id ? { ...c, state: "已收货", acts: ["查看详情"] } : c)));
+
+  /* 少收 → 自动生成门店配送差异单（待举证）+ 差异页出现对应卡（幂等：同一供货单不重复生成） */
+  const genStoreDiff = (c, got = 0) => {
+    if (phoneDiffs.some((d) => d.supplyNo === c.no && d.state === "待举证")) return;
+    const dt = new Date();
+    const ymd = String(dt.getFullYear()).slice(2) + String(dt.getMonth() + 1).padStart(2, "0") + String(dt.getDate()).padStart(2, "0");
+    const diffId = "DIFF" + ymd + String(diffStore.get().length + 1).padStart(4, "0");
+    const recvTotal = (c.recv ?? 0) + got;
+    addDiff({
+      id: diffId, source: "门店上报", reporter: "门店",
+      leg: c.mode === "供应商直配" ? "供应商 → 门店" : "总仓 → 门店",
+      supplyNo: c.no, shipper: c.mode === "供应商直配" ? "供应商" : "九天教育总仓",
+      summary: `${c.name} 应收${parseInt(c.qty, 10) || 0}/实收${recvTotal}｜少货`,
+      status: "待举证", evidence: "—",
+    });
+    const due = c.recv != null ? (c.remain ?? 0) : (parseInt(c.qty, 10) || 0);
+    setPhoneDiffs((ds) => [{ id: diffId, state: "待举证", skuCount: 1, diffCount: Math.max(0, due - got), supplyNo: c.no }, ...ds]);
+  };
+
+  /* 确认收货：收满 →「已收货」；少收（温馨提示确认后）→「收货异常」+ 自动生成配送差异单 */
+  const commitReceipt = (res) => {
+    const c = receiptCard;
+    if (res?.shortage) {
+      genStoreDiff(c, res.got ?? 0);
+      setCards((cs) => cs.map((x) => (x.id === c.id ? { ...x, state: "收货异常", acts: ["查看详情"] } : x)));
+    } else {
+      setCards((cs) => cs.map((x) => (x.id === c.id ? { ...x, state: "已收货", acts: ["查看详情"], recv: undefined, remain: undefined } : x)));
+    }
+    setPendingReceipt(null);
     setConfirm(false);
     setView("receipts");
   };
@@ -97,16 +125,18 @@ export function StoreApp() {
             <Receive
               card={receiptCard}
               onBack={() => setView("receipts")}
-              onConfirm={(shortage) => (shortage ? setConfirm(true) : commitReceipt())}
+              onConfirm={(r) => (r.shortage ? (setPendingReceipt(r), setConfirm(true)) : commitReceipt(r))}
+              onGoDiffs={() => { genStoreDiff(receiptCard, 0); setView("diffs"); }}
             />
           )}
-          {view === "diffs" && <Diffs onDetail={(c) => { setDiffCard(c); setView("diffDetail"); }} onEvidence={(c) => { setDiffCard(c); setView("evidence"); }} />}
+          {view === "diffs" && <Diffs cards={phoneDiffs} onDetail={(c) => { setDiffCard(c); setView("diffDetail"); }} onEvidence={(c) => { setDiffCard(c); setView("evidence"); }} />}
           {view === "diffDetail" && <DiffDetail card={diffCard} onBack={() => setView("diffs")} onEvidence={() => setView("evidence")} />}
-          {view === "evidence" && <Evidence card={diffCard} onBack={() => setView("diffs")} />}
+          {view === "evidence" && <Evidence card={diffCard} onBack={() => setView("diffs")}
+            onSubmitted={() => setPhoneDiffs((ds) => ds.map((d) => (d.id === diffCard.id && d.state === "待举证" ? { ...d, state: "待审核" } : d)))} />}
           {view === "returns" && <Returns />}
         </div>
 
-        {confirm && <WarmTip onCancel={() => setConfirm(false)} onOk={commitReceipt} />}
+        {confirm && <WarmTip onCancel={() => { setConfirm(false); setPendingReceipt(null); }} onOk={() => commitReceipt(pendingReceipt)} />}
       </div>
     </div>
       )}
@@ -269,7 +299,7 @@ function Receipts({ cards, onOpen }) {
         {cards.filter((c) => c.mode === mode).filter((c) => chip === "全部" || c.state === chip).map((c) => (
           <div className="mcard" key={c.id}>
             <div className="hd"><b>供货单信息</b>
-              {c.recv != null && <span style={{ marginLeft: "auto", marginRight: 6, fontSize: 10.5, color: "#f5a623", border: "1px solid #ffd8a8", background: "#fff7e8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>部分收货</span>}
+              {c.state === "待收货" && c.recv != null && <span style={{ marginLeft: "auto", marginRight: 6, fontSize: 10.5, color: "#f5a623", border: "1px solid #ffd8a8", background: "#fff7e8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>部分收货</span>}
               <span style={{ color: STATE_TONE(c.state), fontSize: 12.5 }}>{c.state}</span></div>
             <div className="mrow"><span>商品名称</span><b>{c.name}</b></div>
             <div className="mrow"><span>发货数量</span><b>{c.qty}</b></div>
@@ -327,7 +357,7 @@ function TrackSheet({ doc, onClose }) {
 }
 
 /* ---------------- 发货单详情 · 确认收货 ---------------- */
-function Receive({ card, onConfirm, onBack }) {
+function Receive({ card, onConfirm, onBack, onGoDiffs }) {
   const qty = parseInt(card.qty, 10) || 0;
   const st = card.state;
   const part = card.recv != null; // 曾部分收货：仍在待收货，续收本次待补量
@@ -359,7 +389,7 @@ function Receive({ card, onConfirm, onBack }) {
         <div className="hd"><b>供货单信息</b><span style={{ color: tone, fontSize: 12.5 }}>{st}</span></div>
         <div className="mrow"><span>商品名称</span><b>{card.name}</b></div>
         <div className="mrow"><span>发货数量</span><b>{card.qty}</b></div>
-        <div className="mrow"><span>供货路径</span><b>{card.mode === "供应商直配" ? "供应商 → 门店" : "总部仓 → 门店"}</b></div>
+        <div className="mrow"><span>供货路径</span><b>{card.mode === "供应商直配" ? "供应商 → 门店" : card.mode.includes("自有货") ? "总部自有 → 门店" : "总部仓 → 门店"}</b></div>
         {part && <div className="mrow"><span>收货进度</span><b>已收 {card.recv ?? 0}｜待补 {due} 件</b></div>}
         {st === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>{card.recv ?? 0}｜差 {card.remain ?? 0} 件</b></div>}
       </div>
@@ -432,6 +462,7 @@ function Receive({ card, onConfirm, onBack }) {
           <div style={{ fontSize: 12.5, color: "#f5522e", lineHeight: 1.9 }}>
             实收与应收存在差异，已自动生成配送差异单；请前往「配送差异」页完成举证，待总部审核后按链路补发。
           </div>
+          <button className="btn primary sm" style={{ marginTop: 10 }} onClick={onGoDiffs}>去配送差异举证</button>
         </div>
       )}
 
@@ -441,7 +472,7 @@ function Receive({ card, onConfirm, onBack }) {
 
       <div style={{ display: "flex", gap: 10, paddingBottom: 16 }}>
         <button className="btn plain" style={{ flex: receivable ? 1 : 2 }} onClick={onBack}>返回</button>
-        {receivable && <button className="btn primary" style={{ flex: 2 }} disabled={shortage && !note.trim()} onClick={() => onConfirm(shortage)}>确认收货</button>}
+        {receivable && <button className="btn primary" style={{ flex: 2 }} disabled={shortage && !note.trim()} onClick={() => onConfirm({ shortage, got: items[0].qty })}>确认收货</button>}
       </div>
     </div>
   );
@@ -450,9 +481,9 @@ function Receive({ card, onConfirm, onBack }) {
 /* ---------------- 配送差异（照收货页风格 + Axure 差异页字段） ---------------- */
 const DIFF_TONE = (s) => (s === "待举证" ? "#f5a623" : s === "审核通过" ? "#25c7a5" : s === "审核不通过" ? "#f5522e" : "#999");
 
-function Diffs({ onDetail, onEvidence }) {
+function Diffs({ cards, onDetail, onEvidence }) {
   const [chip, setChip] = useState("全部");
-  const list = DIFF_CARDS.filter((c) => chip === "全部" || c.state === chip);
+  const list = cards.filter((c) => chip === "全部" || c.state === chip);
   return (
     <div>
       <div className="mtabs">
@@ -532,7 +563,7 @@ function DiffDetail({ card, onBack, onEvidence }) {
 }
 
 /* ---------------- 举证信息 ---------------- */
-function Evidence({ card, onBack }) {
+function Evidence({ card, onBack, onSubmitted }) {
   const [reasons, setReasons] = useState(["少货"]);
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState(0);
@@ -540,7 +571,7 @@ function Evidence({ card, onBack }) {
   return (
     <div className="mpad">
       <div className="mcard">
-        <div className="hd"><b>配货差异单 {card?.id || DIFF_CARDS[0].id}</b><span style={{ color: "#f5a623", fontSize: 12.5 }}>待举证</span></div>
+        <div className="hd"><b>配货差异单 {card?.id || DIFF_CARDS[0].id}</b><span style={{ color: done ? "#2f80ed" : "#f5a623", fontSize: 12.5 }}>{done ? "待审核" : "待举证"}</span></div>
         <div style={{ fontSize: 12.5, fontWeight: 600, margin: "4px 0 8px" }}>抽查指令（破）</div>
         {DIFF_ITEMS.map((it, i) => (
           <div key={i} style={{ borderTop: "1px solid #f2f2f2", padding: "9px 0", fontSize: 12.5 }}>
@@ -593,6 +624,7 @@ function Evidence({ card, onBack }) {
             const target = diffStore.get().find((d) => d.status === "待举证" && d.source === "门店上报");
             if (target) diffStore.set((ds) => ds.map((x) => (x.id === target.id ? { ...x, status: "待总部审核", evidence: `${reasons.join("、")} · 照片 ${photos} 张` } : x)));
             setDone(true);
+            onSubmitted && onSubmitted();
           }}>提交</button>
       </div>
     </div>

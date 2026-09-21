@@ -286,7 +286,7 @@ function SupDocDrawer({ doc, onClose, onTrack }) {
             <div className="row" style={{ gap: 30 }}>
               <div className="field"><label>供货单号</label><b className="mono">{doc.id}</b></div>
               <div className="field"><label>供货路径</label><b>{LEG_LABEL[doc.leg]}</b></div>
-              <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{doc.status}</span></div>
+              <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{doc.status === "部分收货" ? "已发货" : doc.status}</span>{doc.status === "部分收货" && <span className="note" style={{ display: "inline", marginLeft: 6, color: "#f5a623" }}>部分收货</span>}</div>
             </div>
             {doc.isMakeup && (
               <div className="row"><div className="field"><label>单据类型</label>

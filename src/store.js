@@ -52,8 +52,9 @@ export function applyArrivalTimeouts(now = new Date()) {
   const fired = [];
   /* 到店计时以「签收」时间为准（物流未签收才回退到创建时间） */
   const baseOf = (d) => {
+    /* 到店计时只认「已签收」时间：在途（未签收）单不进超时池，避免创建时间误触发 */
     const m = String(d.track || "").match(/已签收 (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
-    return m ? m[1] : d.createdAt;
+    return m ? m[1] : null;
   };
   const apply = (d) => {
     if (!isStoreBound(d) || d.status !== "已发货") return d;

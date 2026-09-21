@@ -136,9 +136,10 @@ export function OrderManagement({ onOpenSupply }) {
                 <td className="tw">{o.orderType || "销售订单"}</td>
                 <td className="tw">{o.buyerNote || "-"}</td>
                 <td className="col-new">
+                  {/* 统一两段式：主字段（供货单号 / 自有货直发 / 待派单 / —）+ 模式副标签 */}
                   {o.supplyNo ? (<><span onClick={() => onOpenSupply && onOpenSupply(o.supplyNo)} className="mono" style={{ color: "#25c7a5", cursor: "pointer" }}>{o.supplyNo}</span><small style={{ color: "#999" }}>{supplyLabelOf(o)}</small></>)
-                    : o.goodsSource === "总部自有" ? (<span className="hl" data-hl="新增：自有货·无前置供货单" style={{ color: "#25c7a5" }}>自有货直发</span>)
-                      : o.supplyMode ? (<span style={{ color: o.status === "待发货" ? "#f5a623" : "#999" }}>{o.status === "待发货" ? `待派单 · ${supplyLabelOf(o)}` : supplyLabelOf(o)}</span>)
+                    : o.goodsSource === "总部自有" ? (<><span style={{ color: "#25c7a5" }}>自有货直发</span><small style={{ color: "#999" }}>总部仓直配 · 自有货</small></>)
+                      : o.supplyMode ? (<><span style={{ color: o.status === "待发货" ? "#f5a623" : "#999" }}>{o.status === "待发货" ? "待派单" : "—"}</span><small style={{ color: "#999" }}>{supplyLabelOf(o)}</small></>)
                         : (<span style={{ color: "#999" }}>—</span>)}
                 </td>
                 <td>
