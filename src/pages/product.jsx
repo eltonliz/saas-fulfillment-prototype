@@ -149,8 +149,8 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
   const [supplier, setSupplier] = useState(row?.supplier || "");
   const [source, setSource] = useState(row?.goodsSource || "供应商供货");
   const [delivery, setDelivery] = useState("快递");
-  /* 校验：总部仓发货·自有货无需供应商；其余必须绑定供应商 */
-  const ownGoods = mode === "总部仓发货" && source === "总部自有";
+  /* 校验：总部仓直配·自有货无需供应商；其余必须绑定供应商 */
+  const ownGoods = mode === "总部仓直配" && source === "总部自有";
   const canSave = ownGoods || !!supplier;
   const done = () => (onSaved || onClose)();
 
@@ -190,7 +190,7 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
                           {SUPPLIERS.filter((s) => s.enabled).map((s) => <option key={s.no} value={s.name}>{s.name}（{s.no}）</option>)}
                         </select>
                       </div>
-                      <div className="note">{ownGoods ? "总部仓发货 · 自有货：货为总部自有、不经供应商，无需绑定供应商（此栏留空）。" : "发货主体有源可循：商品必须绑定供应商，付后自动派单才知道该派给谁。仅启用状态的供应商可选。"}</div>
+                      <div className="note">{ownGoods ? "总部仓直配 · 自有货：货为总部自有、不经供应商，无需绑定供应商（此栏留空）。" : "发货主体有源可循：商品必须绑定供应商，付后自动派单才知道该派给谁。仅启用状态的供应商可选。"}</div>
                     </div>
                   </Hl>
                 </div>
@@ -238,11 +238,11 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
                 <Hl label="改动：决定由谁发货 · 走哪条链路">
                   <div style={{ padding: 10, width: "100%" }}>
                     <div className="radio-row">
-                      {["供应商直配", "总部仓发货"].map((m) => (
+                      {["供应商直配", "总部仓直配"].map((m) => (
                         <label key={m}><input type="radio" checked={mode === m} onChange={() => setMode(m)} />{m}</label>
                       ))}
                     </div>
-                    {mode === "总部仓发货" && (
+                    {mode === "总部仓直配" && (
                       <div className="radio-row" style={{ marginTop: 8 }}>
                         <span className="note" style={{ alignSelf: "center", marginRight: 6 }}>货源</span>
                         {GOODS_SOURCES.map((g) => (
@@ -252,7 +252,7 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
                     )}
                     <div className="note">
                       1、供应商直配：货从供应商仓发出，配送方式选快递，则订单由供应商直发给客户；选自提，则订单由供应商直发到客户所选门店，客户到店自提。发货与售后均由供应商处理，租户后台不展示该类订单。<br />
-                      2、总部仓发货：由总部仓统一发出（快递直发客户 / 自提发到门店）。货源二选一：<b>供应商供货</b> = 货先由供应商仓发到总部仓，总仓收货后才可发出；<b>总部自有</b> = 货为总部自有、不经供应商，支付后直接可发。<br />
+                      2、总部仓直配：由总部仓统一发出（快递直发客户 / 自提发到门店）。货源二选一：<b>供应商供货</b> = 货先由供应商仓发到总部仓，总仓收货后才可发出；<b>总部自有</b> = 货为总部自有、不经供应商，支付后直接可发。<br />
                       3、前置仓配送：由各城市前置仓就近发货给客户（暂未开放）。<br />
                       注：发货模式 + 货源决定订单由谁来发货、走哪条流转路径，对所有商品生效；创建后不可修改
                     </div>
@@ -314,7 +314,7 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
         </div>
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={!canSave} title={canSave ? "" : "请先选择供应商（总部仓发货 · 自有货无需供应商）"} onClick={done}>保存</button>
+          <button className="btn primary" disabled={!canSave} title={canSave ? "" : "请先选择供应商（总部仓直配 · 自有货无需供应商）"} onClick={done}>保存</button>
         </div>
       </div>
     </div>

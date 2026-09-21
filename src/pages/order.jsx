@@ -14,7 +14,7 @@ const canShipOrder = (o) => {
   if (o.status !== "待发货") return false;
   if (o.delivery === "上门自提") return false;
   if (o.goodsSource === "总部自有") return true;
-  if (o.supplyMode !== "总部仓发货") return false;
+  if (o.supplyMode !== "总部仓直配") return false;
   return upstreamReady(o);
 };
 
@@ -146,7 +146,7 @@ export function OrderManagement({ onOpenSupply }) {
                     {o.status === "待发货" && (canShipOrder(o)
                       ? <button onClick={() => openDetail(o)}>发货</button>
                       : o.supplyMode === "供应商直配" ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>
-                        : o.delivery === "上门自提" ? <span style={{ color: "#f5a623", fontSize: 13, height: 22 }}>{upstreamReady(o) ? "总部仓发货（见发货管理）" : "待总部仓收货"}</span>
+                        : o.delivery === "上门自提" ? <span style={{ color: "#f5a623", fontSize: 13, height: 22 }}>{upstreamReady(o) ? "总部仓直配（见发货管理）" : "待总部仓收货"}</span>
                           : <span style={{ color: "#f5a623", fontSize: 13, height: 22 }}>{o.shipBlock || "待总部仓收货"}</span>)}
                     {o.ops.filter((x) => x !== "发货").map((op) => (<button key={op} className="gray" onClick={() => openDetail(o)}>{op}</button>))}
                   </div>

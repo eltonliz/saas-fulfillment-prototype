@@ -40,7 +40,7 @@ const TENANT_LEGS = ["supplier_to_hq", "supplier_inbound", "hq_store"];
 const RECEIVE_LEGS = ["supplier_to_hq", "supplier_inbound", "hq_store"];
 const isTenantLeg = (d) => TENANT_LEGS.includes(d.leg);
 const isSelfShip = (d) => d.leg === "hq_store";
-/* F3/F4：总部仓发货（供应商供货）的下游段，必须等同一订单「供应商→总仓」那段确认收货后才可发货 */
+/* F3/F4：总部仓直配（供应商供货）的下游段，必须等同一订单「供应商→总仓」那段确认收货后才可发货 */
 const upstreamReady = (d) => {
   if (d.leg !== "hq_store") return true;
   const up = supplyStore.get().find((x) => x.leg === "supplier_to_hq" && x.orderNo === d.orderNo);
@@ -120,7 +120,7 @@ function applyReceive(doc, p) {
     )));
   }
 
-  /* F4③：总部仓发货（供应商供货）·自提订单，上游收满 → 自动生成「总部仓 → 门店」发货任务（发货管理） */
+  /* F4③：总部仓直配（供应商供货）·自提订单，上游收满 → 自动生成「总部仓 → 门店」发货任务（发货管理） */
   if (full && doc.leg === "supplier_to_hq") {
     const order = orderStore.get().find((o) => o.no === doc.orderNo || o.supplyNo === doc.id);
     if (order && order.delivery === "上门自提") {

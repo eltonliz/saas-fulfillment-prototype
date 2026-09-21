@@ -371,7 +371,7 @@ export function AfterSales() {
 
   return (
     <>
-      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）的售后由<b style={{ margin: "0 4px" }}>供应商全流程处理</b>，本页不展示；此处处理总部仓发货（含自有货）/ 自提订单的售后</div>
+      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）的售后由<b style={{ margin: "0 4px" }}>供应商全流程处理</b>，本页不展示；此处处理总部仓直配（含自有货）/ 自提订单的售后</div>
 
       <div className="filters">
         <div className="row">

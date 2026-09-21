@@ -12,26 +12,26 @@ export const SUPPLIERS = [
   { no: "SN00000035", name: "供应商002", contact: "供应商002", phone: "13979554185", enabled: true },
   { no: "SN00000036", name: "供应商003", contact: "供应商003", phone: "13122223333", enabled: true },
 ];
-export const SHIP_MODES = ["供应商直配", "总部仓发货"];
-/* 总部仓发货的货源：供应商供货（货先由供应商送到总部仓）｜总部自有（货为总部自有、不经供应商） */
+export const SHIP_MODES = ["供应商直配", "总部仓直配"];
+/* 总部仓直配的货源：供应商供货（货先由供应商送到总部仓）｜总部自有（货为总部自有、不经供应商） */
 export const GOODS_SOURCES = ["供应商供货", "总部自有"];
-export const modeLabelOf = (p) => (p && p.shipMode === "总部仓发货" && p.goodsSource === "总部自有" ? "总部仓发货 · 自有货" : (p ? p.shipMode : ""));
-export const supplyLabelOf = (o) => (o && o.supplyMode === "总部仓发货" && o.goodsSource === "总部自有" ? "总部仓发货 · 自有货" : (o ? o.supplyMode : ""));
+export const modeLabelOf = (p) => (p && p.shipMode === "总部仓直配" && p.goodsSource === "总部自有" ? "总部仓直配 · 自有货" : (p ? p.shipMode : ""));
+export const supplyLabelOf = (o) => (o && o.supplyMode === "总部仓直配" && o.goodsSource === "总部自有" ? "总部仓直配 · 自有货" : (o ? o.supplyMode : ""));
 
 /* ---------------- 商品管理 ---------------- */
 const g = (emoji, bg) => ({ emoji, bg });
 export const PRODUCTS = [
   { id: "p1", name: "什锦果蔬", vid: "共(1)个", intro: true, no: "3424", stock: 795, purchase: "10.00", sale: "0.01~3.00", freight: "未设置", status: "在售中", supplier: "供应商003", shipMode: "供应商直配" },
-  { id: "p2", name: "华为手机", vid: "共(0)个", intro: true, no: "-", stock: 294, purchase: "0.00", sale: "0.01~2.00", freight: "已设置", status: "在售中", supplier: "JOJO供应商", shipMode: "总部仓发货", goodsSource: "供应商供货", customCat: "精选数码" },
-  { id: "p3", name: "华为手机(复制)", vid: "共(0)个", intro: true, no: "_CP7784", stock: 292, purchase: "0.00", sale: "0.01", freight: "未设置", status: "已下架", supplier: "JOJO供应商", shipMode: "总部仓发货", goodsSource: "供应商供货" },
+  { id: "p2", name: "华为手机", vid: "共(0)个", intro: true, no: "-", stock: 294, purchase: "0.00", sale: "0.01~2.00", freight: "已设置", status: "在售中", supplier: "JOJO供应商", shipMode: "总部仓直配", goodsSource: "供应商供货", customCat: "精选数码" },
+  { id: "p3", name: "华为手机(复制)", vid: "共(0)个", intro: true, no: "_CP7784", stock: 292, purchase: "0.00", sale: "0.01", freight: "未设置", status: "已下架", supplier: "JOJO供应商", shipMode: "总部仓直配", goodsSource: "供应商供货" },
   { id: "p4", name: "苹果", vid: "共(0)个", intro: true, no: "23", stock: 200, purchase: "10.00", sale: "0.01~1.00", freight: "未设置", status: "在售中", supplier: "供应商002", shipMode: "供应商直配", customCat: "时令鲜果" },
-  { id: "p5", name: "奶粉(复制)", vid: "共(1)个", intro: true, no: "_CP5374", stock: 115, purchase: "0.00", sale: "0.01", freight: "未设置", status: "在售中", supplier: "供应商001", shipMode: "总部仓发货", goodsSource: "供应商供货" },
+  { id: "p5", name: "奶粉(复制)", vid: "共(1)个", intro: true, no: "_CP5374", stock: 115, purchase: "0.00", sale: "0.01", freight: "未设置", status: "在售中", supplier: "供应商001", shipMode: "总部仓直配", goodsSource: "供应商供货" },
   { id: "p6", name: "奶粉", vid: "共(1)个", intro: true, no: "_CP6353", stock: 115, purchase: "0.00", sale: "0.01", freight: "未设置", status: "审核中", supplier: "", shipMode: "" },
-  { id: "p7", name: "山茶油", vid: "共(0)个", intro: false, no: "-", stock: 0, purchase: "68.00", sale: "128.00", freight: "未设置", status: "审核不通过", supplier: "供应商001", shipMode: "总部仓发货", goodsSource: "供应商供货" },
-  /* 总部仓发货 · 总部自有货：不经供应商，总部仓直接发货 */
-  { id: "p8", name: "儿童书包", vid: "共(1)个", intro: true, no: "_CP8811", stock: 120, purchase: "—", sale: "129.00", freight: "已设置", status: "在售中", supplier: "", shipMode: "总部仓发货", goodsSource: "总部自有" },
-  { id: "p9", name: "保温饭盒", vid: "共(1)个", intro: true, no: "_CP8812", stock: 86, purchase: "—", sale: "99.00", freight: "已设置", status: "在售中", supplier: "", shipMode: "总部仓发货", goodsSource: "总部自有" },
-  { id: "p10", name: "文具套装", vid: "共(1)个", intro: false, no: "_CP8813", stock: 240, purchase: "—", sale: "59.00", freight: "未设置", status: "在售中", supplier: "", shipMode: "总部仓发货", goodsSource: "总部自有" },
+  { id: "p7", name: "山茶油", vid: "共(0)个", intro: false, no: "-", stock: 0, purchase: "68.00", sale: "128.00", freight: "未设置", status: "审核不通过", supplier: "供应商001", shipMode: "总部仓直配", goodsSource: "供应商供货" },
+  /* 总部仓直配 · 总部自有货：不经供应商，总部仓直接发货 */
+  { id: "p8", name: "儿童书包", vid: "共(1)个", intro: true, no: "_CP8811", stock: 120, purchase: "—", sale: "129.00", freight: "已设置", status: "在售中", supplier: "", shipMode: "总部仓直配", goodsSource: "总部自有" },
+  { id: "p9", name: "保温饭盒", vid: "共(1)个", intro: true, no: "_CP8812", stock: 86, purchase: "—", sale: "99.00", freight: "已设置", status: "在售中", supplier: "", shipMode: "总部仓直配", goodsSource: "总部自有" },
+  { id: "p10", name: "文具套装", vid: "共(1)个", intro: false, no: "_CP8813", stock: 240, purchase: "—", sale: "59.00", freight: "未设置", status: "在售中", supplier: "", shipMode: "总部仓直配", goodsSource: "总部自有" },
 ];
 export const PRODUCT_IMG = { p1: g("🧺", "#eefaf1"), p2: g("📱", "#eef4ff"), p3: g("📱", "#f3f0ff"), p4: g("🍎", "#fff0ee"), p5: g("🥛", "#eef4ff"), p6: g("🥛", "#eef4ff"), p7: g("🫙", "#fff7e8"), p8: g("🎒", "#eef4ff"), p9: g("🍱", "#fdf3e7"), p10: g("✏️", "#f0f7ee") };
 
@@ -44,7 +44,7 @@ export const SHOP_PRODUCTS = [
   { id: "s5", name: "手机(复制)", no: "_CP5753", purchase: "0", stock: 318, sale: "0.01~0.10", visible: true, emoji: "📱" },
   { id: "s6", name: "222", no: "_CP8301", purchase: "0", stock: 117, sale: "0.01", visible: true, emoji: "📦" },
   { id: "s7", name: "111", no: "_CP5698", purchase: "0", stock: 117, sale: "0.01", visible: true, emoji: "📦" },
-  /* 总部仓发货 · 自有货商品同步到门店（供货模式列显示「总部仓发货 · 自有货」） */
+  /* 总部仓直配 · 自有货商品同步到门店（供货模式列显示「总部仓直配 · 自有货」） */
   { id: "s8", name: "儿童书包", no: "_CP8811", purchase: "—", stock: 120, sale: "129.00", visible: true, emoji: "🎒" },
   { id: "s9", name: "保温饭盒", no: "_CP8812", purchase: "—", stock: 86, sale: "99.00", visible: true, emoji: "🍱" },
   { id: "s10", name: "文具套装", no: "_CP8813", purchase: "—", stock: 240, sale: "59.00", visible: true, emoji: "✏️" },
@@ -70,7 +70,7 @@ export const ORDERS = [
     buyer: { 昵称: "王悦", 收件人: "王悦", 收件人电话: "13566667777", 收件人地址: "北京市朝阳区建国路 88 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-18 09:31:20", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-18 09:31:22", ops: ["发货", "备注", "修改地址", "分配门店"],
-    supplyNo: "FHD2609180009", supplyMode: "总部仓发货", goodsSource: "供应商供货",
+    supplyNo: "FHD2609180009", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
   {
     id: "o2", no: "ORD260917000164", product: "什锦果蔬", spec: "规格: 黑色/", qty: 1, unitPrice: "¥3", emoji: "🧺",
@@ -94,7 +94,7 @@ export const ORDERS = [
     amounts: { 商品金额: "0.01", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "0.01", 实收金额: "0.01" },
     buyer: { 昵称: "九九" }, store: "9071门店", delivery: "上门自提",
     createdAt: "2026-09-17 16:52:03", status: "待发货", ops: ["发货", "备注", "分配门店"],
-    supplyNo: "FHD2609170004", supplyMode: "总部仓发货", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
+    supplyNo: "FHD2609170004", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
   },
   /* G2② 配套订单：自提单，货已到店但门店未确认 → 提货码待激活 */
   {
@@ -105,7 +105,7 @@ export const ORDERS = [
     createdAt: "2026-09-15 09:58:00", status: "已发货", ops: ["详情", "备注", "分配门店"],
     supplyNo: "FHD2609150001", supplyMode: "供应商直配",
   },
-  /* F3 两段链路配套订单：总部仓发货（供应商供货），须等总仓收到上游货后才可发货 */
+  /* F3 两段链路配套订单：总部仓直配（供应商供货），须等总仓收到上游货后才可发货 */
   {
     id: "o7", no: "ORD260918000033", product: "儿童绘本套装", spec: "全 8 册", qty: 9, unitPrice: "¥0.01", emoji: "📚",
     afterSale: "暂无售后",
@@ -113,7 +113,7 @@ export const ORDERS = [
     buyer: { 昵称: "小绘本", 收件人: "陈女士", 收件人电话: "13800001234", 收件人地址: "广东省广州市天河区体育西路 100 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-18 10:12:00", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-18 10:12:05", ops: ["发货", "备注", "修改地址", "分配门店"],
-    supplyNo: "FHD2609180006", supplyMode: "总部仓发货", goodsSource: "供应商供货",
+    supplyNo: "FHD2609180006", supplyMode: "总部仓直配", goodsSource: "供应商供货",
     shipBlock: "待总部仓收货",
   },
   /* 一件代发·已发货：供应商已直发消费者（代发单发货+售后均归供应商，租户后台不展示该类订单） */
@@ -165,7 +165,7 @@ export const ORDERS = [
     store: "9071门店", delivery: "快递发货", createdAt: "2026-09-17 17:44:22", status: "售后中",
     payMethod: "微信支付", payTime: "2026-09-17 17:44:24", ops: ["详情", "备注", "分配门店"],
     carrier: "顺丰速运", tracking: "SF7712003621", track: "已签收 2026-09-17 20:10:00",
-    supplyNo: "", supplyMode: "总部仓发货", goodsSource: "供应商供货",
+    supplyNo: "", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
   /* 状态补齐：已完成自提订单（提货码已核销 → 买家端「已使用」、订单管理「已完成」） */
   {
@@ -196,7 +196,7 @@ export const ORDERS = [
     createdAt: "2026-09-18 20:33:56", status: "已取消", ops: ["详情", "备注", "分配门店"],
     supplyNo: "", supplyMode: "",
   },
-  /* 货源拓展：总部仓发货 · 自有货订单（货在总部仓、无供应商前置，支付后总部直接发货） */
+  /* 货源拓展：总部仓直配 · 自有货订单（货在总部仓、无供应商前置，支付后总部直接发货） */
   {
     id: "o16", no: "ORD260919000101", product: "儿童书包", spec: "蓝色 / 大号", qty: 1, unitPrice: "¥129.00", emoji: "🎒",
     afterSale: "暂无售后",
@@ -204,7 +204,7 @@ export const ORDERS = [
     buyer: { 昵称: "何小北", 收件人: "何小北", 收件人电话: "13800001111", 收件人地址: "广东省广州市天河区体育西路 108 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-19 10:12:00", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-19 10:12:05", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "", supplyMode: "总部仓发货", goodsSource: "总部自有",
+    supplyNo: "", supplyMode: "总部仓直配", goodsSource: "总部自有",
   },
   {
     id: "o17", no: "ORD260918000103", product: "保温饭盒", spec: "米白 / 双层", qty: 2, unitPrice: "¥99.00", emoji: "🍱",
@@ -214,7 +214,7 @@ export const ORDERS = [
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-18 09:40:31", status: "已发货",
     payMethod: "微信支付", payTime: "2026-09-18 09:40:35", ops: ["详情", "备注", "分配门店"],
     carrier: "顺丰速运", tracking: "SF7712003520", track: "已发货 2026-09-18 15:00:00",
-    supplyNo: "", supplyMode: "总部仓发货", goodsSource: "总部自有",
+    supplyNo: "", supplyMode: "总部仓直配", goodsSource: "总部自有",
   },
   {
     id: "o18", no: "ORD260915000102", product: "文具套装", spec: "12 件套 / 基础版", qty: 1, unitPrice: "¥59.00", emoji: "✏️",
@@ -223,7 +223,7 @@ export const ORDERS = [
     buyer: { 昵称: "周小野", 收件人: "周小野", 收件人电话: "13844445555", 收件人地址: "北京市朝阳区望京街道阜通东大街 6 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-15 14:22:18", status: "已完成",
     payMethod: "微信支付", payTime: "2026-09-15 14:22:21", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "", supplyMode: "总部仓发货", goodsSource: "总部自有",
+    supplyNo: "", supplyMode: "总部仓直配", goodsSource: "总部自有",
   },
   /* 自有货 · 自提单：货在总部仓，总部直发门店（总部自有 → 门店 路径） */
   {
@@ -233,7 +233,7 @@ export const ORDERS = [
     buyer: { 昵称: "苏晚" }, store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-18 11:20:00", status: "已发货",
     payMethod: "微信支付", payTime: "2026-09-18 11:20:05", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609180018", supplyMode: "总部仓发货", goodsSource: "总部自有",
+    supplyNo: "FHD2609180018", supplyMode: "总部仓直配", goodsSource: "总部自有",
   },
 ];
 
@@ -357,7 +357,7 @@ export const SUPPLY_DOCS = [
     id: "FHD2609180018", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-18 11:20:30",
     orderNo: "ORD260920000110", product: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", qty: 1, sent: 1,
     shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "顺丰速运", tracking: "SF7712007701", track: "已发货 2026-09-18 16:40:00", status: "已发货", supplyMode: "总部仓发货", goodsSource: "总部自有", ops: ["详情", "收货"],
+    carrier: "顺丰速运", tracking: "SF7712007701", track: "已发货 2026-09-18 16:40:00", status: "已发货", supplyMode: "总部仓直配", goodsSource: "总部自有", ops: ["详情", "收货"],
   },
   /* G2② 演示样本：总仓收货登记少收 → 配送差异单 DIFF2609190001（总部上报 · 待供应商审核）的来源单 */
   {

@@ -3,12 +3,12 @@ import { useToast, useRowSelect, BatchBar, Confirm, usePaged, Pager } from "../u
 
 /* 1:1 复刻真实 SAAS「供应商管理」页（供应商 > 供应商管理） */
 const ROWS = [
-  { no: "SN00000021", name: "JOJO供应商", contact: "jojo", phone: "18100010002", at: "2026-06-23 09:48:49", qual: "已通过", enabled: true },
+  { no: "SN00000021", name: "JOJO供应商", contact: "jojo", phone: "18100010002", at: "2026-06-23 09:48:49", qual: "已通过", enabled: true, pay: { method: "对公银行账户", name: "JOJO供应商", bank: "中国工商银行广州天河支行", acct: "4402 2100 8891 **** 6632" } },
   { no: "SN00000023", name: "测试供应商资质", contact: "零度", phone: "13144156669", at: "2026-08-07 19:39:06", qual: "已通过", enabled: true },
   { no: "SN00000031", name: "测试供应商A", contact: "测试联系人", phone: "13800001111", at: "2026-08-11 11:02:56", qual: "已通过", enabled: false },
   { no: "SN00000032", name: "阿萨德", contact: "阿萨德", phone: "13144156669", at: "2026-08-11 11:27:15", qual: "已通过", enabled: false },
   { no: "SN00000033", name: "审核驳回测试", contact: "测试联系人", phone: "13800002222", at: "2026-08-11 11:30:22", qual: "已通过", enabled: false },
-  { no: "SN00000034", name: "供应商001", contact: "供应商001", phone: "18100010002", at: "2026-08-12 16:09:13", qual: "已通过", enabled: true },
+  { no: "SN00000034", name: "供应商001", contact: "供应商001", phone: "18100010002", at: "2026-08-12 16:09:13", qual: "已通过", enabled: true, pay: { method: "法人个人账户", name: "陈志强", bank: "招商银行佛山南海支行", acct: "6214 8300 5566 **** 1029" } },
   { no: "SN00000035", name: "供应商002", contact: "供应商002", phone: "13979554185", at: "2026-08-12 16:09:41", qual: "已通过", enabled: true },
   { no: "SN00000036", name: "供应商003", contact: "供应商003", phone: "13122223333", at: "2026-08-12 16:10:11", qual: "已通过", enabled: true },
   { no: "SN00000037", name: "123", contact: "123", phone: "13144156666", at: "2026-08-12 16:24:09", qual: "已通过", enabled: false },
@@ -20,16 +20,11 @@ const NEW_SUPPLIER = { no: "（保存后生成）", name: "", contact: "", phone
 export function SupplierMaster() {
   const [tab, setTab] = useState("全部");
   const [rows, setRows] = useState(ROWS);
-  const [edit, setEdit] = useState(null);     // 编辑既有供应商
   const [add, setAdd] = useState(false);      // 新建供应商
-  const [contact, setContact] = useState(null);
-  const [qual, setQual] = useState(null);
-  const [toggle, setToggle] = useState(null); // 启用/禁用二次确认
   const [toast, tip] = useToast();
   const list = rows.filter((r) => (tab === "全部" ? true : tab === "已启用" ? r.enabled : !r.enabled));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((r) => r.no));
   const pg = usePaged(list);
-  const setEnabled = (no, v) => setRows((rs) => rs.map((r) => (r.no === no ? { ...r, enabled: v } : r)));
 
   return (
     <>
@@ -84,15 +79,16 @@ export function SupplierMaster() {
                 <td className="tw"><span className={`tag ${r.qual === "待审核" ? "warn" : ""}`}>{r.qual}</span></td>
                 <td className="tw"><span className={`tag ${r.enabled ? "" : "gray"}`}>{r.enabled ? "已启用" : "未启用"}</span></td>
                 <td>
+                  {/* 列内为原 SaaS 既有操作的展示复刻，原型不提供点击 */}
                   <div className="op-col">
                     <div style={{ display: "flex", gap: 10 }}>
-                      <button className={r.enabled ? "gray" : ""} onClick={() => setToggle(r)}>{r.enabled ? "禁用" : "启用"}</button>
-                      <button className="gray" onClick={() => setEdit(r)}>编辑</button>
-                      <button className="gray" onClick={() => setContact(r)}>联系人</button>
+                      <span className={r.enabled ? "static gray" : "static"}>{r.enabled ? "禁用" : "启用"}</span>
+                      <span className="static">编辑</span>
+                      <span className="static">联系人</span>
                     </div>
                     <div style={{ display: "flex", gap: 10 }}>
-                      <button className="gray" style={{ textDecoration: "line-through", color: "#c2c2c2" }} title="进销存口径：供应商不参与钱款，本期置灰">开通收款</button>
-                      <button className="gray" onClick={() => setQual(r)}>{r.qual === "待审核" ? "审核" : "查看资质"}</button>
+                      <span className={r.pay ? "static gray" : "static"}>{r.pay ? "收款已开通" : "开通收款"}</span>
+                      <span className="static">{r.qual === "待审核" ? "审核" : "查看资质"}</span>
                     </div>
                   </div>
                 </td>
@@ -106,36 +102,7 @@ export function SupplierMaster() {
 
 
       {toast}
-      {edit && <SupplierEditDrawer row={edit} onClose={() => setEdit(null)} onSaved={() => { tip(`「${edit.name}」已保存`); setEdit(null); }} />}
       {add && <SupplierEditDrawer row={NEW_SUPPLIER} isNew onClose={() => setAdd(false)} onSaved={() => { setAdd(false); tip("供应商已创建，等待资质审核"); }} />}
-      {contact && <SupplierContactDrawer row={contact} onClose={() => setContact(null)} />}
-      {qual && (
-        <SupplierQualDrawer
-          row={qual}
-          onClose={() => setQual(null)}
-          onPassed={() => {
-            setRows((rs) => rs.map((r) => (r.no === qual.no ? { ...r, qual: "已通过", enabled: true } : r)));
-            tip(`「${qual.name}」资质审核已通过`);
-            setQual(null);
-          }}
-          onRejected={() => {
-            setRows((rs) => rs.map((r) => (r.no === qual.no ? { ...r, qual: "审核不通过", enabled: false } : r)));
-            tip(`已驳回「${qual.name}」的资质申请`);
-            setQual(null);
-          }}
-        />
-      )}
-      {toggle && (
-        <Confirm
-          title={toggle.enabled ? "确认禁用" : "确认启用"}
-          text={toggle.enabled
-            ? `禁用后「${toggle.name}」将不能再被商品绑定为发货方；已生效的订单不受影响。是否继续？`
-            : `启用后「${toggle.name}」可被商品绑定为发货方。是否继续？`}
-          okText={toggle.enabled ? "确认禁用" : "确认启用"}
-          onOk={() => { setEnabled(toggle.no, !toggle.enabled); tip(`「${toggle.name}」已${toggle.enabled ? "禁用" : "启用"}`); setToggle(null); }}
-          onCancel={() => setToggle(null)}
-        />
-      )}
     </>
   );
 }
@@ -241,88 +208,6 @@ function SupplierEditDrawer({ row, isNew, onClose, onSaved }) {
           onCancel={() => setResetPwd(false)}
         />
       )}
-    </div>
-  );
-}
-
-/* ---------------- 联系人 ---------------- */
-function SupplierContactDrawer({ row, onClose }) {
-  const contacts = [
-    { name: row.contact || "—", role: "主要联系人", phone: row.phone },
-    { name: "李主管", role: "发货对接人", phone: row.phone },
-  ];
-  return (
-    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="drawer" style={{ width: 520 }}>
-        <header>联系人<button className="x" onClick={onClose}>×</button></header>
-        <div className="body">
-          <section className="card">
-            <h3>{row.name}（{row.no}）</h3>
-            <div className="cbody">
-              <table className="tbl-tight">
-                <thead><tr><th>姓名</th><th>角色</th><th className="tw">联系电话</th></tr></thead>
-                <tbody>
-                  {contacts.map((c) => (
-                    <tr key={c.role}>
-                      <td>{c.name}</td><td>{c.role}</td><td className="tw mono">{c.phone}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="note" style={{ marginTop: 12 }}>发货对接人用于承接发货异常与配送差异的线下沟通，不参与钱款结算。</div>
-            </div>
-          </section>
-        </div>
-        <div className="foot"><button className="btn plain" onClick={onClose}>关闭</button></div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- 资质审核 / 查看资质 ---------------- */
-const QUAL_FILES = [
-  ["营业执照", "已上传", "2026-06-23"],
-  ["开户许可证", "已上传", "2026-06-23"],
-  ["法定代表人身份证", "已上传", "2026-06-23"],
-];
-
-function SupplierQualDrawer({ row, onClose, onPassed, onRejected }) {
-  const pending = row.qual === "待审核";
-  return (
-    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="drawer" style={{ width: 560 }}>
-        <header>{pending ? "资质审核" : "查看资质"}<button className="x" onClick={onClose}>×</button></header>
-        <div className="body">
-          <section className="card">
-            <h3>{row.name}（{row.no}）</h3>
-            <div className="cbody">
-              <div className="frow"><label>资质状态</label><div className="fc">
-                <span className={`tag ${pending ? "warn" : ""}`}>{row.qual}</span>
-              </div></div>
-              <div className="frow"><label>提交时间</label><div className="fc"><input value={row.at} readOnly /></div></div>
-            </div>
-          </section>
-
-          <section className="card">
-            <h3>资质材料</h3>
-            <div className="cbody">
-              <table className="tbl-tight">
-                <thead><tr><th>材料名称</th><th>状态</th><th className="tw">上传日期</th></tr></thead>
-                <tbody>
-                  {QUAL_FILES.map(([n, s, d]) => (
-                    <tr key={n}><td>{n}</td><td><span className="tag">{s}</span></td><td className="tw mono">{d}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="note" style={{ marginTop: 12 }}>审核通过后供应商方可被商品绑定为发货方；资质材料本身不对供应商脱敏，仅内部可见。</div>
-            </div>
-          </section>
-        </div>
-        <div className="foot">
-          <button className="btn plain" onClick={pending ? onRejected : onClose}>{pending ? "驳回" : "关闭"}</button>
-          {pending && <button className="btn primary" onClick={onPassed}>审核通过</button>}
-        </div>
-      </div>
     </div>
   );
 }
