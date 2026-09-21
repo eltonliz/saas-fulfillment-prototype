@@ -1,18 +1,13 @@
 import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag, DiffAuditModal } from "./supply.jsx";
-import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
+import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager, Confirm } from "../ui.jsx";
 import { supplierStore, supplyStore, diffStore, orderStore, patchDoc } from "../store.js";
-import { ORDERS } from "../data.js";
 
 const LEG_LABEL = {
-  sup_consumer: "供应商 → 消费者",
   supplier_to_hq: "供应商 → 总仓",
   supplier_inbound: "供应商 → 门店",
 };
 const CARRIERS = ["顺丰速运", "圆通速递", "中通快递", "京东物流", "韵达快递", "极兔速递"];
-
-/* 一件代发金额对供应商开放（发货 / 售后处理都需要），取关联订单单价 */
-const priceOf = (doc) => { const u = ORDERS.find((o) => o.no === doc.orderNo)?.unitPrice; return u ? u.replace("¥", "") : "—"; };
 
 /* ---------------- 供应商供货任务列表（三个页面共用，含发货/详情/物流轨迹） ---------------- */
 export function SupTasks({ leg, title, desc }) {
@@ -30,28 +25,21 @@ export function SupTasks({ leg, title, desc }) {
   const pending = mine.filter((d) => d.status === "待发货" && !d.isMakeup).length;
   /* 补发单发货收口在配送差异页：批量 / 导入 / 模板不含补发单 */
   const canShipRows = mine.filter((d) => d.status === "待发货" && !d.isMakeup);
-  /* 一件代发到消费者，没有「收货」环节；发总仓 / 发门店 才有 */
-  const TABS = leg === "sup_consumer"
-    ? ["全部", "待发货", "已发货", "已签收"]
-    : ["全部", "待发货", "已发货", "已收货", "收货异常"];
+  const TABS = ["全部", "待发货", "已发货", "已收货", "收货异常"];
 
   return (
     <>
       <div className="filters">
         <div className="row">
           <div className="field"><label>供货单号 / 销售订单</label><input className="ctl w-lg" placeholder="请输入供货单号或销售订单号" /></div>
-          {leg === "sup_consumer" ? (
-            <div className="field"><label>收货人</label><input className="ctl" placeholder="请输入收货人" /></div>
-          ) : (
-            <div className="field"><label>收货主体</label>
-              <select className="ctl" defaultValue="全部">
-                <option>全部</option>
-                {leg === "supplier_to_hq"
-                  ? <option>九天教育总仓</option>
-                  : <><option>九天门店</option><option>9071门店</option><option>濮源直播间</option></>}
-              </select>
-            </div>
-          )}
+          <div className="field"><label>收货主体</label>
+            <select className="ctl" defaultValue="全部">
+              <option>全部</option>
+              {leg === "supplier_to_hq"
+                ? <option>九天教育总仓</option>
+                : <><option>九天门店</option><option>9071门店</option><option>濮源直播间</option></>}
+            </select>
+          </div>
           <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button></div>
         </div>
       </div>
@@ -146,14 +134,6 @@ export function SupTasks({ leg, title, desc }) {
               /* 未发满保持「待发货」便于继续发；发满转「已发货」 */
               status: sent >= modal.d.qty ? "已发货" : "待发货",
             });
-            /* 代发（供应商 → 消费者）回写销售订单：累计已发，发满转「已发货」并记快递；消费者查物流即这条（与租户侧部分发货同口径） */
-            if (modal.d.leg === "sup_consumer") {
-              orderStore.set((os) => os.map((o) => {
-                if (o.no !== modal.d.orderNo) return o;
-                const shipped = (o.shippedQty ?? 0) + p.qty;
-                return { ...o, shippedQty: shipped, status: shipped >= o.qty ? "已发货" : o.status, carrier: p.carrier, tracking: p.tracking.trim(), track: "已发货 " + ts };
-              }));
-            }
             tip(`供货单 ${modal.d.id} 已发货 ${p.qty} 件` + (sent < modal.d.qty ? `，剩余 ${modal.d.qty - sent} 件可再发` : ""));
             setModal(null);
           }}
@@ -169,7 +149,422 @@ export function SupTasks({ leg, title, desc }) {
   );
 }
 
-export const SupDirect = () => <SupTasks leg="sup_consumer" title="一件代发" desc="供应商直发消费者的订单" />;
+/* ============================================================================
+   一件代发 —— 供应商视角的销售订单
+   页面形态与租户后台「订单管理」逐项一致（同一批单、两个视角）：
+   Tab / 筛选 / 列 / 详情抽屉 / 发货弹窗均照订单管理；发货与售后均由供应商处理
+   ============================================================================ */
+const SUP_STEPS = ["买家下单", "买家付款", "供应商发货", "买家签收", "交易完成"];
+const supHasShipped = (o) => !!(o.shippedQty > 0 || o.tracking || ["已发货", "已完成"].includes(o.status));
+
+export function SupDirect({ onNav }) {
+  const [tab, setTab] = useState("全部");
+  const [detail, setDetail] = useState(null);
+  const [ship, setShip] = useState(null);
+  const [after, setAfter] = useState(null);   // 查看售后
+  const [track, setTrack] = useState(null);   // 查看物流
+  const [toast, tip] = useToast();
+  /* 代发单 = 供应商直发消费者（快递）：与租户订单管理页互补——那页恰好过滤掉这批单 */
+  const rows = orderStore.use().filter((o) =>
+    o.supplyMode === "供应商直配" && o.delivery === "快递发货" &&
+    (tab === "全部" ? true
+      : tab === "已关闭" ? ["已关闭", "已全额退款", "已取消"].includes(o.status)
+        : o.status === tab));
+  const pg = usePaged(rows);
+
+  /* 发货回写：订单与供货任务同源同步（同一张物理单据，两端一致） */
+  const doShip = (o, p) => {
+    const shipped = (o.shippedQty || 0) + p.qty;
+    const full = shipped >= o.qty;
+    const ts = new Date().toISOString().slice(0, 19).replace("T", " ");
+    orderStore.set((os) => os.map((x) => (x.id === o.id
+      ? { ...x, shippedQty: shipped, carrier: p.carrier, tracking: p.tracking, track: "已发货 " + ts, status: full ? "已发货" : x.status }
+      : x)));
+    if (o.supplyNo) patchDoc(o.supplyNo, { sent: shipped, carrier: p.carrier, tracking: p.tracking, track: "已发货 " + ts, status: full ? "已发货" : "待发货" });
+    return full;
+  };
+
+  return (
+    <>
+      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）订单的<b style={{ margin: "0 4px" }}>发货与售后均由供应商处理</b>，处理结果实时同步至平台</div>
+
+      <div className="filters">
+        <div className="row">
+          <div className="field">
+            <label>查询订单</label>
+            <select className="ctl w-sm" defaultValue="订单编号"><option>订单编号</option><option>收件人姓名</option><option>手机号后四位</option><option>买家昵称</option><option>商品名称</option></select>
+            <span style={{ color: "#c2c2c2" }}>🔍</span>
+            <input className="ctl" placeholder="请输入订单编号" />
+          </div>
+          <span style={{ color: "#666", cursor: "pointer" }}>▾ 展开</span>
+          <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button></div>
+        </div>
+      </div>
+
+      <div className="pills">
+        {["全部", "待付款", "待发货", "已发货", "售后中", "已完成", "已关闭"].map((t) => (
+          <span key={t} className={`pill ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>{t}</span>
+        ))}
+        <div className="right">
+          <select className="ctl w-sm" defaultValue="是否标星" style={{ width: 120 }}><option>是否标星</option><option>已标星</option><option>未标星</option></select>
+          <select className="ctl w-sm" defaultValue="是否留言" style={{ width: 120 }}><option>是否留言</option><option>有留言</option><option>无留言</option></select>
+          <select className="ctl w-sm" defaultValue="" style={{ width: 120 }}><option value="">请选择</option><option>微信支付</option><option>余额支付</option></select>
+        </div>
+      </div>
+
+      <div className="tbl-wrap">
+        <table className="tbl-tight">
+          <thead>
+            <tr>
+              <th style={{ minWidth: 196 }}>商品信息</th>
+              <th style={{ minWidth: 84 }}>售后信息</th>
+              <th style={{ minWidth: 120 }}>实收金额</th>
+              <th style={{ minWidth: 180 }}>买家/收货人</th>
+              <th style={{ minWidth: 132 }}>下单时间</th>
+              <th style={{ minWidth: 120 }}>订单状态</th>
+              <th style={{ minWidth: 88 }}>订单类型</th>
+              <th style={{ minWidth: 88 }}>买家备注</th>
+              <th style={{ minWidth: 96 }}>订单操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pg.pageRows.map((o) => (
+              <tr key={o.id}>
+                <td>
+                  <div className="prod-cell">
+                    <span className="thumb" style={{ background: "#f4f7f6" }}>{o.emoji}</span>
+                    <div>
+                      <div>订单号：<span className="mono" style={{ color: "#25c7a5" }}>{o.no}</span></div>
+                      <div>{o.product}</div><small>{o.spec}</small>
+                      <small>数量: {o.qty}件　单价: {o.unitPrice}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>{o.afterSale}{o.afterSaleLink && <div><span onClick={() => setAfter(o)} style={{ color: "#25c7a5", cursor: "pointer" }}>{o.afterSaleLink}</span></div>}</td>
+                <td>{Object.entries(o.amounts).map(([k, v]) => (<div key={k} style={{ display: "flex", gap: 6, whiteSpace: "nowrap" }}><span style={{ color: "#999" }}>{k}:</span><span>{v}</span></div>))}</td>
+                <td>
+                  <div>收件人信息：</div>
+                  {Object.entries(o.buyer).map(([k, v]) => (<div key={k} style={{ display: "flex", gap: 4 }}><span style={{ color: "#999", whiteSpace: "nowrap" }}>{k}:</span><span>{v}</span></div>))}
+                </td>
+                <td className="mono">{o.createdAt}</td>
+                <td>
+                  <div>{o.status}</div>
+                  {o.payMethod && <small>支付方式: {o.payMethod}</small>}
+                  {o.payTime && <small>支付时间: {o.payTime}</small>}
+                  {o.tracking && <small>物流单号: {o.tracking}</small>}
+                  {o.shippedQty > 0 && o.status === "待发货" && <small style={{ color: "#f5a623" }}>部分发货：已发 {o.shippedQty}/{o.qty} 件，可再发</small>}
+                </td>
+                <td className="tw">{o.orderType || "销售订单"}</td>
+                <td className="tw">{o.buyerNote || "-"}</td>
+                <td>
+                  <div className="op-col">
+                    {o.status === "待发货" && <button onClick={() => setShip(o)}>发货</button>}
+                    {o.tracking && <button className="gray" onClick={() => setTrack(o)}>物流轨迹</button>}
+                    {o.status === "售后中"
+                      ? <button className="gray" onClick={() => onNav && onNav("售后处理")}>售后处理</button>
+                      : <button className="gray" onClick={() => setDetail(o)}>详情</button>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!rows.length && <tr><td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#999" }}>暂无订单</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <Pager {...pg} />
+
+      {toast}
+      {detail && <SupOrderDetailDrawer order={detail} onClose={() => setDetail(null)} onShip={() => { setShip(detail); setDetail(null); }} onNote={() => tip("商家备注已保存")} />}
+      {ship && <SupOrderShipModal order={ship} onClose={() => setShip(null)} onDone={(p) => {
+        const full = doShip(ship, p);
+        tip(full ? `订单 ${ship.no} 已发货` : `订单 ${ship.no} 部分发货：已发 ${(ship.shippedQty || 0) + p.qty}/${ship.qty} 件，剩余可再发`);
+        setShip(null);
+      }} />}
+      {after && <SupAfterSalePop order={after} onClose={() => setAfter(null)} />}
+      {track && <SupOrderTrackModal order={track} onClose={() => setTrack(null)} />}
+    </>
+  );
+}
+
+/* ---------------- 查看售后（供应商侧） ---------------- */
+function SupAfterSalePop({ order, onClose }) {
+  return (
+    <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="gbox">
+        <b>售后信息</b>
+        <p>订单号 {order.no} · {order.product}</p>
+        <div style={{ marginTop: 14, fontSize: 13, lineHeight: 2.2, color: "var(--text-2)" }}>
+          <div>售后状态：<span className="tag warn">{order.afterSale}</span></div>
+          <div>关联供货单：<span className="mono">{order.supplyNo || "—"}</span></div>
+          <div>发货状态：{supHasShipped(order) ? "已发货" : "未发货"}</div>
+        </div>
+        <div className="note" style={{ marginTop: 12, lineHeight: 1.9 }}>
+          一件代发的售后由供应商全流程处理：在「供货 → 售后处理」完成 审核 → 签收验收 → 退款（原路退回）。
+        </div>
+        <div className="gfoot">
+          <button className="btn primary" onClick={onClose}>知道了</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- 物流轨迹（代发包裹；与订单管理同版式） ---------------- */
+function SupOrderTrackModal({ order, onClose }) {
+  const raw = order.track || "";
+  const signed = /已签收/.test(raw);
+  const stamp = (re) => (raw.replace(re, "").trim() || "—");
+
+  const nodes = [
+    { t: "订单已支付", d: "等待供应商发货", at: order.payTime || order.createdAt, done: true },
+    { t: "已发货", d: `${order.carrier} 已揽收`, at: stamp(/^已发货\s*/), done: true },
+    signed
+      ? { t: "已签收", d: `已送达 ${order.buyer["收件人地址"] || "收货地址"}`, at: stamp(/^已签收\s*/), done: true }
+      : { t: "派送中", d: "待收件人签收", at: "—", done: false },
+  ];
+
+  return (
+    <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="gbox" style={{ width: 460 }}>
+        <b>物流轨迹</b>
+        <p>订单号 {order.no} · {order.carrier} {order.tracking}</p>
+        <div style={{ marginTop: 16 }}>
+          {nodes.slice().reverse().map((n, i, arr) => (
+            <div key={n.t} style={{ display: "flex", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 12, flex: "none" }}>
+                <span style={{ width: 9, height: 9, borderRadius: "50%", marginTop: 5, background: n.done ? "#25c7a5" : "#cfd7de" }} />
+                {i !== arr.length - 1 && <span style={{ flex: 1, width: 1, background: "#e8ecef", marginTop: 3 }} />}
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.6, paddingBottom: i === arr.length - 1 ? 0 : 16 }}>
+                <b>{n.t}</b>
+                <div style={{ color: "#666", fontSize: 12.5, marginTop: 2 }}>{n.d}</div>
+                <div style={{ color: "#bbb", fontSize: 11.5, marginTop: 2 }}>{n.at}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="gfoot">
+          <button className="btn primary" onClick={onClose}>关闭</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+   代发订单详情（与租户订单管理详情同版式：左状态/右进度条 → 买家备注条 → 5 列信息块 → 商品表）
+   ============================================================================ */
+function SupOrderDetailDrawer({ order, onClose, onShip, onNote }) {
+  const total = order.amounts["应收金额"];
+  const doneN = { 待付款: 1, 待发货: 2, 已发货: 3, 售后中: 3, 已完成: 5, 已全额退款: 2, 已取消: 1, 已关闭: 1 }[order.status] ?? 2;
+
+  return (
+    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="drawer" style={{ width: 1180 }}>
+        <header>订单详情<button className="x" onClick={onClose}>×</button></header>
+        <div className="body" style={{ padding: "18px 22px 30px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <button className="btn" style={{ padding: 0, width: 22, height: 22, fontSize: 16 }} onClick={onClose}>‹</button>
+            <span style={{ color: "#666" }}>订单编号：<span className="mono">{order.no}</span></span>
+          </div>
+
+          <div style={{ border: "1px solid #ececec", borderRadius: 4, display: "flex", padding: "20px 24px", alignItems: "center" }}>
+            <div style={{ width: 250, flex: "none" }}>
+              <div style={{ fontSize: 22, color: "#333", marginBottom: 8 }}>{order.status}</div>
+              <div style={{ color: "#999", fontSize: 13, marginBottom: 14 }}>
+                {order.status === "待付款" ? "等待买家付款" : order.status === "待发货" ? "买家已付款，待供应商发货" : order.status === "已发货" ? "供应商已发货，等待买家签收" : order.status === "售后中" ? "售后处理中，订单已挂起" : order.status === "已完成" ? "交易完成" : order.status === "已全额退款" ? "已退款，供货任务已关闭" : "—"}
+              </div>
+              {order.status === "待发货" && <button className="btn primary" style={{ marginBottom: 14 }} onClick={onShip}>发货</button>}
+              <div style={{ fontSize: 13, color: "#666" }}>商家备注：<span onClick={onNote} style={{ color: "#25c7a5", cursor: "pointer" }}>备注</span></div>
+            </div>
+
+            <div style={{ borderLeft: "1px solid #ececec", flex: 1, paddingLeft: 30, display: "flex", alignItems: "flex-start" }}>
+              {SUP_STEPS.map((s, i) => (
+                <React.Fragment key={s}>
+                  {i > 0 && <span style={{ flex: 1, height: 1, background: "#e5e5e5", marginTop: 13 }} />}
+                  <div style={{ textAlign: "center", width: 96, flex: "none" }}>
+                    <span style={{
+                      width: 26, height: 26, borderRadius: "50%", display: "grid", placeItems: "center", margin: "0 auto 8px",
+                      background: i < doneN ? "#25c7a5" : "#fff", color: i < doneN ? "#fff" : "#bbb",
+                      border: i < doneN ? "none" : "1px solid #dcdcdc", fontSize: 13,
+                    }}>{i + 1}</span>
+                    <div style={{ fontSize: 13, color: i < doneN ? "#333" : "#bbb" }}>{s}</div>
+                    <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>{i === 0 ? order.createdAt : i === 1 ? order.payTime : ""}</div>
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ background: "#fdf9d0", padding: "12px 20px", marginTop: 16, fontSize: 13, color: "#666" }}>买家备注：{order.buyerNote || ""}</div>
+
+          <div style={{ background: "#f7f7f7", padding: "18px 20px", marginTop: 16, display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1.2fr", gap: 24 }}>
+            <div>
+              <div style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>收货人信息</div>
+              <div className="note" style={{ lineHeight: 2.1, fontSize: 13 }}>
+                <div>收货人：{order.buyer["收件人"] || order.buyer["昵称"]}</div>
+                <div>联系电话：{order.buyer["收件人电话"] || "—"}</div>
+                <div>收货地址：{order.buyer["收件人地址"] || "—"}</div>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>配送信息</div>
+              <div className="note" style={{ lineHeight: 2.1, fontSize: 13 }}>配送方式：{order.delivery}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>付款信息</div>
+              <div className="note" style={{ lineHeight: 2.1, fontSize: 13 }}>
+                <div>应付金额： ￥{total}</div><div>实付金额： ￥{order.amounts["实收金额"] && order.amounts["实收金额"] !== "-" ? order.amounts["实收金额"] : total}</div>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>买家信息</div>
+              <div className="note" style={{ lineHeight: 2.1, fontSize: 13 }}>买家：{order.buyer["昵称"]}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>营销信息</div>
+              <div className="note" style={{ lineHeight: 2.1, fontSize: 13 }}>
+                <div>满减优惠总金额： ￥{order.amounts["优惠金额"]}</div>
+                <div>折扣优惠总金额： -</div>
+                <div>红包优惠总金额： -</div>
+              </div>
+            </div>
+          </div>
+
+          <table className="tbl-tight" style={{ marginTop: 20 }}>
+            <thead><tr><th>商品信息</th><th className="tw">单价(元)</th><th className="tw">数量</th><th className="tw">单位</th><th className="tw">优惠后金额(元)</th><th className="tw">售后状态</th><th className="tw">发货状态</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div className="prod-cell">
+                    <span className="thumb" style={{ background: "#f4f7f6" }}>{order.emoji}</span>
+                    <div><div>{order.product}</div><small>{order.spec}</small><small className="mono">商品编码：JY123　商品SKU：01</small></div>
+                  </div>
+                </td>
+                <td className="tw">{order.unitPrice}</td><td className="tw">{order.qty}</td><td className="tw">件</td>
+                <td className="tw">￥{order.amounts["实收金额"] && order.amounts["实收金额"] !== "-" ? order.amounts["实收金额"] : total}</td><td className="tw">{order.afterSale === "售后处理中" ? "退款中" : (order.status === "已全额退款" || order.afterSale === "售后完成") ? "已退款" : "未退款"}</td><td className="tw">{supHasShipped(order) ? "已发货" : "未发货"}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style={{ textAlign: "right", lineHeight: 2.4, marginTop: 14, color: "#666", fontSize: 13 }}>
+            <div>商品总价： ￥{order.amounts["商品金额"]}</div>
+            <div>优惠总价： ￥{order.amounts["优惠金额"]}</div>
+            <div>积分抵扣：（消耗0积分） -</div>
+            <div style={{ color: "#333", fontSize: 15 }}>订单应收总价： <b style={{ color: "#f5522e" }}>￥{total}</b></div>
+          </div>
+        </div>
+        <div className="foot"><button className="btn plain" onClick={onClose}>关闭</button></div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+   发货弹窗（与订单管理发货弹窗同版式；发货地址 = 供应商自己的）
+   ============================================================================ */
+function SupOrderShipModal({ order, onClose, onDone }) {
+  const remainQty = order.qty - (order.shippedQty || 0);
+  const [qty, setQty] = useState(remainQty);
+  const [carrier, setCarrier] = useState("");
+  const [tracking, setTracking] = useState("");
+  const [addr, setAddr] = useState(0);
+  const addresses = [
+    { name: "JOJO供应商", phone: "18100010002", addr: "广东省广州市天河区科苑路 16 号" },
+    { name: "JOJO供应商（备用仓）", phone: "18100010003", addr: "广东省广州市白云区太和镇兴太三路 6 号" },
+  ];
+
+  return (
+    <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="drawer" style={{ width: 820, height: "auto", maxHeight: "90vh", borderRadius: 4 }}>
+        <header>发货<button className="x" onClick={onClose}>×</button></header>
+        <div className="body" style={{ padding: "16px 22px 22px" }}>
+          <table className="tbl-tight">
+            <thead>
+              <tr>
+                <th style={{ width: 40 }}><input type="checkbox" defaultChecked /></th>
+                <th>商品信息</th><th className="tw">单价(元)</th><th className="tw">数量/单位</th>
+                <th className="tw">未发货数量</th><th className="tw">发货数量</th><th className="tw">发货状态</th><th className="tw">运单号</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><input type="checkbox" defaultChecked /></td>
+                <td>
+                  <div className="prod-cell">
+                    <span className="thumb" style={{ background: "#f4f7f6" }}>{order.emoji}</span>
+                    <div><div>{order.product}</div><small>{order.spec}</small></div>
+                  </div>
+                </td>
+                <td className="tw">{order.unitPrice}</td>
+                <td className="tw">{order.qty}</td>
+                <td className="tw mono">{remainQty}</td>
+                <td className="tw">
+                  <span style={{ display: "inline-flex", alignItems: "center", border: "1px solid #e5e5e5", borderRadius: 3, height: 30 }}>
+                    <span style={{ padding: "0 8px", color: "#999", fontSize: 12.5, borderRight: "1px solid #e5e5e5", lineHeight: "28px" }}>发货数</span>
+                    <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
+                    <input value={qty} onChange={(e) => setQty(Math.min(remainQty, Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 0)))} style={{ width: 44, height: 28, border: 0, textAlign: "center", padding: 0 }} />
+                    <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.min(remainQty, q + 1))}>＋</button>
+                  </span>
+                </td>
+                <td className="tw">未发货</td>
+                <td className="tw"><input placeholder="请输入" style={{ height: 30 }} /></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style={{ fontSize: 15, margin: "26px 0 12px", borderLeft: "none", paddingLeft: 0 }}>收货人信息</h3>
+          <div style={{ lineHeight: 2.2, display: "flex", fontSize: 13, color: "#666" }}>
+            <div style={{ width: 420 }}>
+              <div>配送方式：　{order.delivery}</div>
+              <div>收货人电话：{order.buyer["收件人电话"] || "—"}</div>
+              <div>收货地址：　{order.buyer["收件人地址"] || "—"}</div>
+            </div>
+            <div>收货人：　{order.buyer["收件人"] || order.buyer["昵称"]}</div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", margin: "26px 0 12px" }}>
+            <h3 style={{ fontSize: 15, margin: 0, borderLeft: "none", paddingLeft: 0 }}>选择发货地址</h3>
+            <button className="btn link" style={{ marginLeft: "auto" }}>+ 添加地址</button>
+          </div>
+          <table className="tbl-tight">
+            <thead><tr><th style={{ width: 46, background: "#fff" }}></th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
+            <tbody>
+              {addresses.map((a, i) => (
+                <tr key={i}>
+                  <td><input type="radio" checked={addr === i} onChange={() => setAddr(i)} /></td>
+                  <td className="tw">{a.name} {i === 0 && <span style={{ color: "#999" }}>【默认】</span>}</td>
+                  <td className="tw mono">{a.phone}</td>
+                  <td>{a.addr}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div style={{ display: "flex", gap: 40, marginTop: 22, alignItems: "center", fontSize: 13, color: "#666" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span>快递公司信息：<i className="req">*</i></span>
+              <select className="ctl" value={carrier} onChange={(e) => setCarrier(e.target.value)} style={{ width: 220, height: 32, color: carrier ? "#333" : "#bbb" }}><option value="">请选择或搜索快递公司</option>
+                {CARRIERS.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span>快递单号：<i className="req">*</i></span>
+              <input className="ctl" style={{ width: 200, height: 32 }} placeholder="请输入快递单号" value={tracking} onChange={(e) => setTracking(e.target.value)} />
+            </div>
+          </div>
+
+        </div>
+        <div className="foot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" disabled={qty < 1 || !carrier || !tracking.trim()} onClick={() => onDone({ qty, carrier, tracking: tracking.trim() })}>确定</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const SupToHq = () => <SupTasks leg="supplier_to_hq" title="发总部仓" desc="供应商 → 总部仓供货任务" />;
 export const SupToStore = () => <SupTasks leg="supplier_inbound" title="发门店" desc="供应商直配门店任务" />;
 
@@ -207,7 +602,7 @@ function SupShipModal({ doc, onClose, onDone }) {
                     <div><div>{doc.product}</div><small>{doc.spec}</small></div>
                   </div>
                 </td>
-                <td className="tw">{doc.leg === "sup_consumer" ? priceOf(doc) : <span className="tag gray">已脱敏</span>}</td>
+                <td className="tw"><span className="tag gray">已脱敏</span></td>
                 <td className="tw">{doc.qty}</td>
                 <td className="tw mono">{remain}</td>
                 <td className="tw">
@@ -228,7 +623,7 @@ function SupShipModal({ doc, onClose, onDone }) {
           <div style={{ lineHeight: 2, display: "flex", gap: 60 }}>
             <div>
               <div>配送方式： 快递发货</div>
-              <div>收货人电话： {doc.leg === "sup_consumer" ? (ORDERS.find((o) => o.no === doc.orderNo)?.buyer?.["收件人电话"] || "—") : "—"}</div>
+              <div>收货人电话： —</div>
               <div>收货地址： {doc.receiverAddr}</div>
             </div>
             <div>收货人： {doc.receiver}</div>

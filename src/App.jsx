@@ -145,7 +145,7 @@ export function App() {
             {page === "版本记录" && <VersionLog />}
             {page === "业务流程图" && <FlowsView />}
             {page === "场景清单" && <ScenarioList />}
-            {page === "一件代发" && <SupDirect />}
+            {page === "一件代发" && <SupDirect onNav={setPage} />}
             {page === "发总部仓" && <SupToHq />}
             {page === "发门店" && <SupToStore />}
             {page === "配送差异" && <SupDiff />}

@@ -245,6 +245,60 @@ export const ORDERS = [
     payMethod: "微信支付", payTime: "2026-09-18 09:31:22", ops: ["详情", "备注", "分配门店"],
     supplyNo: "FHD2609180008", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
+  /* ---- 一件代发：供应商直发消费者（快递发货）—— 发货与售后均归供应商，租户后台不展示 ---- */
+  /* 待付款：买家下单未支付，尚未生成供货任务（支付后才生成） */
+  {
+    id: "o21", no: "ORD260919000077", product: "空气炸锅", spec: "5L / 米白", qty: 1, unitPrice: "¥399.00", emoji: "🍳",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "399.00", 邮费: "0", 优惠金额: "-20.00", 积分抵现: "-", 应收金额: "379.00", 实收金额: "-" },
+    buyer: { 昵称: "陈小满", 收件人: "陈小满", 收件人电话: "13866667777", 收件人地址: "广东省深圳市南山区科技园南路 55 号" },
+    store: "九天门店", delivery: "快递发货", createdAt: "2026-09-19 20:12:33", status: "待付款",
+    ops: ["详情", "备注", "修改地址"],
+    supplyNo: "", supplyMode: "供应商直配",
+  },
+  /* 售后中：货已签收，买家发起退货退款（对应供应商后台「售后处理」R20260918260918000021） */
+  {
+    id: "o22", no: "ORD260917000140", product: "相机", spec: "银色 / 标准版", qty: 1, unitPrice: "¥189.00", emoji: "📷",
+    afterSale: "售后处理中", afterSaleLink: "查看",
+    amounts: { 商品金额: "189.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "189.00", 实收金额: "189.00" },
+    buyer: { 昵称: "吴桐", 收件人: "吴桐", 收件人电话: "13900001111", 收件人地址: "上海市浦东新区世纪大道 100 号" },
+    store: "九天门店", delivery: "快递发货", createdAt: "2026-09-17 16:40:00", status: "售后中",
+    payMethod: "微信支付", payTime: "2026-09-17 16:40:02", ops: ["详情", "备注", "分配门店"],
+    carrier: "中通快递", tracking: "ZT8800112299", track: "已签收 2026-09-18 09:10:00",
+    supplyNo: "FHD2609170009", supplyMode: "供应商直配",
+  },
+  /* 已完成：货已签收，交易完成 */
+  {
+    id: "o23", no: "ORD260915000123", product: "沐浴露", spec: "持久留香 / 500ml", qty: 1, unitPrice: "¥199.00", emoji: "🧴",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "199.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "199.00", 实收金额: "199.00" },
+    buyer: { 昵称: "沈知夏", 收件人: "沈知夏", 收件人电话: "13712345678", 收件人地址: "四川省成都市武侯区天府大道 199 号" },
+    store: "九天门店", delivery: "快递发货", createdAt: "2026-09-15 10:08:21", status: "已完成",
+    payMethod: "微信支付", payTime: "2026-09-15 10:08:24", ops: ["详情", "备注", "分配门店"],
+    carrier: "圆通速递", tracking: "YT5598712266", track: "已签收 2026-09-16 14:30:00",
+    supplyNo: "FHD2609150021", supplyMode: "供应商直配",
+  },
+  /* 已关闭：未发货前买家退款，供货任务同步关闭（供应商无需发货） */
+  {
+    id: "o24", no: "ORD260916000188", product: "智能手环", spec: "黑色 / 标准版", qty: 1, unitPrice: "¥249.00", emoji: "⌚",
+    afterSale: "售后完成", afterSaleLink: "查看",
+    amounts: { 商品金额: "249.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "249.00", 实收金额: "249.00" },
+    buyer: { 昵称: "赵一鸣", 收件人: "赵一鸣", 收件人电话: "13600002222", 收件人地址: "江苏省南京市鼓楼区中山北路 8 号" },
+    store: "九天门店", delivery: "快递发货", createdAt: "2026-09-16 09:15:44", status: "已全额退款",
+    payMethod: "微信支付", payTime: "2026-09-16 09:15:47", ops: ["详情", "备注", "分配门店"],
+    supplyNo: "FHD2609160033", supplyMode: "供应商直配",
+  },
+  /* 已发货：在途，待买家签收 */
+  {
+    id: "o25", no: "ORD260918000466", product: "电饭煲", spec: "4L / 智能款", qty: 1, unitPrice: "¥499.00", emoji: "🍚",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "499.00", 邮费: "0", 优惠金额: "-30.00", 积分抵现: "-", 应收金额: "469.00", 实收金额: "469.00" },
+    buyer: { 昵称: "孙小满", 收件人: "孙小满", 收件人电话: "13800009999", 收件人地址: "湖北省武汉市洪山区珞喻路 129 号" },
+    store: "九天门店", delivery: "快递发货", createdAt: "2026-09-18 16:22:10", status: "已发货",
+    payMethod: "微信支付", payTime: "2026-09-18 16:22:13", ops: ["详情", "备注", "分配门店"],
+    carrier: "韵达快递", tracking: "YD1122336801", track: "已发货 2026-09-19 09:30:00",
+    supplyNo: "FHD2609180044", supplyMode: "供应商直配",
+  },
 ];
 
 /* 提货码：16 位，按订单号确定性生成（原型固定数据；买家端 / 门店端展示同一码） */
@@ -528,6 +582,25 @@ export const SUPPLIER_DOCS = [
     orderNo: "ORD260917000140", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 1, sent: 1,
     shipper: "供应商002", receiver: "吴桐（消费者）", receiverAddr: "上海市浦东新区世纪大道 100 号",
     carrier: "中通快递", tracking: "ZT8800112299", track: "已签收 2026-09-18 09:10:00", status: "已签收", ops: ["详情"],
+  },
+  /* 代发单状态补齐：已完成 / 已关闭 / 已发货 */
+  {
+    id: "FHD2609150021", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-15 10:08:21",
+    orderNo: "ORD260915000123", product: "沐浴露", spec: "持久留香 / 500ml", emoji: "🧴", qty: 1, sent: 1,
+    shipper: "JOJO供应商", receiver: "沈知夏（消费者）", receiverAddr: "四川省成都市武侯区天府大道 199 号",
+    carrier: "圆通速递", tracking: "YT5598712266", track: "已签收 2026-09-16 14:30:00", status: "已签收", ops: ["详情"],
+  },
+  {
+    id: "FHD2609160033", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-16 09:15:44",
+    orderNo: "ORD260916000188", product: "智能手环", spec: "黑色 / 标准版", emoji: "⌚", qty: 1, sent: 0,
+    shipper: "JOJO供应商", receiver: "赵一鸣（消费者）", receiverAddr: "江苏省南京市鼓楼区中山北路 8 号",
+    carrier: "", tracking: "", track: "", status: "已取消", ops: ["详情"],
+  },
+  {
+    id: "FHD2609180044", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-18 16:22:10",
+    orderNo: "ORD260918000466", product: "电饭煲", spec: "4L / 智能款", emoji: "🍚", qty: 1, sent: 1,
+    shipper: "JOJO供应商", receiver: "孙小满（消费者）", receiverAddr: "湖北省武汉市洪山区珞喻路 129 号",
+    carrier: "韵达快递", tracking: "YD1122336801", track: "已发货 2026-09-19 09:30:00", status: "已发货", ops: ["详情"],
   },
   {
     id: "FHD2609170012", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 14:05:00",
