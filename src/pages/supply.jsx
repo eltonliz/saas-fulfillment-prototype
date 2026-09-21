@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SUPPLY_DOCS } from "../data.js";
-import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
+import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 import { supplyStore, supplierStore, diffStore, orderStore, patchDoc, addDiff, ARRIVAL_TIMEOUT_DAYS } from "../store.js";
 
 const LEG_LABEL = {
@@ -388,7 +388,7 @@ export function SupplyDiff() {
                   <td className="tw">{d.shipper}</td>
                   <td>{d.summary}</td>
                   <td className="tw">{d.evidence}</td>
-                  <td className="tw"><span className={`tag ${d.status === "待举证" || d.status === "待补发" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "补发中" || d.status === "补发完成" ? "" : "gray"}`}>{d.status}</span></td>
+                  <td className="tw"><span className={`tag ${d.status === "待举证" || d.status === "待补发" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "补发中" || d.status === "补发完成" ? "" : "gray"}`}>{d.status}</span>{d.rejectReason && <small style={{ color: "#f5522e" }}>原因：{d.rejectReason}</small>}</td>
                   <td className="tw">{d.makeup
                     ? <span className="mono" style={{ color: "#25c7a5" }}>
                         {d.makeup}
@@ -422,17 +422,15 @@ export function SupplyDiff() {
       }} />}
       {detail && <DiffDetailDrawer row={detail} onClose={() => setDetail(null)} />}
       {pass && (
-        <Confirm
-          title="审核配送差异"
-          text={`差异单 ${pass.id}：${pass.summary}。通过 → 按「谁发货谁补发」自动生成补发供货单，由「${pass.shipper}」执行补发；驳回 → 不再补发，差异单转「审核不通过」。`}
-          okText="审核通过"
-          rejectText="驳回"
-          onReject={() => {
-            setRows((rs) => rs.map((r) => (r.id === pass.id ? { ...r, status: "审核不通过" } : r)));
-            tip(`差异单 ${pass.id} 已驳回：不再补发，转线下处理`);
+        <DiffAuditModal
+          row={pass}
+          onClose={() => setPass(null)}
+          onReject={(reason) => {
+            setRows((rs) => rs.map((r) => (r.id === pass.id ? { ...r, status: "审核不通过", rejectReason: reason } : r)));
+            tip(`差异单 ${pass.id} 已驳回：${reason}（不再补发，转线下处理）`);
             setPass(null);
           }}
-          onOk={() => {
+          onPass={() => {
             /* 决策 5：审核通过 → 按「谁发货谁补发」生成补发供货单，进对应发货页 */
             const all = [...supplyStore.get(), ...supplierStore.get()];
             const orig = all.find((d) => d.id === pass.supplyNo);
@@ -453,10 +451,45 @@ export function SupplyDiff() {
             tip(`差异单 ${pass.id} 审核通过，已生成补发供货单 ${reshipId}（${doc.leg === "hq_store" ? "在本页「补发任务」列点「发货」" : "由供应商在其配送差异页发货"}）`);
             setPass(null);
           }}
-          onCancel={() => setPass(null)}
         />
       )}
     </>
+  );
+}
+
+/* ---------------- 审核配送差异（通过 / 不通过 · 不通过须填原因） ---------------- */
+export function DiffAuditModal({ row, onClose, onPass, onReject }) {
+  const [result, setResult] = useState("通过");
+  const [reason, setReason] = useState("");
+  const ok = result === "通过" || reason.trim().length > 0;
+  return (
+    <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="gbox" style={{ width: 520 }}>
+        <b>审核配送差异</b>
+        <div style={{ marginTop: 12, background: "#f7f8fa", borderRadius: 4, padding: "10px 12px", fontSize: 12.5, lineHeight: 1.9, color: "#5b6672" }}>
+          <div>差异单号：<span className="mono">{row.id}</span>　关联供货单：<span className="mono">{row.supplyNo}</span></div>
+          <div>差异摘要：{row.summary}</div>
+          {row.evidence && row.evidence !== "—" && <div>举证：{row.evidence}</div>}
+        </div>
+        <div className="radio-row" style={{ marginTop: 14 }}>
+          <label><input type="radio" checked={result === "通过"} onChange={() => setResult("通过")} />审核通过</label>
+          <label><input type="radio" checked={result === "不通过"} onChange={() => setResult("不通过")} />审核不通过</label>
+        </div>
+        {result === "不通过" && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 6 }}><i className="req">*</i>不通过原因</div>
+            <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="请填写不通过原因（必填）——随差异单记录，对门店 / 供应商可见" style={{ width: "100%" }} />
+          </div>
+        )}
+        <p style={{ margin: "12px 0 0", fontSize: 12.5, lineHeight: 1.8, color: "#5b6672" }}>
+          {result === "通过" ? "通过 → 按「谁发货谁补发」生成补发供货单并执行补发。" : "不通过 → 不再补发，差异单转「审核不通过」，原因随单记录。"}
+        </p>
+        <div className="gfoot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" disabled={!ok} title={ok ? "" : "请填写不通过原因"} onClick={() => (result === "通过" ? onPass() : onReject(reason.trim()))}>确认</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -502,6 +535,7 @@ function DiffDetailDrawer({ row, onClose }) {
               <div className="frow"><label>举证信息</label><div className="fc"><input value={row.evidence} readOnly /></div></div>
               <div className="frow"><label>举证照片</label><div className="fc" style={{ paddingTop: 6 }}><EvidencePhotos evidence={row.evidence} /></div></div>
               <div className="frow"><label>当前状态</label><div className="fc"><span className={`tag ${row.status === "待举证" ? "warn" : ["待供应商审核", "待总部审核"].includes(row.status) ? "blue" : row.status === "审核不通过" ? "danger" : row.status === "已关闭" ? "gray" : ""}`}>{row.status}</span></div></div>
+              {row.rejectReason && <div className="frow"><label>驳回原因</label><div className="fc"><input value={row.rejectReason} readOnly style={{ color: "#f5522e" }} /></div></div>}
               {row.makeup && <div className="frow"><label>补发供货单</label><div className="fc"><input className="mono" value={row.makeup} readOnly /></div></div>}
               {row.makeup && (
                 <div className="frow"><label>补发物流</label><div className="fc">

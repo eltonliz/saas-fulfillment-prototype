@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag } from "./supply.jsx";
-import { TrackDrawer, Confirm, useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
+import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag, DiffAuditModal } from "./supply.jsx";
+import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 import { supplierStore, supplyStore, diffStore, orderStore, patchDoc } from "../store.js";
 import { ORDERS } from "../data.js";
 
@@ -394,7 +394,7 @@ export function SupDiff() {
                 <td className="tw mono">{d.supplyNo}</td>
                 <td>{d.summary}</td>
                 <td className="tw">{d.evidence}<div style={{ marginTop: 4 }}><EvidencePhotos evidence={d.evidence} size={30} /></div></td>
-                <td className="tw">{d.status === "审核不通过" ? <span className="tag danger">不通过</span> : ["待补发", "补发中", "补发完成"].includes(d.status) ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
+                <td className="tw">{d.status === "审核不通过" ? (<><span className="tag danger">不通过</span>{d.rejectReason && <small style={{ color: "#f5522e", display: "block" }}>原因：{d.rejectReason}</small>}</>) : ["待补发", "补发中", "补发完成"].includes(d.status) ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
                 <td className="tw"><span className={`tag ${d.status === "待举证" || d.status === "待补发" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "已关闭" ? "gray" : ""}`}>{d.status}</span></td>
                 <td className="tw">{d.makeup
                   ? <span className="mono" style={{ color: "#25c7a5" }}>{d.makeup}<small style={{ display: "block", fontFamily: "inherit" }}>{makeupOf(d) ? `${makeupOf(d).status}${makeupOf(d).tracking ? " · 已发物流" : ""}` : "—"}</small></span>
@@ -435,18 +435,15 @@ export function SupDiff() {
         />
       )}
       {audit && (
-        <Confirm
-          title="审核配送差异"
-          text={`差异单 ${audit.id}（原供货单 ${audit.supplyNo}）：${audit.summary}。通过 → 生成补发供货单并由本方发货（补发单带「补发」标识、关联原供货单）；驳回 → 差异单转「审核不通过」，不补发、转线下。`}
-          okText="审核通过"
-          rejectText="驳回"
-          onOk={() => { approveAudit(audit); setAudit(null); }}
-          onReject={() => {
-            diffStore.set((ds) => ds.map((x) => (x.id === audit.id ? { ...x, status: "审核不通过" } : x)));
-            tip(`差异单 ${audit.id} 已驳回：不补发，转线下处理`);
+        <DiffAuditModal
+          row={audit}
+          onClose={() => setAudit(null)}
+          onPass={() => { approveAudit(audit); setAudit(null); }}
+          onReject={(reason) => {
+            diffStore.set((ds) => ds.map((x) => (x.id === audit.id ? { ...x, status: "审核不通过", rejectReason: reason } : x)));
+            tip(`差异单 ${audit.id} 已驳回：${reason}（不补发，转线下处理）`);
             setAudit(null);
           }}
-          onCancel={() => setAudit(null)}
         />
       )}
     </>
