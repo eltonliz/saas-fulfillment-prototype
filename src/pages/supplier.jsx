@@ -22,7 +22,9 @@ export function SupTasks({ leg, title, desc }) {
   const [toast, tip] = useToast();
   const docs = supplierStore.use();
   const mine = docs.filter((d) => d.leg === leg);
-  const list = mine.filter((d) => (tab === "全部" ? true : d.status === tab));
+  /* 部分收货为过程态（对方收了一部分、未收完），归「已发货」并带标记 */
+  const statusText = (d) => (d.status === "部分收货" ? "已发货" : d.status);
+  const list = mine.filter((d) => (tab === "全部" ? true : statusText(d) === tab));
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(list.map((d) => d.id));
   const pg = usePaged(list);
   const pending = mine.filter((d) => d.status === "待发货" && !d.isMakeup).length;
@@ -31,7 +33,7 @@ export function SupTasks({ leg, title, desc }) {
   /* 一件代发到消费者，没有「收货」环节；发总仓 / 发门店 才有 */
   const TABS = leg === "sup_consumer"
     ? ["全部", "待发货", "已发货", "已签收"]
-    : ["全部", "待发货", "已发货", "部分收货", "已收货", "收货异常"];
+    : ["全部", "待发货", "已发货", "已收货", "收货异常"];
 
   return (
     <>
@@ -107,7 +109,8 @@ export function SupTasks({ leg, title, desc }) {
                 </td>
                 <td className="tw mono">{d.tracking ? <>{d.carrier}<small>{d.tracking}</small></> : "-"}</td>
                 <td className="tw">
-                  <span className={`tag ${d.status === "待发货" ? "warn" : d.status === "已发货" ? "blue" : d.status === "收货异常" ? "danger" : ""}`}>{d.status}</span>
+                  <span className={`tag ${statusText(d) === "待发货" ? "warn" : statusText(d) === "已发货" ? "blue" : statusText(d) === "收货异常" ? "danger" : ""}`}>{statusText(d)}</span>
+                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>部分收货</small>}
                 </td>
                 <td>
                   <div className="op-col">
