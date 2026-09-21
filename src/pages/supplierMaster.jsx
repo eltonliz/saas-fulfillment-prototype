@@ -122,38 +122,34 @@ function SupplierEditDrawer({ row, isNew, onClose, onSaved }) {
       <div className="drawer" style={{ width: 720 }}>
         <header>{isNew ? "新建供应商" : "编辑供应商"}<button className="x" onClick={onClose}>×</button></header>
         <div className="body">
+          {/* 字段照真实 SAAS「新建供应商」1:1 对齐 */}
           <section className="card">
             <h3><i className="req">*</i> 基本信息</h3>
             <div className="cbody">
-              <div className="frow"><label><i>*</i>供应商名称</label><div className="fc"><input defaultValue={row.name} /></div></div>
-              <div className="frow"><label>供应商编号</label><div className="fc"><input defaultValue={row.no} readOnly /></div></div>
-              <div className="frow"><label><i>*</i>联系人</label><div className="fc"><input defaultValue={row.contact} /></div></div>
-              <div className="frow"><label><i>*</i>联系人电话</label><div className="fc"><input defaultValue={row.phone} /></div></div>
-              <div className="frow"><label>业务类型</label><div className="fc">
-                <select className="ctl" defaultValue="食品饮料" style={{ maxWidth: 220 }}>
-                  {["食品饮料", "日用百货", "美妆个护", "母婴用品", "其他"].map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </div></div>
+              <div className="frow"><label><i>*</i>供应商名称</label><div className="fc"><input defaultValue={row.name} placeholder="请输入供应商名称" /></div></div>
             </div>
           </section>
 
           <section className="card">
-            <h3><i className="req">*</i> 发货地址 / 业务地址 / 联系人信息</h3>
+            <h3>业务类型</h3>
             <div className="cbody">
-              <div className="frow"><label>区域</label><div className="fc"><input placeholder="请选择省 / 市 / 区" readOnly /></div></div>
-              <div className="frow"><label>详细地址</label><div className="fc"><input placeholder="请输入详细地址（发货弹窗的「选择发货地址」取自这里）" /></div></div>
+              <div className="frow"><label></label><div className="fc">
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><input type="checkbox" defaultChecked />代发服务</label>
+              </div></div>
             </div>
           </section>
 
           <section className="card">
             <h3><i className="req">*</i> 联系人信息</h3>
             <div className="cbody">
-              <div className="frow"><label><i>*</i>联系人名称</label><div className="fc"><input defaultValue={row.contact} /></div></div>
+              <div className="frow"><label><i>*</i>联系人名称</label><div className="fc"><input defaultValue={row.contact} placeholder="请输入联系人名称" /></div></div>
+              <div className="frow"><label><i>*</i>联系人电话</label><div className="fc"><input defaultValue={row.phone} placeholder="请输入联系人电话" /></div></div>
               <div className="frow"><label><i>*</i>微信号</label><div className="fc"><input placeholder="请输入微信号" /></div></div>
               <div className="frow"><label>QQ号</label><div className="fc"><input placeholder="请输入QQ号" /></div></div>
             </div>
           </section>
 
+          <div className="hl" data-hl="新增：供应商后台登录账号">
           <section className="card">
             <h3>供应商后台登录账号</h3>
             <div className="cbody">
@@ -188,6 +184,7 @@ function SupplierEditDrawer({ row, isNew, onClose, onSaved }) {
               )}
             </div>
           </section>
+          </div>
         </div>
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>

@@ -177,6 +177,18 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
               <div className="frow"><label>商品编码</label><div className="fc"><input defaultValue={row?.no} placeholder="请输入商品编码" /><div className="note">{(row?.no || "").length} / 30</div></div></div>
               <div className="frow"><label><i>*</i>商品类目</label><div className="fc"><input placeholder="点击选择商品类目" readOnly /></div></div>
               <div className="frow"><label>商品分类</label><div className="fc"><input placeholder="点击选择商品分类" readOnly /></div></div>
+              <div className="frow"><label>类目参数</label><div className="fc">
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 4 }}>
+                  <span className="note">自定义参数</span>
+                  <button className="btn link">管理</button>
+                  <button className="btn plain">+ 添加参数</button>
+                </div>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", background: "#f7f8fa", padding: "8px 10px", borderRadius: 3, marginTop: 6 }}>
+                  <input style={{ width: 180 }} placeholder="参数名" />
+                  <input style={{ width: 280 }} placeholder="参数值" />
+                  <span style={{ color: "#e0392f", cursor: "pointer" }}>删除</span>
+                </div>
+              </div></div>
 
               <div className="frow">
                 <label></label>
@@ -235,20 +247,24 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
               <div className="frow"><label>按单限购</label><div className="fc"><input className="ctl w-xs" placeholder="0" /><div className="note">单笔订单限制购买的数量</div></div></div>
 
               <div className="frow"><label>发货模式</label><div className="fc">
-                <Hl label="改动：决定由谁发货 · 走哪条链路">
+                <Hl label="改动：前置仓配送暂未开放">
                   <div style={{ padding: 10, width: "100%" }}>
                     <div className="radio-row">
                       {["供应商直配", "总部仓直配"].map((m) => (
                         <label key={m}><input type="radio" checked={mode === m} onChange={() => setMode(m)} />{m}</label>
                       ))}
+                      <label style={{ color: "#bbb" }}><input type="radio" disabled />前置仓配送</label>
                     </div>
                     {mode === "总部仓直配" && (
-                      <div className="radio-row" style={{ marginTop: 8 }}>
-                        <span className="note" style={{ alignSelf: "center", marginRight: 6 }}>货源</span>
-                        {GOODS_SOURCES.map((g) => (
-                          <label key={g}><input type="radio" checked={source === g} onChange={() => setSource(g)} />{g}</label>
-                        ))}
-                      </div>
+                      <Hl label="新增：货源">
+                        <div className="radio-row" style={{ marginTop: 14, padding: "4px 8px" }}>
+                          <span className="note" style={{ alignSelf: "center", marginRight: 6 }}>货源</span>
+                          {GOODS_SOURCES.map((g) => (
+                            <label key={g}><input type="radio" checked={source === g} onChange={() => setSource(g)} />{g}</label>
+                          ))}
+                          <span className="note" style={{ alignSelf: "center", marginLeft: 10 }}>供应商供货＝货先由供应商发到总部仓；总部自有＝不经供应商，支付后直接发货</span>
+                        </div>
+                      </Hl>
                     )}
                     <div className="note">
                       1、供应商直配：货从供应商仓发出，配送方式选快递，则订单由供应商直发给客户；选自提，则订单由供应商直发到客户所选门店，客户到店自提。发货与售后均由供应商处理，租户后台不展示该类订单。<br />
