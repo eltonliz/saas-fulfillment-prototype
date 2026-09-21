@@ -7,18 +7,17 @@ import { useReqPage } from "./reqnotes.jsx";
    门店 APP —— 严格 1:1 还原用户 Axure 原型（工作台 / 收货管理 / 发货单详情·确认收货 / 温馨提示）
    ============================================================================ */
 const STORE = { name: "濮源直播间", contact: "阿远", phone: "15554174768", addr: "广州市越秀区东风中路 410 号时代地产中心" };
-const SUPPLY_NO = "23441231235554";
 
 const RECEIPT_CARDS = [
-  { id: "c1", mode: "供应商直配", state: "待发货", qty: "132件", no: "DB20260420106", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留" },
-  { id: "c2", mode: "供应商直配", state: "已发货", qty: "132件", no: "DB20260420108", acts: ["查看详情", "查看物流", "确认收货"], name: "得佑婴幼儿手口湿巾 弱酸无残留" },
-  { id: "c3", mode: "供应商直配", state: "已收货", qty: "132件", no: "DB20260420109", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留" },
+  { id: "c1", mode: "供应商直配", state: "待发货", qty: "132件", no: "DB20260420106", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", emoji: "🧴" },
+  { id: "c2", mode: "供应商直配", state: "已发货", qty: "132件", no: "DB20260420108", acts: ["查看详情", "查看物流", "确认收货"], name: "得佑婴幼儿手口湿巾 弱酸无残留", emoji: "🧴" },
+  { id: "c3", mode: "供应商直配", state: "已收货", qty: "132件", no: "DB20260420109", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", emoji: "🧴" },
   /* 总部仓直配（供应商供货）：货先到总仓，再由总仓发到门店 */
-  { id: "c4", mode: "总部仓直配", state: "待发货", qty: "40件", no: "FHD2609180005", acts: ["查看详情"], name: "儿童保温杯 316不锈钢" },
-  { id: "c5", mode: "总部仓直配", state: "已发货", qty: "40件", no: "FHD2609180006", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童保温杯 316不锈钢" },
+  { id: "c4", mode: "总部仓直配", state: "待发货", qty: "40件", no: "FHD2609180005", acts: ["查看详情"], name: "儿童保温杯 316不锈钢", emoji: "🥤" },
+  { id: "c5", mode: "总部仓直配", state: "已发货", qty: "40件", no: "FHD2609180006", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童保温杯 316不锈钢", emoji: "🥤" },
   /* 总部仓直配 · 自有货：不经供应商，总部仓直发门店 */
-  { id: "c6", mode: "总部仓直配 · 自有货", state: "已发货", qty: "20件", no: "FHD2609180018", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童书包" },
-  { id: "c7", mode: "总部仓直配 · 自有货", state: "已收货", qty: "15件", no: "FHD2609180017", acts: ["查看详情"], name: "保温饭盒" },
+  { id: "c6", mode: "总部仓直配 · 自有货", state: "已发货", qty: "20件", no: "FHD2609180018", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童书包", emoji: "🎒" },
+  { id: "c7", mode: "总部仓直配 · 自有货", state: "已收货", qty: "15件", no: "FHD2609180017", acts: ["查看详情"], name: "保温饭盒", emoji: "🍱" },
 ];
 
 /* 配送差异单（照 Axure 原型的差异页字段） */
@@ -48,7 +47,15 @@ export function StoreApp() {
   const [confirm, setConfirm] = useState(false);
   const [mode, setMode] = useState("preview");
   const [diffCard, setDiffCard] = useState(null);   // 当前查看的配送差异单
+  const [cards, setCards] = useState(RECEIPT_CARDS); // 收货管理卡片（确认收货后状态流转）
+  const [receiptCard, setReceiptCard] = useState(null); // 当前查看/收货的供货单
   useReqPage("app:" + view);
+  /* 确认收货：卡片转「已收货」；有少发时先经温馨提示（确认后才落账） */
+  const commitReceipt = () => {
+    setCards((cs) => cs.map((c) => (c.id === receiptCard.id ? { ...c, state: "已收货", acts: ["查看详情"] } : c)));
+    setConfirm(false);
+    setView("receipts");
+  };
 
   return (
     <>
@@ -72,15 +79,21 @@ export function StoreApp() {
 
         <div className="mscreen">
           {view === "home" && <Home onGo={setView} />}
-          {view === "receipts" && <Receipts onOpen={() => setView("receive")} />}
-          {view === "receive" && <Receive onConfirm={(shortage) => (shortage ? setConfirm(true) : setView("receipts"))} onBack={() => setView("receipts")} />}
+          {view === "receipts" && <Receipts cards={cards} onOpen={(c) => { setReceiptCard(c); setView("receive"); }} />}
+          {view === "receive" && receiptCard && (
+            <Receive
+              card={receiptCard}
+              onBack={() => setView("receipts")}
+              onConfirm={(shortage) => (shortage ? setConfirm(true) : commitReceipt())}
+            />
+          )}
           {view === "diffs" && <Diffs onDetail={(c) => { setDiffCard(c); setView("diffDetail"); }} onEvidence={(c) => { setDiffCard(c); setView("evidence"); }} />}
           {view === "diffDetail" && <DiffDetail card={diffCard} onBack={() => setView("diffs")} onEvidence={() => setView("evidence")} />}
           {view === "evidence" && <Evidence card={diffCard} onBack={() => setView("diffs")} />}
           {view === "returns" && <Returns />}
         </div>
 
-        {confirm && <WarmTip onCancel={() => setConfirm(false)} onOk={() => setConfirm(false)} />}
+        {confirm && <WarmTip onCancel={() => setConfirm(false)} onOk={commitReceipt} />}
       </div>
     </div>
       )}
@@ -100,7 +113,7 @@ function StoreFlowBoard() {
 
       <div style={{ display: "flex", alignItems: "flex-start", marginTop: 28, minWidth: "max-content" }}>
         <FlowNode idx="①" title="收货管理 · 全部" sub="供应商直配 / 总部仓直配（含自有货）" n="1" dir="store-flow">
-          筛选 全部 / 待发货 / 已发货 / 已收货；「已发货」单可 查看物流 / 确认收货。
+          筛选 全部 / 待发货 / 已发货 / 已收货；各状态可查看详情，已发货单可 查看物流 / 确认收货。
         </FlowNode>
         <FlowArrow label="查看详情 / 确认收货" id="sa1" />
         <FlowNode idx="②" title="发货单详情 · 确认收货" sub="按商品核对实收" n="2" dir="store-flow">
@@ -214,7 +227,7 @@ function Home({ onGo }) {
 }
 
 /* ---------------- 收货管理 ---------------- */
-function Receipts({ onOpen }) {
+function Receipts({ cards, onOpen }) {
   const [mode, setMode] = useState("供应商直配");
   const [chip, setChip] = useState("全部");
   const [track, setTrack] = useState(null);
@@ -240,16 +253,16 @@ function Receipts({ onOpen }) {
       </div>
 
       <div className="mpad">
-        {RECEIPT_CARDS.filter((c) => c.mode === mode).filter((c) => chip === "全部" || c.state === chip).map((c) => (
+        {cards.filter((c) => c.mode === mode).filter((c) => chip === "全部" || c.state === chip).map((c) => (
           <div className="mcard" key={c.id}>
             <div className="hd"><b>供货单信息</b><span style={{ color: c.state === "待发货" ? "#f5a623" : c.state === "已发货" ? "#2f80ed" : "#25c7a5", fontSize: 12.5 }}>{c.state}</span></div>
             <div className="mrow"><span>商品名称</span><b>{c.name}</b></div>
             <div className="mrow"><span>发货数量</span><b>{c.qty}</b></div>
             <div className="mrow"><span>供货单号</span><b className="mono">{c.no}</b></div>
             <div className="macts">
-              <button className="btn sm" onClick={onOpen}>查看详情</button>
+              <button className="btn sm" onClick={() => onOpen(c)}>查看详情</button>
               {c.acts.includes("查看物流") && <button className="btn sm" onClick={() => setTrack(c)}>查看物流</button>}
-              {c.acts.includes("确认收货") && <button className="btn primary sm" onClick={onOpen}>确认收货</button>}
+              {c.acts.includes("确认收货") && <button className="btn primary sm" onClick={() => onOpen(c)}>确认收货</button>}
             </div>
           </div>
         ))}
@@ -299,30 +312,36 @@ function TrackSheet({ doc, onClose }) {
 }
 
 /* ---------------- 发货单详情 · 确认收货 ---------------- */
-function Receive({ onConfirm, onBack }) {
-  const [items, setItems] = useState([
-    { name: "什锦果蔬", spec: "礼盒装-应收5", qty: 5, max: 5 },
-    { name: "奶粉", spec: "800g-应收4", qty: 4, max: 4 },
-  ]);
+function Receive({ card, onConfirm, onBack }) {
+  const qty = parseInt(card.qty, 10) || 0;
+  const [items, setItems] = useState([{ name: card.name, qty, max: qty }]);
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState(0);
   const [copied, setCopied] = useState(false);
   const copyNo = () => {
-    try { navigator.clipboard?.writeText(SUPPLY_NO).catch(() => {}); } catch { /* 非安全上下文下忽略 */ }
+    try { navigator.clipboard?.writeText(card.no).catch(() => {}); } catch { /* 非安全上下文下忽略 */ }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
-  const shouldTotal = items.reduce((s, i) => s + i.max, 0);
-  const short = shouldTotal - items.reduce((s, i) => s + i.qty, 0);
+  const short = items.reduce((s, i) => s + i.max, 0) - items.reduce((s, i) => s + i.qty, 0);
   const shortage = short > 0;
+  const st = card.state;
+  const tone = st === "待发货" ? "#f5a623" : st === "已发货" ? "#2f80ed" : "#25c7a5";
 
   return (
     <div className="mpad">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <span style={{ color: "#25c7a5", fontSize: 15 }}>✓</span>
-        <b>确认收货</b>
-        <span className="note" style={{ display: "inline", marginLeft: "auto", fontSize: 11.5 }}>供货单编号 {SUPPLY_NO}</span>
+        <span style={{ color: tone, fontSize: 15 }}>{st === "已收货" ? "✓" : st === "已发货" ? "🚚" : "⏳"}</span>
+        <b>{st === "待发货" ? "待供应商发货" : st === "已发货" ? "确认收货" : "已收货"}</b>
+        <span className="note" style={{ display: "inline", marginLeft: "auto", fontSize: 11.5 }}>供货单编号 {card.no}</span>
         <span onClick={copyNo} style={{ color: "#25c7a5", fontSize: 12, cursor: "pointer" }}>{copied ? "已复制" : "复制"}</span>
+      </div>
+
+      <div className="mcard">
+        <div className="hd"><b>供货单信息</b><span style={{ color: tone, fontSize: 12.5 }}>{st}</span></div>
+        <div className="mrow"><span>商品名称</span><b>{card.name}</b></div>
+        <div className="mrow"><span>发货数量</span><b>{card.qty}</b></div>
+        <div className="mrow"><span>供货路径</span><b>{card.mode === "供应商直配" ? "供应商 → 门店" : "总部仓 → 门店"}</b></div>
       </div>
 
       <div className="mcard">
@@ -333,58 +352,68 @@ function Receive({ onConfirm, onBack }) {
         <div className="mrow"><span>地址</span><b style={{ textAlign: "right" }}>{STORE.addr}</b></div>
       </div>
 
-      <div className="mcard">
-        <div className="hd"><b>商品信息</b></div>
-        {[1, 2].map((n) => (
-          <div key={n} style={{ display: "flex", gap: 10, padding: "6px 0" }}>
-            <span style={{ width: 44, height: 44, borderRadius: 5, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 20 }}>💊</span>
-            <div style={{ flex: 1, fontSize: 12.5 }}>
-              <div>斯维诗男士锯棕榈番茄红素 <span style={{ color: "#999" }}>×1</span></div>
-              <div style={{ color: "#999", fontSize: 11.5, marginTop: 2 }}>锯棕榈番茄红素锌硒<br />番茄红素片 5片</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mcard">
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>收货信息(按商品核对,短缺请下调实收)</div>
-        <div className="mrow"><span>应收数量</span><b className="mono">{shouldTotal}</b></div>
-        <div className="mrow"><span>少发数量</span><b className="mono" style={{ color: short ? "#f5522e" : "#333" }}>{short}</b></div>
-        {items.map((it, i) => (
-          <div key={it.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: "1px solid #f2f2f2" }}>
-            <span style={{ fontSize: 12.5 }}>{it.name}<br /><span style={{ color: "#999", fontSize: 11.5 }}>{it.spec}</span></span>
-            <span className="qty">
-              <button className="btn plain sm" onClick={() => setItems((a) => a.map((x, j) => (j === i ? { ...x, qty: Math.max(0, x.qty - 1) } : x)))}>−</button>
-              <input value={it.qty} readOnly style={{ width: 44, textAlign: "center", height: 28 }} />
-              <button className="btn plain sm" disabled={it.qty >= it.max} onClick={() => setItems((a) => a.map((x, j) => (j === i ? { ...x, qty: Math.min(x.max, x.qty + 1) } : x)))}>＋</button>
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {shortage && (
-        <div className="mcard">
-          <div className="mfield">
-            <label><i>*</i>备注</label>
-            <textarea rows={2} placeholder="例：XX商品 500ml 少发2瓶/破损1瓶" value={note} onChange={(e) => setNote(e.target.value)} />
-          </div>
-          <div className="mfield" style={{ marginBottom: 0 }}>
-            <label>图片凭证</label>
-            <div style={{ fontSize: 11.5, color: "#999", marginBottom: 8 }}>支持上传PNG、JPG、JPEG、GIF格式，最多只能上传5张</div>
-            <div className="mupload">
-              <span className="ph" onClick={() => setPhotos((p) => Math.min(5, p + 1))}>📷<br /><span style={{ fontSize: 11 }}>上传图片</span></span>
-              {Array.from({ length: photos }, (_, i) => <span className="ph" key={i} style={{ background: "#e8ecef" }}>🧾</span>)}
-            </div>
-          </div>
-        </div>
+      {st === "待发货" && (
+        <div className="mcard"><div style={{ fontSize: 12.5, color: "#999", textAlign: "center", padding: "4px 0" }}>供应商尚未发货，发货后可查看物流并确认收货</div></div>
       )}
 
-      {shortage && !note.trim() && (
-        <div style={{ fontSize: 11.5, color: "#f5522e", marginBottom: 8 }}>有少发，请填写备注后再确认收货</div>
+      {st === "已发货" && (
+        <>
+          <div className="mcard">
+            <div className="hd"><b>商品信息</b></div>
+            <div style={{ display: "flex", gap: 10, padding: "6px 0" }}>
+              <span style={{ width: 44, height: 44, borderRadius: 5, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 20 }}>{card.emoji || "📦"}</span>
+              <div style={{ flex: 1, fontSize: 12.5 }}>
+                <div>{card.name} <span style={{ color: "#999" }}>×{qty}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mcard">
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>收货信息(按商品核对,短缺请下调实收)</div>
+            <div className="mrow"><span>应收数量</span><b className="mono">{qty}</b></div>
+            <div className="mrow"><span>少发数量</span><b className="mono" style={{ color: short ? "#f5522e" : "#333" }}>{short}</b></div>
+            {items.map((it, i) => (
+              <div key={it.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: "1px solid #f2f2f2" }}>
+                <span style={{ fontSize: 12.5 }}>{it.name}</span>
+                <span className="qty">
+                  <button className="btn plain sm" onClick={() => setItems((a) => a.map((x, j) => (j === i ? { ...x, qty: Math.max(0, x.qty - 1) } : x)))}>−</button>
+                  <input value={it.qty} readOnly style={{ width: 44, textAlign: "center", height: 28 }} />
+                  <button className="btn plain sm" disabled={it.qty >= it.max} onClick={() => setItems((a) => a.map((x, j) => (j === i ? { ...x, qty: Math.min(x.max, x.qty + 1) } : x)))}>＋</button>
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {shortage && (
+            <div className="mcard">
+              <div className="mfield">
+                <label><i>*</i>备注</label>
+                <textarea rows={2} placeholder="例：XX商品 500ml 少发2瓶/破损1瓶" value={note} onChange={(e) => setNote(e.target.value)} />
+              </div>
+              <div className="mfield" style={{ marginBottom: 0 }}>
+                <label>图片凭证</label>
+                <div style={{ fontSize: 11.5, color: "#999", marginBottom: 8 }}>支持上传PNG、JPG、JPEG、GIF格式，最多只能上传5张</div>
+                <div className="mupload">
+                  <span className="ph" onClick={() => setPhotos((p) => Math.min(5, p + 1))}>📷<br /><span style={{ fontSize: 11 }}>上传图片</span></span>
+                  {Array.from({ length: photos }, (_, i) => <span className="ph" key={i} style={{ background: "#e8ecef" }}>🧾</span>)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {shortage && !note.trim() && (
+            <div style={{ fontSize: 11.5, color: "#f5522e", marginBottom: 8 }}>有少发，请填写备注后再确认收货</div>
+          )}
+        </>
       )}
+
+      {st === "已收货" && (
+        <div className="mcard" style={{ textAlign: "center", padding: "16px 0", color: "#25c7a5", fontSize: 13 }}>✓ 该供货单已确认收货</div>
+      )}
+
       <div style={{ display: "flex", gap: 10, paddingBottom: 16 }}>
-        <button className="btn plain" style={{ flex: 1 }} onClick={onBack}>取消</button>
-        <button className="btn primary" style={{ flex: 2 }} disabled={shortage && !note.trim()} onClick={() => onConfirm(shortage)}>确认收货</button>
+        <button className="btn plain" style={{ flex: st === "已发货" ? 1 : 2 }} onClick={onBack}>返回</button>
+        {st === "已发货" && <button className="btn primary" style={{ flex: 2 }} disabled={shortage && !note.trim()} onClick={() => onConfirm(shortage)}>确认收货</button>}
       </div>
     </div>
   );
