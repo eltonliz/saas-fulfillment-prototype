@@ -184,13 +184,16 @@ export function SupDirect({ onNav }) {
   const [after, setAfter] = useState(null);   // 查看售后
   const [track, setTrack] = useState(null);   // 查看物流
   const [edit, setEdit] = useState(null);     // 修改物流
+  const [batch, setBatch] = useState(null);   // 批量发货 / 导入发货 / 下载发货模板
   const [toast, tip] = useToast();
   /* 代发单 = 供应商直发消费者（快递）：与租户订单管理页互补——那页恰好过滤掉这批单 */
-  const rows = orderStore.use().filter((o) =>
-    o.supplyMode === "供应商直配" && o.delivery === "快递发货" &&
-    (tab === "全部" ? true
+  const mine = orderStore.use().filter((o) => o.supplyMode === "供应商直配" && o.delivery === "快递发货");
+  const rows = mine.filter((o) =>
+    tab === "全部" ? true
       : tab === "已关闭" ? ["已关闭", "已全额退款", "已取消"].includes(o.status)
-        : o.status === tab));
+        : o.status === tab);
+  /* 批量回传只针对待发货（含部分发货、剩余可再发）的单 */
+  const canShipRows = mine.filter((o) => o.status === "待发货");
   const pg = usePaged(rows);
 
   /* 发货回写：订单与供货任务同源同步（同一张物理单据，两端一致） */
@@ -204,6 +207,16 @@ export function SupDirect({ onNav }) {
       : x)));
     if (o.supplyNo) patchDoc(o.supplyNo, { sent: shipped, carrier: p.carrier, tracking: p.tracking, shipFrom: from, track: "已发货 " + ts, status: full ? "已发货" : "待发货" });
     return full;
+  };
+
+  /* 批量回传（批量发货 / 导入）：默认用地址簿的「发货地址」，逐单同步订单与供货任务 */
+  const shipMany = (items) => {
+    const list = addrStore.get().filter((a) => a.type === "ship");
+    const def = list.find((a) => a.isDefault) || list[0];
+    const from = def ? `${def.region} ${def.detail}` : "";
+    items.forEach(({ order, carrier, tracking }) =>
+      doShip(order, { qty: order.qty - (order.shippedQty || 0), carrier, tracking, from }));
+    return items.length;
   };
 
   /* 修改物流：只改快递公司与单号，不动发货/签收时间；留痕便于追溯 */
@@ -242,6 +255,15 @@ export function SupDirect({ onNav }) {
           <select className="ctl w-sm" defaultValue="是否留言" style={{ width: 120 }}><option>是否留言</option><option>有留言</option><option>无留言</option></select>
           <select className="ctl w-sm" defaultValue="" style={{ width: 120 }}><option value="">请选择</option><option>微信支付</option><option>余额支付</option></select>
         </div>
+      </div>
+
+      <div className="batchbar">
+        <button className="act" onClick={() => setBatch("batch")}>批量发货</button>
+        <button className="act" onClick={() => setBatch("import")}>导入发货</button>
+        <button className="act" onClick={() => setBatch("template")}>下载发货模板</button>
+        <span className="note" style={{ marginLeft: 4 }}>
+          面向当前 {canShipRows.length} 笔待发货订单——批量发货在线逐单填单号；导入发货用于线下填好模板后批量回传
+        </span>
       </div>
 
       <div className="tbl-wrap">
@@ -316,6 +338,9 @@ export function SupDirect({ onNav }) {
       }} />}
       {after && <SupAfterSalePop order={after} onClose={() => setAfter(null)} />}
       {track && <SupOrderTrackModal order={track} onClose={() => setTrack(null)} />}
+      {batch === "template" && <SupOrderTemplateDrawer rows={canShipRows} onClose={() => setBatch(null)} />}
+      {batch === "import" && <SupOrderImportDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => { tip(`已导入发货 ${shipMany(items)} 单`); }} />}
+      {batch === "batch" && <SupOrderBatchShipDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => { tip(`已批量发货 ${shipMany(items)} 单`); }} />}
       {edit && <SupEditTrackModal
         no={edit.no}
         desc={`${edit.product}　${edit.spec}`}
@@ -362,7 +387,7 @@ function SupOrderTrackModal({ order, onClose }) {
   const stamp = (re) => (raw.replace(re, "").trim() || "—");
 
   const nodes = [
-    { t: "订单已支付", d: "等待供应商发货", at: order.payTime || order.createdAt, done: true },
+    { t: "订单已支付", d: supHasShipped(order) ? "订单已支付，等待发货" : "等待供应商发货", at: order.payTime || order.createdAt, done: true },
     { t: "已发货", d: `${order.carrier} 已揽收`, at: stamp(/^已发货\s*/), done: true },
     signed
       ? { t: "已签收", d: `已送达 ${order.buyer["收件人地址"] || "收货地址"}`, at: stamp(/^已签收\s*/), done: true }
@@ -737,6 +762,264 @@ function SupAddressModal({ defaultType = "ship", onClose, onSaved }) {
         <div className="gfoot">
           <button className="btn plain" onClick={onClose}>取消</button>
           <button className="btn primary" disabled={!ok} onClick={save}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+   代发批量回传三件套（订单维度模板）
+   列：订单号 / 收件人 / 收件人电话 / 收货地址 / 商品 / 规格 / 待发数量（锁定）+ 快递公司 / 物流单号（待填）
+   与「发总部仓 / 发门店」的供货单维度模板区分：代发收货人是消费者，无发货主体 / 收货主体
+   ============================================================================ */
+const ORD_TPL_COLS = [
+  { k: "no", t: "订单号", locked: true, get: (o) => o.no },
+  { k: "receiver", t: "收件人", locked: true, get: (o) => o.buyer["收件人"] || o.buyer["昵称"] || "" },
+  { k: "phone", t: "收件人电话", locked: true, get: (o) => o.buyer["收件人电话"] || "" },
+  { k: "addr", t: "收货地址", locked: true, get: (o) => o.buyer["收件人地址"] || "" },
+  { k: "product", t: "商品", locked: true, get: (o) => o.product },
+  { k: "spec", t: "规格", locked: true, get: (o) => o.spec },
+  { k: "qty", t: "待发数量", locked: true, get: (o) => o.qty - (o.shippedQty || 0) },
+  { k: "carrier", t: "快递公司", locked: false },
+  { k: "tracking", t: "物流单号", locked: false },
+];
+
+function downloadOrderCsv(rows) {
+  const head = ORD_TPL_COLS.map((c) => c.t).join(",");
+  const body = rows.map((o) => ORD_TPL_COLS.map((c) => (c.locked ? `"${c.get(o) ?? ""}"` : "")).join(",")).join("\n");
+  const csv = "﻿" + head + "\n" + body;
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = "一件代发-发货模板.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+/* ---------------- 下载发货模板（订单维度） ---------------- */
+function SupOrderTemplateDrawer({ rows, onClose }) {
+  const [downloaded, setDownloaded] = useState(false);
+  return (
+    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="drawer" style={{ width: 1180 }}>
+        <header>下载发货模板<button className="x" onClick={onClose}>×</button></header>
+        <div className="body">
+          <div className="alert"><span className="ic">i</span>模板已按待发货代发订单预填好——<b style={{ margin: "0 4px" }}>灰色列是锁定列，禁止修改</b>；只需填「快递公司」和「物流单号」两列，填好后用「导入发货」回传。</div>
+
+          <div className="tbl-wrap">
+            <table className="tbl-tight">
+              <thead><tr>{ORD_TPL_COLS.map((c) => (<th key={c.k} className={c.locked ? "" : "col-new"} data-hl={c.locked ? undefined : "可填"}>{c.t}{c.locked && <span style={{ color: "#bbb", fontWeight: 400, marginLeft: 4 }}>🔒</span>}</th>))}</tr></thead>
+              <tbody>
+                {rows.map((o) => (
+                  <tr key={o.id}>
+                    {ORD_TPL_COLS.map((c) => (
+                      <td key={c.k} className={c.locked ? "tw" : "col-new tw"}
+                        style={c.locked ? { background: "#fafafa", color: "#8a949d" } : undefined}>
+                        {c.locked ? (c.get(o) ?? "") : <span style={{ color: "#bbb" }}>（待填写）</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                {!rows.length && <tr><td colSpan={ORD_TPL_COLS.length} style={{ textAlign: "center", padding: 30, color: "#999" }}>暂无待发货订单</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+            <button className="btn plain" onClick={onClose}>关闭</button>
+            <button className="btn primary" onClick={() => { downloadOrderCsv(rows); setDownloaded(true); }}>
+              {downloaded ? "已下载，可再次下载" : "下载模板"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- 导入发货（订单维度：下载模板 → 导入文件 → 确认 → 成功） ---------------- */
+function SupOrderImportDrawer({ rows, onClose, onDone }) {
+  const [step, setStep] = useState(0);
+  const [filled, setFilled] = useState({});
+  const [count, setCount] = useState(0);
+  const [err, setErr] = useState("");
+
+  React.useEffect(() => {
+    /* 模拟：导入一份已填好的模板 */
+    const f = {};
+    rows.forEach((o, i) => { f[o.id] = { carrier: "顺丰速运", tracking: "SF77120045" + String(30 + i) }; });
+    setFilled(f);
+  }, []);
+
+  const submit = () => {
+    const miss = rows.filter((o) => !filled[o.id]?.carrier || !filled[o.id]?.tracking);
+    if (miss.length) return setErr(`有 ${miss.length} 行未填快递公司或物流单号，导入会被拦下`);
+    setErr("");
+    if (onDone) onDone(rows.map((o) => ({ order: o, carrier: filled[o.id].carrier, tracking: filled[o.id].tracking })));
+    setCount(rows.length);
+    setStep(3);
+  };
+
+  const steps = ["下载模板", "导入发货文件", "确认发货", "发货成功"];
+
+  return (
+    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="drawer" style={{ width: 1180 }}>
+        <header>导入发货<button className="x" onClick={onClose}>×</button></header>
+        <div className="body">
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+            {steps.map((s, i) => (
+              <React.Fragment key={s}>
+                {i > 0 && <span style={{ flex: 1, height: 1, background: i <= step ? "#25c7a5" : "#e5e5e5" }} />}
+                <span style={{ display: "flex", alignItems: "center", gap: 8, color: i <= step ? "#25c7a5" : "#bbb", fontSize: 13 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 12, background: i <= step ? "#25c7a5" : "#fff", color: i <= step ? "#fff" : "#bbb", border: i <= step ? "none" : "1px solid #dcdcdc" }}>{i + 1}</span>
+                  {s}
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+
+          {step === 0 && (
+            <>
+              <div className="alert"><span className="ic">i</span>先下载模板：已按待发货代发订单预填好，<b style={{ margin: "0 4px" }}>锁定列不可修改</b>，只需填「快递公司」和「物流单号」。</div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button className="btn plain" onClick={() => downloadOrderCsv(rows)}>下载发货模板</button>
+                <button className="btn primary" onClick={() => setStep(1)}>我已下载，去导入</button>
+              </div>
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              <div className="alert"><span className="ic">i</span>选择填好的模板文件导入。</div>
+              <div style={{ border: "1px dashed #d9d9d9", borderRadius: 4, padding: 40, textAlign: "center", background: "#fafafa" }}>
+                <div style={{ fontSize: 30, color: "#c2c2c2" }}>⇪</div>
+                <div className="note" style={{ marginTop: 8 }}>点击或拖拽文件到此处上传（.csv / .xlsx）</div>
+                <button className="btn plain" style={{ marginTop: 12 }} onClick={() => setStep(2)}>模拟上传「一件代发-发货模板(已填).csv」</button>
+              </div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
+                <button className="btn plain" onClick={() => setStep(0)}>上一步</button>
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <div className="alert"><span className="ic">i</span>已解析到 <b style={{ margin: "0 4px" }}>{rows.length}</b> 行。<b style={{ margin: "0 4px" }}>灰色列由系统锁定不可改</b>，请核对「快递公司 / 物流单号」。</div>
+              <div className="tbl-wrap">
+                <table className="tbl-tight">
+                  <thead><tr><th style={{ width: 44 }}>行</th>{ORD_TPL_COLS.map((c) => (<th key={c.k} className={c.locked ? "" : "col-new"} data-hl={c.locked ? undefined : "可填"}>{c.t}{c.locked && <span style={{ color: "#bbb", fontWeight: 400, marginLeft: 4 }}>🔒</span>}</th>))}</tr></thead>
+                  <tbody>
+                    {rows.map((o, i) => (
+                      <tr key={o.id}>
+                        <td>{i + 1}</td>
+                        {ORD_TPL_COLS.map((c) => (
+                          <td key={c.k} className={c.locked ? "tw" : "col-new tw"} style={c.locked ? { background: "#fafafa", color: "#8a949d" } : undefined}>
+                            {c.locked ? (c.get(o) ?? "") : (
+                              <input value={filled[o.id]?.[c.k] ?? ""} readOnly style={{ height: 28, border: 0, background: "transparent", padding: 0 }} />
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {err && <div className="err" style={{ marginTop: 12 }}>{err}</div>}
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
+                <button className="btn plain" onClick={() => setStep(1)}>上一步</button>
+                <button className="btn primary" onClick={submit}>确认发货</button>
+              </div>
+            </>
+          )}
+
+          {step === 3 && (
+            <div style={{ textAlign: "center", padding: "30px 0" }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#25c7a5", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px", fontSize: 28 }}>✓</div>
+              <b style={{ fontSize: 17 }}>发货成功</b>
+              <div className="note" style={{ marginTop: 10, lineHeight: 2 }}>
+                本次导入 <b>{count}</b> 行，全部发货成功。<br />
+                订单状态与供货任务已同步更新，消费者可查物流。
+              </div>
+              <button className="btn primary" style={{ marginTop: 20 }} onClick={onClose}>完成</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- 批量发货（在线：勾选多单 + 统一快递公司 + 逐单运单号） ---------------- */
+function SupOrderBatchShipDrawer({ rows, onClose, onDone }) {
+  const [carrier, setCarrier] = useState("顺丰速运");
+  const [done, setDone] = useState(0);
+  const [sel, setSel] = useState(() => Object.fromEntries(rows.map((o) => [o.id, true])));
+  const [tracking, setTracking] = useState(() => Object.fromEntries(rows.map((o, i) => [o.id, "SF77120045" + String(60 + i)])));
+  const [err, setErr] = useState("");
+
+  const submit = () => {
+    const picked = rows.filter((o) => sel[o.id]);
+    if (!picked.length) return setErr("请至少勾选一笔订单");
+    const miss = picked.filter((o) => !tracking[o.id]?.trim());
+    if (miss.length) return setErr(`有 ${miss.length} 行未填物流单号`);
+    setErr("");
+    if (onDone) onDone(picked.map((o) => ({ order: o, carrier, tracking: tracking[o.id].trim() })));
+    setDone(picked.length);
+  };
+
+  if (done) {
+    return (
+      <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="drawer" style={{ width: 620 }}>
+          <header>批量发货<button className="x" onClick={onClose}>×</button></header>
+          <div className="body" style={{ textAlign: "center", padding: "30px 0" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#25c7a5", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px", fontSize: 28 }}>✓</div>
+            <b style={{ fontSize: 17 }}>批量发货成功</b>
+            <div className="note" style={{ marginTop: 10, lineHeight: 2 }}>
+              已发货 {done} 单，快递公司 {carrier}。<br />
+              每单的订单状态与供货任务已同步更新。
+            </div>
+            <button className="btn primary" style={{ marginTop: 20 }} onClick={onClose}>完成</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="drawer" style={{ width: 940 }}>
+        <header>批量发货<button className="x" onClick={onClose}>×</button></header>
+        <div className="body">
+          <div className="alert"><span className="ic">i</span>批量发货<b style={{ margin: "0 4px" }}>统一快递公司 + 逐单运单号</b>，收货人可不同；发货地址取地址簿的默认发货地址。</div>
+          <div className="frow">
+            <label><i>*</i>快递公司</label>
+            <div className="fc"><select value={carrier} onChange={(e) => setCarrier(e.target.value)} style={{ maxWidth: 260 }}>
+              {CARRIERS.map((c) => <option key={c}>{c}</option>)}
+            </select></div>
+          </div>
+          <table className="tbl-tight">
+            <thead><tr><th style={{ width: 40 }}><input type="checkbox" defaultChecked /></th><th className="tw">订单号</th><th>收货人</th><th className="tw">商品</th><th className="tw">数量</th><th className="tw">物流单号</th></tr></thead>
+            <tbody>
+              {rows.map((o) => (
+                <tr key={o.id}>
+                  <td><input type="checkbox" checked={!!sel[o.id]} onChange={(e) => setSel((s) => ({ ...s, [o.id]: e.target.checked }))} /></td>
+                  <td className="tw mono">{o.no}</td>
+                  <td>{(o.buyer["收件人"] || o.buyer["昵称"])}<small>{o.buyer["收件人地址"] || "—"}</small></td>
+                  <td className="tw">{o.emoji} {o.product}</td>
+                  <td className="tw mono">{o.qty - (o.shippedQty || 0)}</td>
+                  <td className="tw"><input value={tracking[o.id] ?? ""} onChange={(e) => setTracking((s) => ({ ...s, [o.id]: e.target.value }))} style={{ height: 28, width: 150 }} /></td>
+                </tr>
+              ))}
+              {!rows.length && <tr><td colSpan={6} style={{ textAlign: "center", padding: 30, color: "#999" }}>暂无待发货订单</td></tr>}
+            </tbody>
+          </table>
+          {err && <div className="err" style={{ marginTop: 12 }}>{err}</div>}
+        </div>
+        <div className="foot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" onClick={submit}>确认发货</button>
         </div>
       </div>
     </div>

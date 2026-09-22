@@ -299,6 +299,25 @@ export const ORDERS = [
     carrier: "韵达快递", tracking: "YD1122336801", track: "已发货 2026-09-19 09:30:00",
     supplyNo: "FHD2609180044", supplyMode: "供应商直配",
   },
+  /* 待发货补充两单：让「批量发货 / 导入发货」有足够样本 */
+  {
+    id: "o26", no: "ORD260918000512", product: "篮球", spec: "7号 / 标准", qty: 2, unitPrice: "¥129.00", emoji: "🏀",
+    afterSale: "暂无售后", buyerNote: "请发顺丰",
+    amounts: { 商品金额: "258.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "258.00", 实收金额: "258.00" },
+    buyer: { 昵称: "方小北", 收件人: "方小北", 收件人电话: "13755556666", 收件人地址: "福建省厦门市思明区软件园二期 33 号" },
+    store: "九天门店", delivery: "快递发货", createdAt: "2026-09-18 18:05:12", status: "待发货",
+    payMethod: "微信支付", payTime: "2026-09-18 18:05:15", ops: ["详情", "备注", "修改地址", "分配门店"],
+    supplyNo: "FHD2609180051", supplyMode: "供应商直配",
+  },
+  {
+    id: "o27", no: "ORD260919000088", product: "台灯", spec: "护眼 / 白色", qty: 1, unitPrice: "¥159.00", emoji: "💡",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "159.00", 邮费: "0", 优惠金额: "-9.00", 积分抵现: "-", 应收金额: "150.00", 实收金额: "150.00" },
+    buyer: { 昵称: "唐小满", 收件人: "唐小满", 收件人电话: "13322221111", 收件人地址: "陕西省西安市雁塔区高新路 25 号" },
+    store: "九天门店", delivery: "快递发货", createdAt: "2026-09-19 09:14:40", status: "待发货",
+    payMethod: "微信支付", payTime: "2026-09-19 09:14:43", ops: ["详情", "备注", "修改地址", "分配门店"],
+    supplyNo: "FHD2609190052", supplyMode: "供应商直配",
+  },
 ];
 
 /* 提货码：16 位，按订单号确定性生成（原型固定数据；买家端 / 门店端展示同一码） */
@@ -601,6 +620,26 @@ export const SUPPLIER_DOCS = [
     orderNo: "ORD260918000466", product: "电饭煲", spec: "4L / 智能款", emoji: "🍚", qty: 1, sent: 1,
     shipper: "JOJO供应商", receiver: "孙小满（消费者）", receiverAddr: "湖北省武汉市洪山区珞喻路 129 号",
     carrier: "韵达快递", tracking: "YD1122336801", track: "已发货 2026-09-19 09:30:00", status: "已发货", ops: ["详情"],
+  },
+  {
+    id: "FHD2609180051", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-18 18:05:12",
+    orderNo: "ORD260918000512", product: "篮球", spec: "7号 / 标准", emoji: "🏀", qty: 2, sent: 0,
+    shipper: "JOJO供应商", receiver: "方小北（消费者）", receiverAddr: "福建省厦门市思明区软件园二期 33 号",
+    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
+  },
+  /* 补齐引用：订单 ORD260917000147（总部仓直配·供应商供货）的上游段供货单 */
+  {
+    id: "FHD2609170021", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 17:44:22",
+    orderNo: "ORD260917000147", product: "华为手机", spec: "蓝色/M", emoji: "📱", qty: 1, sent: 1,
+    shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    carrier: "顺丰速运", tracking: "SF9900112288", track: "已签收 2026-09-17 09:20:00",
+    status: "已收货", ops: ["详情"],
+  },
+  {
+    id: "FHD2609190052", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-19 09:14:40",
+    orderNo: "ORD260919000088", product: "台灯", spec: "护眼 / 白色", emoji: "💡", qty: 1, sent: 0,
+    shipper: "JOJO供应商", receiver: "唐小满（消费者）", receiverAddr: "陕西省西安市雁塔区高新路 25 号",
+    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
   },
   {
     id: "FHD2609170012", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 14:05:00",
