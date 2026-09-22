@@ -115,6 +115,11 @@ export function TrackDrawer({ doc, onClose }) {
             </div>
           ))}
         </div>
+        {doc.trackEditedAt && (
+          <div className="note" style={{ margin: "12px 20px 0", color: "#b7791f", lineHeight: 1.9 }}>
+            物流信息于 {doc.trackEditedAt} 修改（原单号 {doc.trackEditFrom || "—"}）
+          </div>
+        )}
         <div className="foot"><button className="btn plain" onClick={onClose}>关闭</button></div>
       </div>
     </div>

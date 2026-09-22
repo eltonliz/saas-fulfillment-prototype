@@ -699,6 +699,13 @@ SUPPLIER_DOCS.find((d) => d.id === "FHD2609170018").received = 2; // 收货异�
 }
 
 
+/* 供应商地址簿：发货地址（发货时选）与售后地址（同意退货时给买家寄回用） */
+export const SUP_ADDRESSES = [
+  { id: "ad1", type: "ship", name: "JOJO供应商", phone: "18100010002", region: "广东省 广州市 天河区", detail: "科苑路 16 号", isDefault: true },
+  { id: "ad2", type: "ship", name: "JOJO供应商（备用仓）", phone: "18100010003", region: "广东省 广州市 白云区", detail: "太和镇兴太三路 6 号", isDefault: false },
+  { id: "ad3", type: "after", name: "JOJO供应商（退货组）", phone: "18100010002", region: "广东省 广州市 天河区", detail: "科苑路 16 号 A 栋 1 楼退货组", isDefault: true },
+];
+
 /* 配送差异单（双来源，谁被上报谁审核：总部上报 → 供应商审核；门店上报 → 总部审核） */
 export const DIFFS = [
   { id: "DIFF2609170003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609160009", shipper: "供应商003", summary: "什锦果蔬 应收4/实收3 差1", diffQty: 1, status: "待补发", evidence: "少货 · 照片 2 张", makeup: "FHD2609180013" },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SUPPLY_DOCS, SUPPLIER_DOCS, DIFFS, RETURNS, ORDERS, PRODUCTS } from "./data.js";
+import { SUPPLY_DOCS, SUPPLIER_DOCS, DIFFS, RETURNS, ORDERS, PRODUCTS, SUP_ADDRESSES } from "./data.js";
 
 /* 极简共享 store —— 原型内替代后端：让三端与各页面读写同一份数据。
    否则每个组件各自 useState(种子数据)，A 页面的改动 B 页面看不到（"后台同步"就是假的）。 */
@@ -29,6 +29,7 @@ export const diffStore = createStore(DIFFS);                 // 配送差异单
 export const returnStore = createStore(RETURNS);             // 退货返厂单
 export const orderStore = createStore(ORDERS);               // 销售订单
 export const productStore = createStore(PRODUCTS);           // 商品（租户后台）
+export const addrStore = createStore(SUP_ADDRESSES);         // 供应商地址簿（发货地址 / 售后地址）
 
 /* ============================================================================
    G2②：门店长时间不点「确认到货」→ 系统自动确认，避免客户提货码一直不生效

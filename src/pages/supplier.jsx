@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag, DiffAuditModal } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager, Confirm } from "../ui.jsx";
-import { supplierStore, supplyStore, diffStore, orderStore, patchDoc } from "../store.js";
+import { supplierStore, supplyStore, diffStore, orderStore, patchDoc, addrStore } from "../store.js";
 
 const LEG_LABEL = {
   supplier_to_hq: "供应商 → 总仓",
   supplier_inbound: "供应商 → 门店",
 };
 const CARRIERS = ["顺丰速运", "圆通速递", "中通快递", "京东物流", "韵达快递", "极兔速递"];
+/* 供货单物流可改窗口：已发货且收货方未收货（部分收货/已收货/收货异常一律锁定） */
+const canEditDocTrack = (d) => !!d.tracking && ["待发货", "已发货"].includes(d.status);
 
 /* ---------------- 供应商供货任务列表（三个页面共用，含发货/详情/物流轨迹） ---------------- */
 export function SupTasks({ leg, title, desc }) {
@@ -108,6 +110,7 @@ export function SupTasks({ leg, title, desc }) {
                       ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>在配送差异发货</span>
                       : <button onClick={() => setModal({ k: "ship", d })}>{d.status === "部分收货" ? "发货（补齐）" : "发货"}</button>)}
                     {d.tracking && <button className="gray" onClick={() => setModal({ k: "track", d })}>物流轨迹</button>}
+                    {canEditDocTrack(d) && <button className="gray" onClick={() => setModal({ k: "edit", d })}>修改物流</button>}
                   </div>
                 </td>
               </tr>
@@ -141,6 +144,21 @@ export function SupTasks({ leg, title, desc }) {
       )}
       {modal?.k === "detail" && <SupDocDrawer doc={modal.d} onClose={() => setModal(null)} onTrack={() => setModal({ k: "track", d: modal.d })} />}
       {modal?.k === "track" && <TrackDrawer doc={modal.d} onClose={() => setModal(null)} />}
+      {modal?.k === "edit" && <SupEditTrackModal
+        no={modal.d.id}
+        desc={`${modal.d.product}　${modal.d.spec}`}
+        carrier={modal.d.carrier}
+        tracking={modal.d.tracking}
+        lockText="收货方确认收货后不可再改"
+        syncText="修改会同步更新本单物流，租户侧发货管理看到的也是修改后的单号。"
+        onClose={() => setModal(null)}
+        onDone={(p) => {
+          const ts = new Date().toISOString().slice(0, 19).replace("T", " ");
+          patchDoc(modal.d.id, { carrier: p.carrier, tracking: p.tracking, trackEditedAt: ts, trackEditFrom: modal.d.tracking });
+          tip(`供货单 ${modal.d.id} 物流信息已更新`);
+          setModal(null);
+        }}
+      />}
       {toast}
       {batch === "template" && <TemplateDrawer rows={canShipRows} onClose={() => setBatch(null)} />}
       {batch === "import" && <ImportDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => tip(`已导入发货 ${applyShipBatch(items)} 单`)} />}
@@ -156,6 +174,8 @@ export function SupTasks({ leg, title, desc }) {
    ============================================================================ */
 const SUP_STEPS = ["买家下单", "买家付款", "供应商发货", "买家签收", "交易完成"];
 const supHasShipped = (o) => !!(o.shippedQty > 0 || o.tracking || ["已发货", "已完成"].includes(o.status));
+/* 物流信息可改的窗口：已发货且在途（未签收）；买家签收 / 售后中 / 已完成 / 已关闭一律锁定 */
+const canEditLogistics = (o) => !!o.tracking && !/已签收/.test(o.track || "") && ["待发货", "已发货"].includes(o.status);
 
 export function SupDirect({ onNav }) {
   const [tab, setTab] = useState("全部");
@@ -163,6 +183,7 @@ export function SupDirect({ onNav }) {
   const [ship, setShip] = useState(null);
   const [after, setAfter] = useState(null);   // 查看售后
   const [track, setTrack] = useState(null);   // 查看物流
+  const [edit, setEdit] = useState(null);     // 修改物流
   const [toast, tip] = useToast();
   /* 代发单 = 供应商直发消费者（快递）：与租户订单管理页互补——那页恰好过滤掉这批单 */
   const rows = orderStore.use().filter((o) =>
@@ -177,11 +198,22 @@ export function SupDirect({ onNav }) {
     const shipped = (o.shippedQty || 0) + p.qty;
     const full = shipped >= o.qty;
     const ts = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const from = p.from || o.shipFrom;
     orderStore.set((os) => os.map((x) => (x.id === o.id
-      ? { ...x, shippedQty: shipped, carrier: p.carrier, tracking: p.tracking, track: "已发货 " + ts, status: full ? "已发货" : x.status }
+      ? { ...x, shippedQty: shipped, carrier: p.carrier, tracking: p.tracking, shipFrom: from, track: "已发货 " + ts, status: full ? "已发货" : x.status }
       : x)));
-    if (o.supplyNo) patchDoc(o.supplyNo, { sent: shipped, carrier: p.carrier, tracking: p.tracking, track: "已发货 " + ts, status: full ? "已发货" : "待发货" });
+    if (o.supplyNo) patchDoc(o.supplyNo, { sent: shipped, carrier: p.carrier, tracking: p.tracking, shipFrom: from, track: "已发货 " + ts, status: full ? "已发货" : "待发货" });
     return full;
+  };
+
+  /* 修改物流：只改快递公司与单号，不动发货/签收时间；留痕便于追溯 */
+  const doEditTrack = (o, p) => {
+    const ts = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const from = o.tracking;
+    orderStore.set((os) => os.map((x) => (x.id === o.id
+      ? { ...x, carrier: p.carrier, tracking: p.tracking, trackEditedAt: ts, trackEditFrom: from }
+      : x)));
+    if (o.supplyNo) patchDoc(o.supplyNo, { carrier: p.carrier, tracking: p.tracking, trackEditedAt: ts, trackEditFrom: from });
   };
 
   return (
@@ -259,6 +291,7 @@ export function SupDirect({ onNav }) {
                 <td>
                   <div className="op-col">
                     {o.status === "待发货" && <button onClick={() => setShip(o)}>发货</button>}
+                    {canEditLogistics(o) && <button className="gray" onClick={() => setEdit(o)}>修改物流</button>}
                     {o.tracking && <button className="gray" onClick={() => setTrack(o)}>物流轨迹</button>}
                     {o.status === "售后中"
                       ? <button className="gray" onClick={() => onNav && onNav("售后处理")}>售后处理</button>
@@ -283,6 +316,18 @@ export function SupDirect({ onNav }) {
       }} />}
       {after && <SupAfterSalePop order={after} onClose={() => setAfter(null)} />}
       {track && <SupOrderTrackModal order={track} onClose={() => setTrack(null)} />}
+      {edit && <SupEditTrackModal
+        no={edit.no}
+        desc={`${edit.product}　${edit.spec}`}
+        carrier={edit.carrier}
+        tracking={edit.tracking}
+        onClose={() => setEdit(null)}
+        onDone={(p) => {
+          doEditTrack(edit, p);
+          tip(`订单 ${edit.no} 物流信息已更新`);
+          setEdit(null);
+        }}
+      />}
     </>
   );
 }
@@ -344,6 +389,12 @@ function SupOrderTrackModal({ order, onClose }) {
             </div>
           ))}
         </div>
+        {order.trackEditedAt && (
+          <div className="note" style={{ marginTop: 14, marginBottom: 0, color: "#b7791f", lineHeight: 1.9 }}>
+            物流信息于 {order.trackEditedAt} 修改（原单号 {order.trackEditFrom || "—"}）
+            {canEditLogistics(order) ? "，买家签收前仍可再次修改" : "，订单已签收，不可再修改"}
+          </div>
+        )}
         <div className="gfoot">
           <button className="btn primary" onClick={onClose}>关闭</button>
         </div>
@@ -410,7 +461,10 @@ function SupOrderDetailDrawer({ order, onClose, onShip, onNote }) {
             </div>
             <div>
               <div style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>配送信息</div>
-              <div className="note" style={{ lineHeight: 2.1, fontSize: 13 }}>配送方式：{order.delivery}</div>
+              <div className="note" style={{ lineHeight: 2.1, fontSize: 13 }}>
+                <div>配送方式：{order.delivery}</div>
+                {order.shipFrom && <div>发货地址：{order.shipFrom}</div>}
+              </div>
             </div>
             <div>
               <div style={{ fontSize: 14, color: "#333", marginBottom: 10 }}>付款信息</div>
@@ -469,11 +523,10 @@ function SupOrderShipModal({ order, onClose, onDone }) {
   const [qty, setQty] = useState(remainQty);
   const [carrier, setCarrier] = useState("");
   const [tracking, setTracking] = useState("");
-  const [addr, setAddr] = useState(0);
-  const addresses = [
-    { name: "JOJO供应商", phone: "18100010002", addr: "广东省广州市天河区科苑路 16 号" },
-    { name: "JOJO供应商（备用仓）", phone: "18100010003", addr: "广东省广州市白云区太和镇兴太三路 6 号" },
-  ];
+  /* 发货地址取地址簿中「发货地址」类；默认地址优先选中 */
+  const addresses = addrStore.use().filter((a) => a.type === "ship");
+  const [addrId, setAddrId] = useState(() => (addresses.find((a) => a.isDefault) || addresses[0] || {}).id);
+  const [addOpen, setAddOpen] = useState(false);
 
   return (
     <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -526,19 +579,20 @@ function SupOrderShipModal({ order, onClose, onDone }) {
 
           <div style={{ display: "flex", alignItems: "center", margin: "26px 0 12px" }}>
             <h3 style={{ fontSize: 15, margin: 0, borderLeft: "none", paddingLeft: 0 }}>选择发货地址</h3>
-            <button className="btn link" style={{ marginLeft: "auto" }}>+ 添加地址</button>
+            <button className="btn link" style={{ marginLeft: "auto" }} onClick={() => setAddOpen(true)}>+ 添加地址</button>
           </div>
           <table className="tbl-tight">
             <thead><tr><th style={{ width: 46, background: "#fff" }}></th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
             <tbody>
-              {addresses.map((a, i) => (
-                <tr key={i}>
-                  <td><input type="radio" checked={addr === i} onChange={() => setAddr(i)} /></td>
-                  <td className="tw">{a.name} {i === 0 && <span style={{ color: "#999" }}>【默认】</span>}</td>
+              {addresses.map((a) => (
+                <tr key={a.id}>
+                  <td><input type="radio" checked={addrId === a.id} onChange={() => setAddrId(a.id)} /></td>
+                  <td className="tw">{a.name} {a.isDefault && <span style={{ color: "#999" }}>【默认】</span>}</td>
                   <td className="tw mono">{a.phone}</td>
-                  <td>{a.addr}</td>
+                  <td>{a.region} {a.detail}</td>
                 </tr>
               ))}
+              {!addresses.length && <tr><td colSpan={4} style={{ textAlign: "center", padding: 20, color: "#999" }}>暂无发货地址，请先添加</td></tr>}
             </tbody>
           </table>
 
@@ -558,7 +612,131 @@ function SupOrderShipModal({ order, onClose, onDone }) {
         </div>
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={qty < 1 || !carrier || !tracking.trim()} onClick={() => onDone({ qty, carrier, tracking: tracking.trim() })}>确定</button>
+          <button className="btn primary" disabled={qty < 1 || !carrier || !tracking.trim()} onClick={() => {
+            const picked = addresses.find((a) => a.id === addrId);
+            onDone({ qty, carrier, tracking: tracking.trim(), from: picked ? `${picked.region} ${picked.detail}` : "" });
+          }}>确定</button>
+        </div>
+      </div>
+      {addOpen && <SupAddressModal defaultType="ship" onClose={() => setAddOpen(false)} onSaved={(a) => { setAddrId(a.id); setAddOpen(false); }} />}
+    </div>
+  );
+}
+
+/* ============================================================================
+   修改物流（发货填错可改）
+   可改窗口：已发货且在途（未签收）；买家签收后 / 售后中 / 已完成 / 已关闭一律锁定
+   ============================================================================ */
+function SupEditTrackModal({ no, desc, carrier: c0, tracking: t0, lockText, syncText, onClose, onDone }) {
+  const [carrier, setCarrier] = useState(c0 || "");
+  const [tracking, setTracking] = useState(t0 || "");
+  const changed = carrier !== (c0 || "") || tracking.trim() !== (t0 || "");
+
+  return (
+    <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="drawer" style={{ width: 620, height: "auto", borderRadius: 4 }}>
+        <header>修改物流<button className="x" onClick={onClose}>×</button></header>
+        <div className="body">
+          <div className="alert"><span className="ic">i</span>发货后填错可在此修改；<b style={{ margin: "0 4px" }}>{lockText || "买家签收后不可再改"}</b>。{syncText || "修改会同步更新供货任务与消费者查到的物流。"}</div>
+
+          <div className="frow">
+            <label>单号</label>
+            <div className="fc">{desc}　<span className="mono">{no}</span></div>
+          </div>
+          <div className="frow">
+            <label>原物流</label>
+            <div className="fc" style={{ color: "var(--text-2)" }}>{c0 || "—"}　<span className="mono">{t0 || "—"}</span></div>
+          </div>
+          <div className="frow">
+            <label><i>*</i>快递公司</label>
+            <div className="fc">
+              <select className="ctl" value={carrier} onChange={(e) => setCarrier(e.target.value)} style={{ maxWidth: 260 }}>
+                <option value="">请选择快递公司</option>
+                {CARRIERS.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="frow">
+            <label><i>*</i>快递单号</label>
+            <div className="fc">
+              <input className="ctl" style={{ maxWidth: 260 }} value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="请输入快递单号" />
+            </div>
+          </div>
+        </div>
+        <div className="foot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" disabled={!carrier || !tracking.trim() || !changed} onClick={() => onDone({ carrier, tracking: tracking.trim() })}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+   新增地址（发货地址 / 售后地址共用一个地址簿）
+   发货地址：发货弹窗选择；售后地址：同意退货时提供给买家寄回
+   ============================================================================ */
+function SupAddressModal({ defaultType = "ship", onClose, onSaved }) {
+  const [type, setType] = useState(defaultType);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [region, setRegion] = useState("");
+  const [detail, setDetail] = useState("");
+  const [isDefault, setIsDefault] = useState(false);
+  const ok = name.trim() && phone.trim() && region.trim() && detail.trim();
+
+  const save = () => {
+    const addr = { id: "ad" + Date.now(), type, name: name.trim(), phone: phone.trim(), region: region.trim(), detail: detail.trim(), isDefault };
+    /* 同类型下「设为默认」互斥：旧的默认自动取消 */
+    addrStore.set((as) => [...as.map((a) => (a.type === type && isDefault ? { ...a, isDefault: false } : a)), addr]);
+    onSaved(addr);
+  };
+
+  return (
+    <div className="gmock" style={{ zIndex: 120 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="gbox" style={{ width: 520 }}>
+        <b>新增地址</b>
+        <p>发货地址在发货弹窗中选择；售后地址在同意退货时发送给买家</p>
+
+        <div className="frow" style={{ marginTop: 16 }}>
+          <label><i>*</i>地址类型</label>
+          <div className="fc" style={{ display: "flex", gap: 20 }}>
+            {[["ship", "发货地址"], ["after", "售后地址"]].map(([k, t]) => (
+              <label key={k} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                <input type="radio" checked={type === k} onChange={() => setType(k)} />{t}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="frow">
+          <label><i>*</i>联系人</label>
+          <div className="fc"><input className="ctl" placeholder="请输入联系人姓名" value={name} onChange={(e) => setName(e.target.value)} /></div>
+        </div>
+        <div className="frow">
+          <label><i>*</i>联系电话</label>
+          <div className="fc"><input className="ctl" placeholder="请输入联系电话" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+        </div>
+        <div className="frow">
+          <label><i>*</i>所在地区</label>
+          <div className="fc"><input className="ctl" placeholder="省 / 市 / 区（真实系统为四级联动）" value={region} onChange={(e) => setRegion(e.target.value)} /></div>
+        </div>
+        <div className="frow">
+          <label><i>*</i>详细地址</label>
+          <div className="fc"><input className="ctl" placeholder="街道、门牌号等" value={detail} onChange={(e) => setDetail(e.target.value)} /></div>
+        </div>
+        <div className="frow">
+          <label>设为默认</label>
+          <div className="fc">
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+              <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />
+              同时把该类型下的其他地址取消默认
+            </label>
+          </div>
+        </div>
+
+        <div className="gfoot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" disabled={!ok} onClick={save}>保存</button>
         </div>
       </div>
     </div>
@@ -884,6 +1062,7 @@ const AS_ROWS = [
     timeline: [
       { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥189.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-17 16:05:12" },
       { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-17 17:20:33" },
+      { t: "退货地址已发送给买家", lines: ["寄回地址：广东省 广州市 天河区 科苑路 16 号 A 栋 1 楼退货组", "联系人：JOJO供应商（退货组）　电话：18100010002"], at: "2026-09-17 17:20:33" },
       { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：SF7712003402"], at: "2026-09-18 14:22:09" },
     ],
   },
@@ -912,6 +1091,7 @@ const AS_ROWS = [
     timeline: [
       { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥29.90", "退款原因：商品与描述不符", "退款说明：-"], at: "2026-09-17 10:05:33" },
       { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-17 11:12:08" },
+      { t: "退货地址已发送给买家", lines: ["寄回地址：广东省 广州市 天河区 科苑路 16 号 A 栋 1 楼退货组", "联系人：JOJO供应商（退货组）　电话：18100010002"], at: "2026-09-17 11:12:08" },
       { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：2585"], at: "2026-09-18 10:26:47" },
       { t: "商家已同意签收退货", lines: [], at: "2026-09-18 11:02:19" },
     ],
@@ -928,6 +1108,7 @@ const AS_ROWS = [
     timeline: [
       { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥99.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-18 14:30:12" },
       { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-18 15:02:40" },
+      { t: "退货地址已发送给买家", lines: ["寄回地址：广东省 广州市 天河区 科苑路 16 号 A 栋 1 楼退货组", "联系人：JOJO供应商（退货组）　电话：18100010002"], at: "2026-09-18 15:02:40" },
       { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：3322"], at: "2026-09-19 09:12:33" },
       { t: "商家拒绝签收退货", lines: [], at: "2026-09-19 09:40:15" },
       { t: "商家寄回商品", lines: ["退货方式：快递", "物流单号：3323"], at: "2026-09-19 09:45:02" },
@@ -947,6 +1128,21 @@ const AS_ROWS = [
     timeline: [
       { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥99.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-19 09:35:20" },
       { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-19 10:02:47" },
+      { t: "退货地址已发送给买家", lines: ["寄回地址：广东省 广州市 天河区 科苑路 16 号 A 栋 1 楼退货组", "联系人：JOJO供应商（退货组）　电话：18100010002"], at: "2026-09-19 10:02:47" },
+    ],
+  },
+  /* 退货退款 · 待商家处理：同意时须先选售后地址（随同意一起发送给买家） */
+  {
+    no: "ORD260918000226", asNo: "R20260920260920000028", product: "相机", spec: "银色 / 标准版", emoji: "📷",
+    way: "退货退款", ship: "暂无", qty: 1, points: 0, reason: "商品与描述不符",
+    amount: "189.00", refund: "189.00",
+    at: "2026-09-20 10:12:36", timeout: "-", status: "待商家处理",
+    buyerNote: "-", refundNote: "-",
+    order: { 应付金额: "￥189.00", 实付金额: "￥189.00", 配送方式: "快递", 物流状态: "已签收" },
+    customer: {},
+    goods: { 单价: "189.00", 数量: 1, 实付款: "189.00", 退货数量: 1, 退货金额: "189.00" },
+    timeline: [
+      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥189.00", "退款原因：商品与描述不符", "退款说明：-"], at: "2026-09-20 10:12:36" },
     ],
   },
   {
@@ -999,12 +1195,60 @@ const AS_ROWS = [
 
 const asNow = () => new Date().toISOString().slice(0, 19).replace("T", " ");
 
+/* ============================================================================
+   同意退货：选售后地址（随「同意」一起发送给买家，买家按此地址寄回）
+   ============================================================================ */
+function SupAfterAddrPick({ row, onClose, onOk }) {
+  const list = addrStore.use().filter((a) => a.type === "after");
+  const [id, setId] = useState(() => (list.find((a) => a.isDefault) || list[0] || {}).id);
+  const [addOpen, setAddOpen] = useState(false);
+  const picked = list.find((a) => a.id === id);
+
+  return (
+    <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="gbox" style={{ width: 600 }}>
+        <b>同意售后申请</b>
+        <p>订单 {row.no} · {row.product} · {row.way}　退款金额 ￥{row.refund}</p>
+        <div className="note" style={{ marginTop: 10, lineHeight: 1.9 }}>
+          退货退款需要给买家一个寄回地址：同意后系统把所选<b>售后地址</b>发送给买家，买家按此地址退货，货回到本供应商后进入「待商家签收」。
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", margin: "16px 0 8px" }}>
+          <b style={{ fontSize: 13.5 }}>选择售后地址</b>
+          <button className="btn link" style={{ marginLeft: "auto" }} onClick={() => setAddOpen(true)}>+ 添加地址</button>
+        </div>
+        <table className="tbl-tight">
+          <thead><tr><th style={{ width: 46, background: "#fff" }}></th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
+          <tbody>
+            {list.map((a) => (
+              <tr key={a.id}>
+                <td><input type="radio" checked={id === a.id} onChange={() => setId(a.id)} /></td>
+                <td className="tw">{a.name} {a.isDefault && <span style={{ color: "#999" }}>【默认】</span>}</td>
+                <td className="tw mono">{a.phone}</td>
+                <td>{a.region} {a.detail}</td>
+              </tr>
+            ))}
+            {!list.length && <tr><td colSpan={4} style={{ textAlign: "center", padding: 20, color: "#999" }}>暂无售后地址，请先添加</td></tr>}
+          </tbody>
+        </table>
+
+        <div className="gfoot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" disabled={!picked} onClick={() => onOk(picked)}>同意并发送地址</button>
+        </div>
+        {addOpen && <SupAddressModal defaultType="after" onClose={() => setAddOpen(false)} onSaved={(a) => { setId(a.id); setAddOpen(false); }} />}
+      </div>
+    </div>
+  );
+}
+
 export function SupAfterSales() {
   const [rows, setRows] = useState(AS_ROWS);
   const [tab, setTab] = useState("全部");
   const [note, setNote] = useState(null);
   const [detail, setDetail] = useState(null);
   const [back, setBack] = useState(null);
+  const [agree, setAgree] = useState(null);   // 同意退货：先选售后地址
   const [toast, tip] = useToast();
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((r) => r.asNo));
 
@@ -1032,14 +1276,16 @@ export function SupAfterSales() {
     tip("已拒绝签收 → 商品寄回 → 售后关闭");
   };
 
-  /* 变更：一件代发售后归供应商全流程处理 —— 审核 → 签收验收 → 退款（原路退回） */
-  const agreeApply = (row) => {
+  /* 变更：一件代发售后归供应商全流程处理 —— 审核 → 签收验收 → 退款（原路退回）
+     退货退款的：同意时须选定售后地址，随同意一起发送给买家（寄回用） */
+  const agreeApply = (row, addr) => {
     act(row, (r) => {
       add(r, "商家已同意售后申请" + (r.way === "退货退款" ? "，等待买家退货" : ""));
+      if (addr) add(r, "退货地址已发送给买家", [`寄回地址：${addr.region} ${addr.detail}`, `联系人：${addr.name}　电话：${addr.phone}`]);
       r.status = r.way === "退货退款" ? "待买家退货" : "待商家退款";
       return r;
     });
-    tip(row.way === "退货退款" ? "已同意 → 等待买家退货" : "已同意 → 待商家退款");
+    tip(row.way === "退货退款" ? "已同意并发送退货地址 → 等待买家退货" : "已同意 → 待商家退款");
   };
   const refuseApply = (row) => {
     act(row, (r) => {
@@ -1112,7 +1358,7 @@ export function SupAfterSales() {
                   )}
                   {d.status === "待商家处理" && (
                     <span className="hl" data-hl="改动：代发售后由供应商处理">
-                      <button className="btn primary" onClick={() => agreeApply(d)}>同意售后申请</button>
+                      <button className="btn primary" onClick={() => (d.way === "退货退款" ? setAgree(d) : agreeApply(d))}>同意售后申请</button>
                       <button className="btn plain" style={{ marginLeft: 10 }} onClick={() => refuseApply(d)}>拒绝</button>
                     </span>
                   )}
@@ -1236,6 +1482,7 @@ export function SupAfterSales() {
         {toast}
         {note && <AsNoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
         {back && <RefuseModal row={back} onClose={() => setBack(null)} onOk={(no) => refuse(back, no)} />}
+        {agree && <SupAfterAddrPick row={agree} onClose={() => setAgree(null)} onOk={(addr) => { agreeApply(agree, addr); setAgree(null); }} />}
       </>
     );
   }
