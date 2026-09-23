@@ -9,25 +9,25 @@ import { useReqPage } from "./reqnotes.jsx";
 /* 门店APP 的收货方就是登录门店自己，详情页不再重复展示门店信息（原来的写死常量已删） */
 
 const RECEIPT_CARDS = [
-  { id: "c1", mode: "供应商直配", state: "待发货", qty: "132件", no: "DB20260420106", orderNo: "ORD260918000310", buyer: "王小美", buyerPhone: "13812345678", delivery: "上门自提", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", emoji: "🧴" },
-  { id: "c2", mode: "供应商直配", state: "待收货", qty: "132件", no: "DB20260420108", orderNo: "ORD260918000310", buyer: "王小美", buyerPhone: "13812345678", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "得佑婴幼儿手口湿巾 弱酸无残留", emoji: "🧴" },
-  { id: "c3", mode: "供应商直配", state: "已收货", qty: "132件", no: "DB20260420109", orderNo: "ORD260918000310", buyer: "王小美", buyerPhone: "13812345678", delivery: "上门自提", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", emoji: "🧴" },
+  { id: "c1", mode: "供应商直配", state: "待发货", qty: "132件", no: "DB20260420106", orderNo: "ORD260918000310", buyer: "王小美", buyerPhone: "13812345678", delivery: "上门自提", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", shipper: "供应商001", shippedAt: "", carrier: "", tracking: "" },
+  { id: "c2", mode: "供应商直配", state: "待收货", qty: "132件", no: "DB20260420108", orderNo: "ORD260918000310", buyer: "王小美", buyerPhone: "13812345678", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", shipper: "供应商001", shippedAt: "2026-04-20 14:30", carrier: "顺丰速运", tracking: "SF7712004901" },
+  { id: "c3", mode: "供应商直配", state: "已收货", qty: "132件", no: "DB20260420109", orderNo: "ORD260918000310", buyer: "王小美", buyerPhone: "13812345678", delivery: "上门自提", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", shipper: "供应商001", shippedAt: "2026-04-18 09:05", carrier: "顺丰速运", tracking: "SF7712004877" },
   /* 总部仓直配（供应商供货）：货先到总仓，再由总仓发到门店 */
-  { id: "c4", mode: "总部仓直配", state: "待发货", qty: "40件", no: "FHD2609180005", orderNo: "ORD260918000311", buyer: "李建国", buyerPhone: "13900001111", delivery: "上门自提", acts: ["查看详情"], name: "儿童保温杯 316不锈钢", emoji: "🥤" },
-  { id: "c5", mode: "总部仓直配", state: "待收货", qty: "40件", no: "FHD2609180006", orderNo: "ORD260918000311", buyer: "李建国", buyerPhone: "13900001111", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童保温杯 316不锈钢", emoji: "🥤" },
+  { id: "c4", mode: "总部仓直配", state: "待发货", qty: "40件", no: "FHD2609180005", orderNo: "ORD260918000311", buyer: "李建国", buyerPhone: "13900001111", delivery: "上门自提", acts: ["查看详情"], name: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", shipper: "九天教育总仓", shippedAt: "", carrier: "", tracking: "" },
+  { id: "c5", mode: "总部仓直配", state: "待收货", qty: "40件", no: "FHD2609180006", orderNo: "ORD260918000311", buyer: "李建国", buyerPhone: "13900001111", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", shipper: "九天教育总仓", shippedAt: "2026-09-19 09:20", carrier: "中通快递", tracking: "ZT8800112601" },
   /* 总部仓直配 · 自有货：不经供应商，总部仓直发门店 */
-  { id: "c6", mode: "总部仓直配 · 自有货", state: "待收货", qty: "20件", no: "FHD2609180018", orderNo: "ORD260918000312", buyer: "陈小雨", buyerPhone: "13700002222", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童书包", emoji: "🎒" },
-  { id: "c7", mode: "总部仓直配 · 自有货", state: "已收货", qty: "15件", no: "FHD2609180017", orderNo: "ORD260918000312", buyer: "陈小雨", buyerPhone: "13700002222", delivery: "上门自提", acts: ["查看详情"], name: "保温饭盒", emoji: "🍱" },
+  { id: "c6", mode: "总部仓直配 · 自有货", state: "待收货", qty: "20件", no: "FHD2609180018", orderNo: "ORD260918000312", buyer: "陈小雨", buyerPhone: "13700002222", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", shipper: "九天教育总仓", shippedAt: "2026-09-19 10:05", carrier: "顺丰速运", tracking: "SF7712007702" },
+  { id: "c7", mode: "总部仓直配 · 自有货", state: "已收货", qty: "15件", no: "FHD2609180017", orderNo: "ORD260918000312", buyer: "陈小雨", buyerPhone: "13700002222", delivery: "上门自提", acts: ["查看详情"], name: "保温饭盒", spec: "304不锈钢 / 1.2L", emoji: "🍱", shipper: "九天教育总仓", shippedAt: "2026-09-17 15:40", carrier: "圆通速递", tracking: "YT5500338890" },
   /* 分次收货（上次收部分、剩待补）与收货异常（实收≠应收 → 自动开差异单、门店到差异页举证）：三组各铺一张便于演示 */
-  { id: "c8", mode: "供应商直配", state: "待收货", qty: "132件", recv: 100, remain: 32, no: "DB20260420110", orderNo: "ORD260918000313", buyer: "赵一诺", buyerPhone: "13600003333", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "得佑婴幼儿手口湿巾 弱酸无残留", emoji: "🧴" },
-  { id: "c9", mode: "供应商直配", state: "收货异常", qty: "132件", recv: 130, remain: 2, no: "DB20260420111", orderNo: "ORD260918000313", buyer: "赵一诺", buyerPhone: "13600003333", delivery: "上门自提", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", emoji: "🧴" },
-  { id: "c10", mode: "总部仓直配", state: "待收货", qty: "40件", recv: 30, remain: 10, no: "FHD2609180021", orderNo: "ORD260918000314", buyer: "孙丽", buyerPhone: "13500004444", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童保温杯 316不锈钢", emoji: "🥤" },
-  { id: "c11", mode: "总部仓直配", state: "收货异常", qty: "40件", recv: 38, remain: 2, no: "FHD2609180020", orderNo: "ORD260918000314", buyer: "孙丽", buyerPhone: "13500004444", delivery: "上门自提", acts: ["查看详情"], name: "儿童保温杯 316不锈钢", emoji: "🥤" },
-  { id: "c12", mode: "总部仓直配 · 自有货", state: "待收货", qty: "20件", recv: 12, remain: 8, no: "FHD2609180022", orderNo: "ORD260918000315", buyer: "周慧", buyerPhone: "13400005555", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童书包", emoji: "🎒" },
-  { id: "c13", mode: "总部仓直配 · 自有货", state: "收货异常", qty: "15件", recv: 14, remain: 1, no: "FHD2609180023", orderNo: "ORD260918000315", buyer: "周慧", buyerPhone: "13400005555", delivery: "上门自提", acts: ["查看详情"], name: "保温饭盒", emoji: "🍱" },
+  { id: "c8", mode: "供应商直配", state: "待收货", qty: "132件", recv: 100, remain: 32, no: "DB20260420110", orderNo: "ORD260918000313", buyer: "赵一诺", buyerPhone: "13600003333", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", shipper: "供应商002", shippedAt: "2026-04-20 11:10", carrier: "顺丰速运", tracking: "SF7712004915" },
+  { id: "c9", mode: "供应商直配", state: "收货异常", qty: "132件", recv: 130, remain: 2, no: "DB20260420111", orderNo: "ORD260918000313", buyer: "赵一诺", buyerPhone: "13600003333", delivery: "上门自提", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", shipper: "供应商002", shippedAt: "2026-04-19 08:45", carrier: "顺丰速运", tracking: "SF7712004862" },
+  { id: "c10", mode: "总部仓直配", state: "待收货", qty: "40件", recv: 30, remain: 10, no: "FHD2609180021", orderNo: "ORD260918000314", buyer: "孙丽", buyerPhone: "13500004444", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", shipper: "九天教育总仓", shippedAt: "2026-09-19 14:22", carrier: "中通快递", tracking: "ZT8800112644" },
+  { id: "c11", mode: "总部仓直配", state: "收货异常", qty: "40件", recv: 38, remain: 2, no: "FHD2609180020", orderNo: "ORD260918000314", buyer: "孙丽", buyerPhone: "13500004444", delivery: "上门自提", acts: ["查看详情"], name: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", shipper: "九天教育总仓", shippedAt: "2026-09-18 16:30", carrier: "中通快递", tracking: "ZT8800112588" },
+  { id: "c12", mode: "总部仓直配 · 自有货", state: "待收货", qty: "20件", recv: 12, remain: 8, no: "FHD2609180022", orderNo: "ORD260918000315", buyer: "周慧", buyerPhone: "13400005555", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", shipper: "九天教育总仓", shippedAt: "2026-09-19 09:48", carrier: "顺丰速运", tracking: "SF7712007733" },
+  { id: "c13", mode: "总部仓直配 · 自有货", state: "收货异常", qty: "15件", recv: 14, remain: 1, no: "FHD2609180023", orderNo: "ORD260918000315", buyer: "周慧", buyerPhone: "13400005555", delivery: "上门自提", acts: ["查看详情"], name: "保温饭盒", spec: "304不锈钢 / 1.2L", emoji: "🍱", shipper: "九天教育总仓", shippedAt: "2026-09-18 17:12", carrier: "圆通速递", tracking: "YT5500338942" },
   /* 补齐：总部仓直配组「已收货」、自有货组「待发货」→ 三组 × 五状态全有数据 */
-  { id: "c14", mode: "总部仓直配", state: "已收货", qty: "25件", no: "FHD2609180019", orderNo: "ORD260918000316", buyer: "吴强", buyerPhone: "13300006666", delivery: "上门自提", acts: ["查看详情"], name: "儿童保温杯 316不锈钢", emoji: "🥤" },
-  { id: "c15", mode: "总部仓直配 · 自有货", state: "待发货", qty: "30件", no: "FHD2609180024", orderNo: "ORD260918000317", buyer: "郑爽", buyerPhone: "13200007777", delivery: "上门自提", acts: ["查看详情"], name: "儿童书包", emoji: "🎒" },
+  { id: "c14", mode: "总部仓直配", state: "已收货", qty: "25件", no: "FHD2609180019", orderNo: "ORD260918000316", buyer: "吴强", buyerPhone: "13300006666", delivery: "上门自提", acts: ["查看详情"], name: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", shipper: "九天教育总仓", shippedAt: "2026-09-17 10:15", carrier: "中通快递", tracking: "ZT8800112510" },
+  { id: "c15", mode: "总部仓直配 · 自有货", state: "待发货", qty: "30件", no: "FHD2609180024", orderNo: "ORD260918000317", buyer: "郑爽", buyerPhone: "13200007777", delivery: "上门自提", acts: ["查看详情"], name: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", shipper: "九天教育总仓", shippedAt: "", carrier: "", tracking: "" },
 ];
 /* 状态色 / 图标（与后台收货管理口径一致） */
 const STATE_TONE = (s) => (s === "待发货" ? "#f5a623" : s === "待收货" ? "#2f80ed" : s === "收货异常" ? "#f5522e" : "#25c7a5");
@@ -303,8 +303,16 @@ function Receipts({ cards, onOpen }) {
               {c.state === "待收货" && c.recv != null && <span style={{ marginLeft: "auto", marginRight: 6, fontSize: 10.5, color: "#f5a623", border: "1px solid #ffd8a8", background: "#fff7e8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>部分收货</span>}
               <span style={{ color: STATE_TONE(c.state), fontSize: 12.5 }}>{c.state}</span></div>
             <div className="mrow"><span>商品名称</span><b>{c.name}</b></div>
+            <div className="mrow"><span>规格</span><b>{c.spec}</b></div>
             <div className="mrow"><span>发货数量</span><b>{c.qty}</b></div>
+            {/* 部分收货是「还差着补」，收货异常是「已经少了」——两种口径不能共用一句话 */}
+            {c.recv != null && (c.state === "收货异常"
+              ? <div className="mrow"><span>实收数量</span><b style={{ color: STATE_TONE(c.state) }}>实收 {c.recv}｜差 {c.remain} 件</b></div>
+              : <div className="mrow"><span>收货进度</span><b style={{ color: STATE_TONE(c.state) }}>已收 {c.recv}｜待补 {c.remain} 件</b></div>)}
             <div className="mrow"><span>供货单号</span><b className="mono">{c.no}</b></div>
+            <div className="mrow"><span>发货主体</span><b>{c.shipper}</b></div>
+            <div className="mrow"><span>发货时间</span><b className="mono">{c.shippedAt || "未发货"}</b></div>
+            {c.tracking && <div className="mrow"><span>物流单号</span><b className="mono">{c.carrier} {c.tracking}</b></div>}
             <div className="macts">
               <button className="btn sm" onClick={() => setOrder(c)}>关联订单</button>
               {/* 待收货时「确认收货」进的就是供货单详情，再挂一个「查看详情」是重复入口 */}
@@ -418,8 +426,13 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
 
       <div className="mcard">
         <div className="hd"><b>供货单信息</b><span style={{ color: tone, fontSize: 12.5 }}>{st}</span></div>
+        <div className="mrow"><span>供货单号</span><b className="mono">{card.no}</b></div>
         <div className="mrow"><span>供货路径</span><b>{card.mode === "供应商直配" ? "供应商 → 门店" : card.mode.includes("自有货") ? "总部自有 → 门店" : "总部仓 → 门店"}</b></div>
-        {part && <div className="mrow"><span>收货进度</span><b>已收 {card.recv ?? 0}｜待补 {due} 件</b></div>}
+        <div className="mrow"><span>发货主体</span><b>{card.shipper}</b></div>
+        <div className="mrow"><span>发货时间</span><b className="mono">{card.shippedAt || "未发货"}</b></div>
+        <div className="mrow"><span>快递公司</span><b>{card.carrier || "—"}</b></div>
+        <div className="mrow"><span>物流单号</span><b className="mono">{card.tracking || "—"}</b></div>
+        {part && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {card.recv ?? 0}｜待补 {due} 件</b></div>}
         {st === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>{card.recv ?? 0}｜差 {card.remain ?? 0} 件</b></div>}
       </div>
 
@@ -430,6 +443,7 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
           <span style={{ width: 44, height: 44, borderRadius: 5, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 20 }}>{card.emoji || "📦"}</span>
           <div style={{ flex: 1, fontSize: 12.5 }}>
             <div>{card.name}</div>
+            <div className="note" style={{ marginTop: 3 }}>规格 {card.spec}</div>
             <div className="note" style={{ marginTop: 3 }}>
               发货数量 {card.qty}{receivable ? `　本次应收 ${due} 件` : ""}
             </div>
