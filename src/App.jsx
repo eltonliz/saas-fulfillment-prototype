@@ -8,6 +8,7 @@ import { SupplyDispatch, SupplyReceipt, SupplyDiff } from "./pages/supply.jsx";
 import { SupDirect, SupToHq, SupToStore, SupDiff, SupAfterSales, SupAccount } from "./pages/supplier.jsx";
 import { AfterSales } from "./pages/aftersale.jsx";
 import { SupplierMaster } from "./pages/supplierMaster.jsx";
+import { GeneralSetting } from "./pages/settings.jsx";
 import { StoreApp } from "./pages/app.jsx";
 import { BuyerApp } from "./pages/buyer.jsx";
 import { SupplierLogin } from "./pages/login.jsx";
@@ -31,6 +32,7 @@ const TENANT = {
   收货管理: { crumbs: ["进销存", "收货管理"], tabs: ["发货管理", "收货管理", "配送差异", "退货返厂"] },
   配送差异: { crumbs: ["进销存", "配送差异"], tabs: ["发货管理", "收货管理", "配送差异", "退货返厂"] },
   退货返厂: { crumbs: ["进销存", "退货返厂"], tabs: ["发货管理", "收货管理", "配送差异", "退货返厂"] },
+  通用设置: { crumbs: ["设置", "通用设置"], tabs: ["通用设置"] },
 };
 const SUPPLIER = {
   版本记录: { crumbs: ["版本记录"], tabs: ["版本记录"] },
@@ -137,6 +139,7 @@ export function App() {
             {page === "收货管理" && <SupplyReceipt />}
             {page === "配送差异" && <SupplyDiff />}
             {page === "退货返厂" && <TenantReturns />}
+            {page === "通用设置" && <GeneralSetting />}
           </>
         )}
 

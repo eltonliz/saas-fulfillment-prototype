@@ -18,6 +18,10 @@ const canShipOrder = (o) => {
   return upstreamReady(o);
 };
 
+/* 一件代发（供应商直发消费者·快递）：租户后台只读——能看到、不能操作；
+   发货与售后均在供应商后台完成，两侧共享同一份数据 */
+const isDropship = (o) => o.supplyMode === "供应商直配" && o.delivery === "快递发货";
+
 const STEPS = ["买家下单", "买家付款", "商家发货", "买家签收", "交易完成"];
 /* 发货状态统一口径：有发货记录（部分/全部/物流单）才算已发货 */
 const hasShipped = (o) => !!(o.shippedQty > 0 || o.tracking || ["已发货", "已完成"].includes(o.status));
@@ -32,12 +36,9 @@ export function OrderManagement({ onOpenSupply }) {
   const [batch, setBatch] = useState(null);   // 批量操作
   const [toast, tip] = useToast();
   const rows = orderStore.use().filter((o) =>
-    /* 一件代发（供应商直发消费者·快递）归供应商处理，租户侧不展示；
-       供应商直发门店（自提）单仍在本页跟踪——门店收货确认后转待提货 */
-    !(o.supplyMode === "供应商直配" && o.delivery === "快递发货") &&
-    (tab === "全部" ? true
+    tab === "全部" ? true
       : tab === "已关闭" ? ["已关闭", "已全额退款", "已取消"].includes(o.status)
-        : o.status === tab));
+        : o.status === tab);
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((o) => o.id));
   const pg = usePaged(rows);
 
@@ -51,7 +52,7 @@ export function OrderManagement({ onOpenSupply }) {
 
   return (
     <>
-      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）订单的<b style={{ margin: "0 4px" }}>发货与售后均由供应商处理</b>，本页不展示；供应商直发门店（自提）单仍在本页跟踪（门店收货确认后转待提货）</div>
+      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）订单的<b style={{ margin: "0 4px" }}>发货与售后均在供应商后台操作</b>，本页<b style={{ margin: "0 4px" }}>只读可见</b>、两侧数据实时共享</div>
 
       <div className="filters">
         <div className="row">
@@ -144,12 +145,22 @@ export function OrderManagement({ onOpenSupply }) {
                 </td>
                 <td>
                   <div className="op-col">
-                    {o.status === "待发货" && (canShipOrder(o)
-                      ? <button onClick={() => openDetail(o)}>发货</button>
-                      : o.supplyMode === "供应商直配" ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>
-                        : o.delivery === "上门自提" ? <span style={{ color: "#f5a623", fontSize: 13, height: 22 }}>{upstreamReady(o) ? "总部仓直配（见发货管理）" : "待总部仓收货"}</span>
-                          : <span style={{ color: "#f5a623", fontSize: 13, height: 22 }}>{o.shipBlock || "待总部仓收货"}</span>)}
-                    {o.ops.filter((x) => x !== "发货").map((op) => (<button key={op} className="gray" onClick={() => openDetail(o)}>{op}</button>))}
+                    {isDropship(o) ? (
+                      /* 代发单只读：不提供发货 / 备注 / 改地址等操作，只看 */
+                      <>
+                        {o.status === "待发货" && <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>}
+                        <span className="hl" data-hl="进销存：只读"><button className="gray" onClick={() => openDetail(o)}>详情</button></span>
+                      </>
+                    ) : (
+                      <>
+                        {o.status === "待发货" && (canShipOrder(o)
+                          ? <button onClick={() => openDetail(o)}>发货</button>
+                          : o.supplyMode === "供应商直配" ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>
+                            : o.delivery === "上门自提" ? <span style={{ color: "#f5a623", fontSize: 13, height: 22 }}>{upstreamReady(o) ? "总部仓直配（见发货管理）" : "待总部仓收货"}</span>
+                              : <span style={{ color: "#f5a623", fontSize: 13, height: 22 }}>{o.shipBlock || "待总部仓收货"}</span>)}
+                        {o.ops.filter((x) => x !== "发货").map((op) => (<button key={op} className="gray" onClick={() => openDetail(o)}>{op}</button>))}
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
+import { afterSaleStore } from "../store.js";
 
 /* 1:1 复刻真实 SAAS「售后管理」页（交易 > 售后管理）：
    列表（页签/筛选/列/备注·详情）+ 整页「售后详情」（状态卡 + 步骤条 + 买家备注 +
@@ -131,7 +132,10 @@ const ROWS = [
 const now = () => new Date().toISOString().slice(0, 19).replace("T", " ");
 
 export function AfterSales() {
-  const [rows, setRows] = useState(ROWS);
+  const [own, setOwn] = useState(ROWS);
+  /* 一件代发售后单：发货与售后由供应商处理，本页只读可见（与供应商后台同一份数据） */
+  const dropship = afterSaleStore.use().map((r) => ({ ...r, dropship: true }));
+  const rows = [...dropship, ...own];
   const [tab, setTab] = useState("全部");
   const [note, setNote] = useState(null);     // 备注
   const [detail, setDetail] = useState(null); // 售后详情（整页复刻）
@@ -141,8 +145,9 @@ export function AfterSales() {
 
   /* 按维权编号更新行 + 同步详情视图 */
   const act = (row, fn) => {
+    if (row.dropship) return;   // 代发售后由供应商处理，本页只读
     const n = fn({ ...row, timeline: [...row.timeline] });
-    setRows((rs) => rs.map((r) => (r.asNo === row.asNo ? n : r)));
+    setOwn((rs) => rs.map((r) => (r.asNo === row.asNo ? n : r)));
     setDetail({ ...n });
   };
   const addTimeline = (r, t, lines) => { r.timeline = [...r.timeline, { t, lines: lines || [], at: now() }]; };
@@ -248,13 +253,19 @@ export function AfterSales() {
                 <b style={{ fontSize: 15, color: "#25c7a5" }}>{dStatus}</b>
                 <div style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>{desc}</div>
                 <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                  {d.status === "待商家处理" && <><button className="btn primary" onClick={() => agree(d)}>同意</button><button className="btn plain" onClick={() => refuseApply(d)}>拒绝</button></>}
-                  {d.status === "待商家签收" && <><button className="btn primary" onClick={() => agreeSign(d)}>同意签收退货</button><button className="btn plain" onClick={() => setBack(d)}>拒绝签收退货</button></>}
-                  {d.status === "待商家退款" && <button className="btn primary" onClick={() => refund(d)}>原路退款</button>}
-                  {d.status === "退款异常" && <><button className="btn primary" onClick={() => retryRefund(d)}>重新退款</button><span style={{ fontSize: 12.5, color: "#f5522e" }}>原路退款失败，请重试</span></>}
-                  {d.status === "退款中" && <span style={{ fontSize: 12.5, color: "#2f80ed" }}>退款处理中，预计 1-3 个工作日到账</span>}
-                  {d.status === "售后完成" && <button className="btn primary" onClick={() => tip("退款原路退回，去向可在财务中查看")}>查看退款去向</button>}
-                  <span style={{ color: "#25c7a5", fontSize: 13, cursor: "pointer" }} onClick={() => setNote(d)}>备 注</span>
+                  {d.dropship ? (
+                    <span className="hl" data-hl="进销存：只读"><span style={{ fontSize: 12.5, color: "#f5a623" }}>该单为一件代发，由供应商后台处理，本页只读</span></span>
+                  ) : (
+                    <>
+                      {d.status === "待商家处理" && <><button className="btn primary" onClick={() => agree(d)}>同意</button><button className="btn plain" onClick={() => refuseApply(d)}>拒绝</button></>}
+                      {d.status === "待商家签收" && <><button className="btn primary" onClick={() => agreeSign(d)}>同意签收退货</button><button className="btn plain" onClick={() => setBack(d)}>拒绝签收退货</button></>}
+                      {d.status === "待商家退款" && <button className="btn primary" onClick={() => refund(d)}>原路退款</button>}
+                      {d.status === "退款异常" && <><button className="btn primary" onClick={() => retryRefund(d)}>重新退款</button><span style={{ fontSize: 12.5, color: "#f5522e" }}>原路退款失败，请重试</span></>}
+                      {d.status === "退款中" && <span style={{ fontSize: 12.5, color: "#2f80ed" }}>退款处理中，预计 1-3 个工作日到账</span>}
+                      {d.status === "售后完成" && <button className="btn primary" onClick={() => tip("退款原路退回，去向可在财务中查看")}>查看退款去向</button>}
+                      <span style={{ color: "#25c7a5", fontSize: 13, cursor: "pointer" }} onClick={() => setNote(d)}>备 注</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "18px 10px", overflowX: "auto" }}>
@@ -345,7 +356,7 @@ export function AfterSales() {
 
   return (
     <>
-      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）的售后由<b style={{ margin: "0 4px" }}>供应商全流程处理</b>，本页不展示；此处处理总部仓直配（含自有货）/ 自提订单的售后</div>
+      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）的售后由<b style={{ margin: "0 4px" }}>供应商全流程处理</b>，本页<b style={{ margin: "0 4px" }}>只读可见</b>（列表标记「供应商处理」）；本页可处理总部仓直配（含自有货）/ 自提订单的售后</div>
 
       <div className="filters">
         <div className="row">
@@ -407,9 +418,18 @@ export function AfterSales() {
                 <td className="tw"><span className={`tag ${TONE(r.status)}`}>{r.status}</span></td>
                 <td className="tw">
                   <div className="op-col">
-                    <span style={{ color: "#f5a623", fontSize: 13, height: 20 }}>★★★★★</span>
-                    <button className="gray" onClick={() => setNote(r)}>备注</button>
-                    <button onClick={() => setDetail(r)}>详情</button>
+                    {r.dropship ? (
+                      <>
+                        <span style={{ color: "#bbb", fontSize: 13, height: 20 }}>供应商处理</span>
+                        <button className="gray" onClick={() => setDetail(r)}>详情</button>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ color: "#f5a623", fontSize: 13, height: 20 }}>★★★★★</span>
+                        <button className="gray" onClick={() => setNote(r)}>备注</button>
+                        <button onClick={() => setDetail(r)}>详情</button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

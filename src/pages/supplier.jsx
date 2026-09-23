@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag, DiffAuditModal } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager, Confirm } from "../ui.jsx";
-import { supplierStore, supplyStore, diffStore, orderStore, patchDoc, addrStore } from "../store.js";
+import { supplierStore, supplyStore, diffStore, orderStore, patchDoc, addrStore, afterSaleStore } from "../store.js";
 
 const LEG_LABEL = {
   supplier_to_hq: "供应商 → 总仓",
@@ -1332,149 +1332,6 @@ const asTone = (s) => (s === "待商家处理" ? "warn" : s === "售后关闭" ?
 const asDisp = (r) => (r.status === "待商家签收" ? "待供应商签收" : r.status);
 const MASK = <span className="tag gray">已脱敏</span>;
 
-const AS_ROWS = [
-  {
-    no: "ORD260917000140", asNo: "R20260918260918000021", product: "相机", spec: "银色 / 标准版", emoji: "📷",
-    way: "退货退款", ship: "暂无", qty: 1, points: 0, reason: "不想要了",
-    amount: "189.00", refund: "189.00",
-    at: "2026-09-17 16:05:12", timeout: "-", status: "待商家签收",
-    buyerNote: "-", refundNote: "-",
-    order: { 应付金额: "￥189.00", 实付金额: "￥189.00", 配送方式: "快递", 物流状态: "已签收" },
-    customer: {},
-    goods: { 单价: "189.00", 数量: 1, 实付款: "189.00", 退货数量: 1, 退货金额: "189.00" },
-    timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥189.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-17 16:05:12" },
-      { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-17 17:20:33" },
-      { t: "退货地址已发送给买家", lines: ["寄回地址：广东省 广州市 天河区 科苑路 16 号 A 栋 1 楼退货组", "联系人：JOJO供应商（退货组）　电话：18100010002"], at: "2026-09-17 17:20:33" },
-      { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：SF7712003402"], at: "2026-09-18 14:22:09" },
-    ],
-  },
-  {
-    no: "ORD260915000121", asNo: "R20260917260917000022", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
-    way: "仅退款", ship: "暂无", qty: 1, points: 0, reason: "拍错/多拍",
-    amount: "29.90", refund: "29.90",
-    at: "2026-09-15 16:22:41", timeout: "-", status: "待商家处理",
-    buyerNote: "-", refundNote: "-",
-    order: { 应付金额: "￥29.90", 实付金额: "￥29.90", 配送方式: "快递", 物流状态: "已签收" },
-    customer: {},
-    goods: { 单价: "29.90", 数量: 1, 实付款: "29.90", 退货数量: 0, 退货金额: "29.90" },
-    timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥29.90", "退款原因：拍错/多拍", "退款说明：-"], at: "2026-09-15 16:22:41" },
-    ],
-  },
-  {
-    no: "ORD260918000213", asNo: "R20260918260918000023", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
-    way: "退货退款", ship: "暂无", qty: 1, points: 0, reason: "商品与描述不符",
-    amount: "29.90", refund: "29.90",
-    at: "2026-09-17 10:05:33", timeout: "-", status: "待商家退款",
-    buyerNote: "-", refundNote: "-",
-    order: { 应付金额: "￥29.90", 实付金额: "￥29.90", 配送方式: "快递", 物流状态: "已签收" },
-    customer: {},
-    goods: { 单价: "29.90", 数量: 1, 实付款: "29.90", 退货数量: 1, 退货金额: "29.90" },
-    timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥29.90", "退款原因：商品与描述不符", "退款说明：-"], at: "2026-09-17 10:05:33" },
-      { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-17 11:12:08" },
-      { t: "退货地址已发送给买家", lines: ["寄回地址：广东省 广州市 天河区 科苑路 16 号 A 栋 1 楼退货组", "联系人：JOJO供应商（退货组）　电话：18100010002"], at: "2026-09-17 11:12:08" },
-      { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：2585"], at: "2026-09-18 10:26:47" },
-      { t: "商家已同意签收退货", lines: [], at: "2026-09-18 11:02:19" },
-    ],
-  },
-  {
-    no: "ORD260918000214", asNo: "R20260918260918000024", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺",
-    way: "退货退款", ship: "暂无", qty: 1, points: 0, reason: "不想要了",
-    amount: "99.00", refund: "99.00",
-    at: "2026-09-18 14:30:12", timeout: "-", status: "售后关闭",
-    buyerNote: "-", refundNote: "-",
-    order: { 应付金额: "￥99.00", 实付金额: "￥99.00", 配送方式: "快递", 物流状态: "已签收" },
-    customer: {},
-    goods: { 单价: "99.00", 数量: 1, 实付款: "99.00", 退货数量: 1, 退货金额: "99.00" },
-    timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥99.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-18 14:30:12" },
-      { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-18 15:02:40" },
-      { t: "退货地址已发送给买家", lines: ["寄回地址：广东省 广州市 天河区 科苑路 16 号 A 栋 1 楼退货组", "联系人：JOJO供应商（退货组）　电话：18100010002"], at: "2026-09-18 15:02:40" },
-      { t: "买家已退货，待商家确认收货", lines: ["退货方式：快递", "物流单号：3322"], at: "2026-09-19 09:12:33" },
-      { t: "商家拒绝签收退货", lines: [], at: "2026-09-19 09:40:15" },
-      { t: "商家寄回商品", lines: ["退货方式：快递", "物流单号：3323"], at: "2026-09-19 09:45:02" },
-      { t: "售后关闭", lines: ["关闭原因：商家寄回拒签商品,买家签收"], at: "2026-09-19 10:02:48" },
-    ],
-  },
-  /* 状态补齐：待买家退货 / 退款异常 / 退款中 / 售后完成 —— 均由供应商处理 */
-  {
-    no: "ORD260918000221", asNo: "R20260919260919000025", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺",
-    way: "退货退款", ship: "暂无", qty: 1, points: 0, reason: "不想要了",
-    amount: "99.00", refund: "99.00",
-    at: "2026-09-19 09:35:20", timeout: "-", status: "待买家退货",
-    buyerNote: "-", refundNote: "-",
-    order: { 应付金额: "￥99.00", 实付金额: "￥99.00", 配送方式: "快递", 物流状态: "已签收" },
-    customer: {},
-    goods: { 单价: "99.00", 数量: 1, 实付款: "99.00", 退货数量: 1, 退货金额: "99.00" },
-    timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥99.00", "退款原因：不想要了", "退款说明：-"], at: "2026-09-19 09:35:20" },
-      { t: "商家已同意售后申请，等待买家退货", lines: [], at: "2026-09-19 10:02:47" },
-      { t: "退货地址已发送给买家", lines: ["寄回地址：广东省 广州市 天河区 科苑路 16 号 A 栋 1 楼退货组", "联系人：JOJO供应商（退货组）　电话：18100010002"], at: "2026-09-19 10:02:47" },
-    ],
-  },
-  /* 退货退款 · 待商家处理：同意时须先选售后地址（随同意一起发送给买家） */
-  {
-    no: "ORD260918000226", asNo: "R20260920260920000028", product: "相机", spec: "银色 / 标准版", emoji: "📷",
-    way: "退货退款", ship: "暂无", qty: 1, points: 0, reason: "商品与描述不符",
-    amount: "189.00", refund: "189.00",
-    at: "2026-09-20 10:12:36", timeout: "-", status: "待商家处理",
-    buyerNote: "-", refundNote: "-",
-    order: { 应付金额: "￥189.00", 实付金额: "￥189.00", 配送方式: "快递", 物流状态: "已签收" },
-    customer: {},
-    goods: { 单价: "189.00", 数量: 1, 实付款: "189.00", 退货数量: 1, 退货金额: "189.00" },
-    timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥189.00", "退款原因：商品与描述不符", "退款说明：-"], at: "2026-09-20 10:12:36" },
-    ],
-  },
-  {
-    no: "ORD260918000222", asNo: "R20260919260919000026", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
-    way: "仅退款", ship: "暂无", qty: 1, points: 0, reason: "包裹为空",
-    amount: "29.90", refund: "29.90",
-    at: "2026-09-19 11:20:08", timeout: "-", status: "退款异常",
-    buyerNote: "-", refundNote: "-",
-    order: { 应付金额: "￥29.90", 实付金额: "￥29.90", 配送方式: "快递", 物流状态: "已签收" },
-    customer: {},
-    goods: { 单价: "29.90", 数量: 1, 实付款: "29.90", 退货数量: 0, 退货金额: "29.90" },
-    timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥29.90", "退款原因：包裹为空", "退款说明：-"], at: "2026-09-19 11:20:08" },
-      { t: "商家已同意售后申请", lines: [], at: "2026-09-19 11:40:15" },
-      { t: "退款异常", lines: ["失败原因：买家支付账户异常，原路退款未成功", "可点击「重新退款」再次发起退款"], at: "2026-09-19 12:05:33" },
-    ],
-  },
-  {
-    no: "ORD260918000223", asNo: "R20260919260919000027", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺",
-    way: "仅退款", ship: "暂无", qty: 1, points: 0, reason: "拍错/多拍",
-    amount: "99.00", refund: "99.00",
-    at: "2026-09-19 14:08:56", timeout: "-", status: "退款中",
-    buyerNote: "-", refundNote: "-",
-    order: { 应付金额: "￥99.00", 实付金额: "￥99.00", 配送方式: "快递", 物流状态: "已签收" },
-    customer: {},
-    goods: { 单价: "99.00", 数量: 1, 实付款: "99.00", 退货数量: 0, 退货金额: "99.00" },
-    timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥99.00", "退款原因：拍错/多拍", "退款说明：-"], at: "2026-09-19 14:08:56" },
-      { t: "商家已同意售后申请", lines: [], at: "2026-09-19 14:22:03" },
-      { t: "退款处理中", lines: ["退款方式：原路退回", "预计 1-3 个工作日到账"], at: "2026-09-19 14:30:11" },
-    ],
-  },
-  {
-    no: "ORD260918000224", asNo: "R20260919260919000028", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
-    way: "仅退款", ship: "暂无", qty: 1, points: 0, reason: "不想要了",
-    amount: "29.90", refund: "29.90",
-    at: "2026-09-18 09:12:40", timeout: "-", status: "售后完成",
-    buyerNote: "-", refundNote: "-",
-    order: { 应付金额: "￥29.90", 实付金额: "￥29.90", 配送方式: "快递", 物流状态: "已签收" },
-    customer: {},
-    goods: { 单价: "29.90", 数量: 1, 实付款: "29.90", 退货数量: 0, 退货金额: "29.90" },
-    timeline: [
-      { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥29.90", "退款原因：不想要了", "退款说明：-"], at: "2026-09-18 09:12:40" },
-      { t: "商家已同意售后申请", lines: [], at: "2026-09-18 09:40:02" },
-      { t: "退款完成", lines: ["退款方式：原路退回", "退款金额：￥29.90"], at: "2026-09-18 10:15:27" },
-      { t: "售后完成", lines: [], at: "2026-09-18 10:15:28" },
-    ],
-  },
-];
 
 const asNow = () => new Date().toISOString().slice(0, 19).replace("T", " ");
 
@@ -1526,7 +1383,7 @@ function SupAfterAddrPick({ row, onClose, onOk }) {
 }
 
 export function SupAfterSales() {
-  const [rows, setRows] = useState(AS_ROWS);
+  const rows = afterSaleStore.use();
   const [tab, setTab] = useState("全部");
   const [note, setNote] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -1537,7 +1394,7 @@ export function SupAfterSales() {
 
   const act = (row, fn) => {
     const n = fn({ ...row, timeline: [...row.timeline] });
-    setRows((rs) => rs.map((r) => (r.asNo === row.asNo ? n : r)));
+    afterSaleStore.set((rs) => rs.map((r) => (r.asNo === row.asNo ? n : r)));
     setDetail({ ...n });
   };
   const add = (r, t, lines) => { r.timeline = [...r.timeline, { t, lines: lines || [], at: asNow() }]; };
