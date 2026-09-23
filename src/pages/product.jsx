@@ -247,13 +247,13 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
               <div className="frow"><label>按单限购</label><div className="fc"><input className="ctl w-xs" placeholder="0" /><div className="note">单笔订单限制购买的数量</div></div></div>
 
               <div className="frow"><label>发货模式</label><div className="fc">
-                <Hl label="改动：前置仓配送暂未开放">
+                <Hl label="改动：前置仓配送暂未开放 · 发货模式说明按进销存口径">
                   <div style={{ padding: 10, width: "100%" }}>
                     <div className="radio-row">
                       {["供应商直配", "总部仓直配"].map((m) => (
                         <label key={m}><input type="radio" checked={mode === m} onChange={() => setMode(m)} />{m}</label>
                       ))}
-                      <label style={{ color: "#bbb" }}><input type="radio" disabled />前置仓配送</label>
+                      <label style={{ color: "#bbb" }}><input type="radio" disabled />前置仓配送（暂未开放）</label>
                     </div>
                     {mode === "总部仓直配" && (
                       <Hl label="新增：货源">
@@ -262,16 +262,18 @@ export function NewProductDrawer({ row, onClose, onSaved }) {
                           {GOODS_SOURCES.map((g) => (
                             <label key={g}><input type="radio" checked={source === g} onChange={() => setSource(g)} />{g}</label>
                           ))}
-                          <span className="note" style={{ alignSelf: "center", marginLeft: 10 }}>供应商供货＝货先由供应商发到总部仓；总部自有＝不经供应商，支付后直接发货</span>
                         </div>
                       </Hl>
                     )}
+                    {/* 只讲当前选中的那一档：三档说明全铺开，租户还得自己找对应哪一条 */}
                     <div className="note">
-                      1、供应商直配：货从供应商仓发出，配送方式选快递，则订单由供应商直发给客户；选自提，则订单由供应商直发到客户所选门店，客户到店自提。发货由供应商处理（租户后台只读可见）；售后由总部审核与退款，供应商只做签收验收。<br />
-                      2、总部仓直配：由总部仓统一发出（快递直发客户 / 自提发到门店）。货源二选一：<b>供应商供货</b> = 货先由供应商仓发到总部仓，总仓收货后才可发出；<b>总部自有</b> = 货为总部自有、不经供应商，支付后直接可发。<br />
-                      3、前置仓配送：由各城市前置仓就近发货给客户（暂未开放）。<br />
-                      注：发货模式 + 货源决定订单由谁来发货、走哪条流转路径，对所有商品生效；创建后不可修改
+                      {mode === "供应商直配"
+                        ? "供应商发货：快递单直发客户；自提单发到客户所选门店，客户到店自提。发货由供应商操作，售后由总部处理。"
+                        : source === "供应商供货"
+                          ? "总部仓发货：快递单直发客户；自提单发到客户所选门店。货先由供应商送到总部仓，总仓收货后才能发出。"
+                          : "总部仓发货：快递单直发客户；自提单发到客户所选门店。货为总部自有，支付后可直接发出。"}
                     </div>
+                    <div className="note" style={{ marginTop: 6 }}>发货模式创建后不可修改，对所有商品生效</div>
                   </div>
                 </Hl>
               </div></div>
