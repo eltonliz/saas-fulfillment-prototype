@@ -290,7 +290,7 @@ function Receipts({ cards, onOpen }) {
       </div>
 
       <div className="mtabs">
-        {["全部", "待收货", "已收货", "收货异常"].map((t) => (
+        {["全部", "待发货", "待收货", "已收货", "收货异常"].map((t) => (
           <button key={t} className={chip === t ? "active" : ""} onClick={() => setChip(t)}>{t}</button>
         ))}
       </div>
@@ -305,7 +305,8 @@ function Receipts({ cards, onOpen }) {
             <div className="mrow"><span>发货数量</span><b>{c.qty}</b></div>
             <div className="mrow"><span>供货单号</span><b className="mono">{c.no}</b></div>
             <div className="macts">
-              <button className="btn sm" onClick={() => onOpen(c)}>查看详情</button>
+              {/* 待收货时「确认收货」进的就是供货单详情，再挂一个「查看详情」是重复入口 */}
+              {c.state !== "待收货" && <button className="btn sm" onClick={() => onOpen(c)}>查看详情</button>}
               {c.acts.includes("查看物流") && <button className="btn sm" onClick={() => setTrack(c)}>查看物流</button>}
               {c.acts.includes("确认收货") && <button className="btn primary sm" onClick={() => onOpen(c)}>确认收货</button>}
             </div>
