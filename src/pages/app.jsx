@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { useReturns, setReturns, patchHop, diffStore, addDiff } from "../store.js";
+import { useReturns, setReturns, patchHop, diffStore, addDiff, supplyStore, supplierStore } from "../store.js";
+import { diffInTab, DIFF_TABS } from "./supply.jsx";
+import { afterAddrOf, fmtAddr } from "../data.js";
 import { FlowNode, FlowArrow } from "./buyer.jsx";
 import { useReqPage } from "./reqnotes.jsx";
 
@@ -33,20 +35,6 @@ const RECEIPT_CARDS = [
 const STATE_TONE = (s) => (s === "待发货" ? "#f5a623" : s === "待收货" ? "#2f80ed" : s === "收货异常" ? "#f5522e" : "#25c7a5");
 const STATE_ICON = (s) => (s === "已收货" ? "✓" : s === "待收货" ? "🚚" : s === "收货异常" ? "⚠️" : "⏳");
 
-/* 配送差异单（照 Axure 原型的差异页字段） */
-const DIFF_CARDS = [
-  { id: "CY136465", state: "待举证", skuCount: 22, diffCount: 10, supplyNo: "5000029" },
-  { id: "CY1936", state: "待举证", skuCount: 22, diffCount: 5, supplyNo: "5000027" },
-  { id: "CY1943", state: "待审核", skuCount: 22, diffCount: 3, supplyNo: "5000029" },
-  { id: "CY1906", state: "审核通过", skuCount: 50, diffCount: 20, supplyNo: "5000018" },
-  { id: "CY130", state: "审核不通过", skuCount: 50, diffCount: 20, supplyNo: "5000018" },
-  { id: "CY94", state: "已关闭", skuCount: 22, diffCount: 8, supplyNo: "5000014" },
-];
-const DIFF_ITEMS = [
-  { name: "裤子", shouldQty: 30, realQty: 25, diffQty: 5 },
-  { name: "裤子", shouldQty: 30, realQty: 25, diffQty: 5 },
-];
-
 const GRID = [
   ["自提核销", "🎫"], ["核销优惠券", "🎟"], ["订单管理", "📋"], ["客户管理", "👤"],
   ["售后管理", "↩️"], ["直播管理", "📺"], ["添加渠道", "➕"], ["审核门店", "✅"],
@@ -62,26 +50,25 @@ export function StoreApp() {
   const [diffCard, setDiffCard] = useState(null);   // 当前查看的配送差异单
   const [cards, setCards] = useState(RECEIPT_CARDS); // 收货管理卡片（确认收货后状态流转）
   const [receiptCard, setReceiptCard] = useState(null); // 当前查看/收货的供货单
-  const [phoneDiffs, setPhoneDiffs] = useState(DIFF_CARDS); // 配送差异卡（举证提交后转「待审核」）
   const [pendingReceipt, setPendingReceipt] = useState(null); // 少收待温馨提示确认的收货结果
   useReqPage("app:" + view);
 
   /* 少收 → 自动生成门店配送差异单（待举证）+ 差异页出现对应卡（幂等：同一供货单不重复生成） */
   const genStoreDiff = (c, got = 0) => {
-    if (phoneDiffs.some((d) => d.supplyNo === c.no && d.state === "待举证")) return;
+    if (diffStore.get().some((d) => d.supplyNo === c.no && d.status === "待举证")) return;
     const dt = new Date();
     const ymd = String(dt.getFullYear()).slice(2) + String(dt.getMonth() + 1).padStart(2, "0") + String(dt.getDate()).padStart(2, "0");
     const diffId = "DIFF" + ymd + String(diffStore.get().length + 1).padStart(4, "0");
+    const due = c.recv != null ? (c.remain ?? 0) : (parseInt(c.qty, 10) || 0);
     const recvTotal = (c.recv ?? 0) + got;
+    /* 差异单只记事实（谁发的、差多少），发货方与商品明细由「来源供货单」承载，后台差异单同此口径 */
     addDiff({
       id: diffId, source: "门店上报", reporter: "门店",
       leg: c.mode === "供应商直配" ? "供应商 → 门店" : "总仓 → 门店",
-      supplyNo: c.no, shipper: c.mode === "供应商直配" ? "供应商" : "九天教育总仓",
-      summary: `${c.name} 应收${parseInt(c.qty, 10) || 0}/实收${recvTotal}｜少货`,
-      status: "待举证", evidence: "—",
+      supplyNo: c.no, shipper: c.shipper,
+      summary: `${c.name} 应收${parseInt(c.qty, 10) || 0}/实收${recvTotal} 差${Math.max(0, due - got)}`,
+      diffQty: Math.max(0, due - got), status: "待举证", evidence: "—",
     });
-    const due = c.recv != null ? (c.remain ?? 0) : (parseInt(c.qty, 10) || 0);
-    setPhoneDiffs((ds) => [{ id: diffId, state: "待举证", skuCount: 1, diffCount: Math.max(0, due - got), supplyNo: c.no }, ...ds]);
   };
 
   /* 确认收货：收满 →「已收货」；少收（温馨提示确认后）→「收货异常」+ 自动生成配送差异单 */
@@ -129,8 +116,8 @@ export function StoreApp() {
               onGoDiffs={() => { genStoreDiff(receiptCard, 0); setView("diffs"); }}
             />
           )}
-          {view === "diffs" && <Diffs cards={phoneDiffs} onDetail={(c) => { setDiffCard(c); setView("diffDetail"); }} onEvidence={(c) => { setDiffCard(c); setView("evidence"); }} />}
-          {view === "diffDetail" && <DiffDetail card={diffCard} onBack={() => setView("diffs")} onEvidence={() => setView("evidence")} />}
+          {view === "diffs" && <Diffs onDetail={(d) => { setDiffCard(d); setView("diffDetail"); }} onEvidence={(d) => { setDiffCard(d); setView("evidence"); }} />}
+          {view === "diffDetail" && <DiffDetail row={diffCard} onBack={() => setView("diffs")} onEvidence={() => { setDiffCard(diffCard); setView("evidence"); }} />}
           {view === "evidence" && <Evidence card={diffCard} onBack={() => setView("diffs")}
             onSubmitted={() => setPhoneDiffs((ds) => ds.map((d) => (d.id === diffCard.id && d.state === "待举证" ? { ...d, state: "待审核" } : d)))} />}
           {view === "returns" && <Returns />}
@@ -528,34 +515,55 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
 }
 
 /* ---------------- 配送差异（照收货页风格 + Axure 差异页字段） ---------------- */
-const DIFF_TONE = (s) => (s === "待举证" ? "#f5a623" : s === "审核通过" ? "#25c7a5" : s === "审核不通过" ? "#f5522e" : "#999");
+/* 状态口径与后台一片：待举证（等门店）/ 待审核（等总部）/ 补发中·补发完成（通过后补发）/ 不通过 / 已关闭 */
+const DIFF_TONE = (s) => (s === "待举证" ? "#f5a623"
+  : ["待总部审核", "待供应商审核"].includes(s) ? "#2f80ed"
+    : ["待补发", "补发中", "补发完成"].includes(s) ? "#25c7a5"
+      : s === "审核不通过" ? "#f5522e" : "#999");
 
-function Diffs({ cards, onDetail, onEvidence }) {
+/* ---------------- 配送差异：读 diffStore 的「门店上报」部分，与后台是同一份数据 ----------------
+   原来这里是一套写死的演示卡（商品数 / 差异总量），与后台差异单对不上账，现在直接读 store */
+/* 来源供货单：发货方、物流单号、商品都从它取，差异单里不另存一份 */
+const srcDocOf = (docs, no) => docs.find((d) => d.id === no) || null;
+/* 差异摘要形如「画板套装 应收2/实收0 差2」，应收/实收从这句里取。
+   不能用「应发 − 差异」反推实发：错货时实收等于应收（「华为手机 应收1/实收1 错货 1 件」），反推会得出实发 0 */
+const parseSummary = (s) => {
+  const m = /应收\s*(\d+)\s*\/\s*实收\s*(\d+)/.exec(s || "");
+  return m ? { shouldQty: Number(m[1]), realQty: Number(m[2]) } : null;
+};
+
+function Diffs({ onDetail, onEvidence }) {
+  const rows = diffStore.use().filter((d) => d.source === "门店上报");
+  const docs = [...supplyStore.use(), ...supplierStore.use()];
   const [chip, setChip] = useState("全部");
-  const list = cards.filter((c) => chip === "全部" || c.state === chip);
+  const list = rows.filter((d) => diffInTab(d.status, chip));
   return (
     <div>
       <div className="mtabs">
-        {["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"].map((t) => (
+        {DIFF_TABS.map((t) => (
           <button key={t} className={chip === t ? "active" : ""} onClick={() => setChip(t)}>{t}</button>
         ))}
       </div>
       <div className="mpad">
-        {list.map((c) => (
-          <div className="mcard" key={c.id}>
+        {list.map((d) => (
+          <div className="mcard" key={d.id}>
             <div className="hd">
               <b>配送差异单</b>
-              <span style={{ color: DIFF_TONE(c.state), fontSize: 12.5 }}>{c.state}</span>
+              <span style={{ color: DIFF_TONE(d.status), fontSize: 12.5 }}>{d.status}</span>
             </div>
-            <div className="mrow"><span>配货差异单编号</span><b className="mono">{c.id}</b></div>
-            <div className="mrow"><span>商品数</span><b>{c.skuCount}</b></div>
-            <div className="mrow"><span>配货差异总数量</span><b style={{ color: "#f5522e" }}>{c.diffCount}</b></div>
-            <div className="mrow"><span>关联供货编号</span><b className="mono">{c.supplyNo}</b></div>
+            <div className="mrow"><span>差异单号</span><b className="mono">{d.id}</b></div>
+            <div className="mrow"><span>来源链路</span><b>{d.leg}</b></div>
+            <div className="mrow"><span>关联供货单</span><b className="mono">{d.supplyNo}</b></div>
+            <div className="mrow"><span>发货方</span><b>{d.shipper}（补发责任方）</b></div>
+            <div className="mrow"><span>差异摘要</span><b style={{ fontWeight: 400, textAlign: "right" }}>{d.summary}</b></div>
+            <div className="mrow"><span>举证信息</span><b style={{ fontWeight: 400 }}>{d.evidence}</b></div>
+            {d.makeup && <div className="mrow"><span>补发供货单</span><b className="mono">{d.makeup}</b></div>}
+            {d.rejectReason && <div className="mrow"><span>驳回原因</span><b style={{ fontWeight: 400, textAlign: "right", color: "#f5522e" }}>{d.rejectReason}</b></div>}
             <div className="macts">
               {/* 待举证时还没内容可看，详情入口收起来，只留「去举证」 */}
-              {c.state === "待举证"
-                ? <button className="btn primary sm" onClick={() => onEvidence(c)}>去举证</button>
-                : <button className="btn sm" onClick={() => onDetail(c)}>查看详情</button>}
+              {d.status === "待举证"
+                ? <button className="btn primary sm" onClick={() => onEvidence(d)}>去举证</button>
+                : <button className="btn sm" onClick={() => onDetail(d)}>查看详情</button>}
             </div>
           </div>
         ))}
@@ -565,49 +573,89 @@ function Diffs({ cards, onDetail, onEvidence }) {
   );
 }
 
+/* 来源供货单：举证和查详情都要对着它看——店员手上是货和快递箱，得知道是哪一单、谁发的、单号多少 */
+function SrcDocBlock({ diff, docs }) {
+  const src = srcDocOf(docs, diff.supplyNo);
+  if (!src) return (
+    <div className="mcard">
+      <div className="hd"><b>来源供货单</b></div>
+      <div className="mrow"><span>供货单号</span><b className="mono">{diff.supplyNo}</b></div>
+      <div className="mrow"><span>发货方</span><b>{diff.shipper}</b></div>
+      <div className="note" style={{ marginTop: 6 }}>该供货单不在当前门店可见范围内</div>
+    </div>
+  );
+  return (
+    <div className="mcard">
+      <div className="hd"><b>来源供货单</b><span className="note" style={{ fontSize: 11.5 }}>{src.leg === "hq_store" ? "总仓 → 门店" : "供应商 → 门店"}</span></div>
+      <div className="mrow"><span>供货单号</span><b className="mono">{src.id}</b></div>
+      <div className="mrow"><span>发货方</span><b>{src.shipper}</b></div>
+      <div className="mrow"><span>商品</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.emoji} {src.product}　{src.spec}</b></div>
+      <div className="mrow"><span>快递公司</span><b>{src.carrier || "—"}</b></div>
+      <div className="mrow"><span>物流单号</span><b className="mono">{src.tracking || "—"}</b></div>
+      <div className="mrow"><span>物流轨迹</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.track || "尚未发货"}</b></div>
+    </div>
+  );
+}
+
+/* 差异明细：商品取自来源供货单、数量取自差异摘要 */
+function DiffItemsBlock({ diff, docs }) {
+  const src = srcDocOf(docs, diff.supplyNo);
+  const n = parseSummary(diff.summary);
+  if (!src && !n) return null;
+  return (
+    <div className="mcard">
+      <div className="hd"><b>差异明细</b></div>
+      <div style={{ display: "flex", gap: 10, padding: "6px 0", borderTop: "1px solid #f2f2f2" }}>
+        <span style={{ width: 44, height: 44, borderRadius: 5, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 20 }}>{src?.emoji || "📦"}</span>
+        <div style={{ flex: 1, fontSize: 12.5 }}>
+          <div>{src ? `${src.product}　${src.spec}` : diff.summary}</div>
+          <div className="note" style={{ marginTop: 3 }}>
+            {n ? `应发 ${n.shouldQty}　实发 ${n.realQty}　差异 ${diff.diffQty ?? Math.max(0, n.shouldQty - n.realQty)} 件` : `差异 ${diff.diffQty ?? "—"} 件`}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- 差异单详情（查看详情落点） ---------------- */
-function DiffDetail({ card, onBack, onEvidence }) {
-  if (!card) return null;
+function DiffDetail({ row, onBack, onEvidence }) {
+  const docs = [...supplyStore.use(), ...supplierStore.use()];
+  if (!row) return null;
   return (
     <div className="mpad">
       <div className="mcard">
-        <div className="hd">
-          <b>配送差异单 {card.id}</b>
-          <span style={{ color: DIFF_TONE(card.state), fontSize: 12.5 }}>{card.state}</span>
-        </div>
-        <div className="mrow"><span>商品数</span><b>{card.skuCount}</b></div>
-        <div className="mrow"><span>配货差异总数量</span><b style={{ color: "#f5522e" }}>{card.diffCount}</b></div>
-        <div className="mrow"><span>关联供货编号</span><b className="mono">{card.supplyNo}</b></div>
+        <div className="hd"><b>配送差异单 {row.id}</b><span style={{ color: DIFF_TONE(row.status), fontSize: 12.5 }}>{row.status}</span></div>
+        <div className="mrow"><span>来源链路</span><b>{row.leg}</b></div>
+        <div className="mrow"><span>上报方</span><b>{row.reporter}</b></div>
+        <div className="mrow"><span>关联供货单</span><b className="mono">{row.supplyNo}</b></div>
+        <div className="mrow"><span>发货方</span><b>{row.shipper}（补发责任方）</b></div>
+        <div className="mrow"><span>差异摘要</span><b style={{ fontWeight: 400, textAlign: "right" }}>{row.summary}</b></div>
+        <div className="mrow"><span>举证信息</span><b style={{ fontWeight: 400 }}>{row.evidence}</b></div>
+        {row.rejectReason && <div className="mrow"><span>驳回原因</span><b style={{ fontWeight: 400, textAlign: "right", color: "#f5522e" }}>{row.rejectReason}</b></div>}
+        {row.makeup && <div className="mrow"><span>补发供货单</span><b className="mono">{row.makeup}</b></div>}
       </div>
 
-      <div className="mcard">
-        <div style={{ fontSize: 12.5, fontWeight: 600, margin: "4px 0 8px" }}>抽查指令（破）</div>
-        {DIFF_ITEMS.map((it, i) => (
-          <div key={i} style={{ borderTop: "1px solid #f2f2f2", padding: "9px 0", fontSize: 12.5 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>👜 {it.name}</span><b>差异数量 {it.diffQty}</b>
-            </div>
-            <div className="mrow" style={{ paddingTop: 4 }}><span>应发 {it.shouldQty}　实发 {it.realQty}</span></div>
-          </div>
-        ))}
-      </div>
+      <SrcDocBlock diff={row} docs={docs} />
+      <DiffItemsBlock diff={row} docs={docs} />
 
-      {card.state === "待举证" ? (
+      {row.status === "待举证" ? (
         <div className="mcard" style={{ background: "#fff7e8", color: "#b7791f", fontSize: 12.5, lineHeight: 1.8 }}>
           到货点验与发货单存在差异，请<b>尽快上传凭证</b>；提交后由总部（租户）审核，审核通过后按「谁发货谁补发」补发。
         </div>
       ) : (
         <div className="mcard" style={{ background: "#f5f7f8", color: "#666", fontSize: 12.5, lineHeight: 1.8 }}>
-          {card.state === "待审核" ? "凭证已提交，等待总部（租户）审核。"
-            : card.state === "审核通过" ? "总部审核已通过，差异补发由总部按链路跟进。"
-              : card.state === "审核不通过" ? "总部审核不通过，本差异单不再补发，如有疑问请联系总部。"
-                : "本差异单已关闭。"}
+          {["待总部审核", "待供应商审核"].includes(row.status) ? "凭证已提交，等待总部（租户）审核。"
+            : ["待补发", "补发中"].includes(row.status) ? `总部审核已通过，补发由${row.shipper}按链路执行${row.makeup ? `（补发单 ${row.makeup}）` : ""}。`
+              : row.status === "补发完成" ? "补发已完成，本差异单闭环。"
+                : row.status === "审核不通过" ? "总部审核不通过，本差异单不再补发，如有疑问请联系总部。"
+                  : "本差异单已关闭。"}
         </div>
       )}
 
       <div style={{ display: "flex", gap: 10, paddingBottom: 16 }}>
         <button className="btn plain" style={{ flex: 1 }} onClick={onBack}>返回</button>
-        {card.state === "待举证" && <button className="btn primary" style={{ flex: 2 }} onClick={onEvidence}>去举证</button>}
+        {row.status === "待举证" && <button className="btn primary" style={{ flex: 2 }} onClick={onEvidence}>去举证</button>}
       </div>
     </div>
   );
@@ -615,24 +663,23 @@ function DiffDetail({ card, onBack, onEvidence }) {
 
 /* ---------------- 举证信息 ---------------- */
 function Evidence({ card, onBack, onSubmitted }) {
+  const docs = [...supplyStore.use(), ...supplierStore.use()];
   const [reasons, setReasons] = useState(["少货"]);
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState(0);
   const [done, setDone] = useState(false);
+  if (!card) return null;
   return (
     <div className="mpad">
       <div className="mcard">
-        <div className="hd"><b>配货差异单 {card?.id || DIFF_CARDS[0].id}</b><span style={{ color: done ? "#2f80ed" : "#f5a623", fontSize: 12.5 }}>{done ? "待审核" : "待举证"}</span></div>
-        <div style={{ fontSize: 12.5, fontWeight: 600, margin: "4px 0 8px" }}>抽查指令（破）</div>
-        {DIFF_ITEMS.map((it, i) => (
-          <div key={i} style={{ borderTop: "1px solid #f2f2f2", padding: "9px 0", fontSize: 12.5 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>👜 {it.name}</span><b>差异数量 {it.diffQty}</b>
-            </div>
-            <div className="mrow" style={{ paddingTop: 4 }}><span>应发 {it.shouldQty}　实发 {it.realQty}</span></div>
-          </div>
-        ))}
+        <div className="hd"><b>配货差异单 {card.id}</b><span style={{ color: done ? "#2f80ed" : "#f5a623", fontSize: 12.5 }}>{done ? "待审核" : "待举证"}</span></div>
+        <div className="mrow"><span>来源链路</span><b>{card.leg}</b></div>
+        <div className="mrow"><span>关联供货单</span><b className="mono">{card.supplyNo}</b></div>
+        <div className="mrow"><span>发货方</span><b>{card.shipper}（补发责任方）</b></div>
       </div>
+
+      <SrcDocBlock diff={card} docs={docs} />
+      <DiffItemsBlock diff={card} docs={docs} />
 
       <div className="mcard">
         <div className="mfield">
@@ -671,9 +718,8 @@ function Evidence({ card, onBack, onSubmitted }) {
         <button className="btn plain" style={{ flex: 1 }} onClick={onBack}>取消</button>
         <button className="btn primary" style={{ flex: 2 }} disabled={done || !reasons.length || photos < 1}
           onClick={() => {
-            /* 原型桥接：举证提交写入租户后台差异单 —— 最早一笔「待举证」的门店上报单转「待总部审核」 */
-            const target = diffStore.get().find((d) => d.status === "待举证" && d.source === "门店上报");
-            if (target) diffStore.set((ds) => ds.map((x) => (x.id === target.id ? { ...x, status: "待总部审核", evidence: `${reasons.join("、")} · 照片 ${photos} 张` } : x)));
+            /* 举证写回 diffStore：两端同一份数据，租户后台该单即时转「待总部审核」 */
+            diffStore.set((ds) => ds.map((x) => (x.id === card.id ? { ...x, status: "待总部审核", evidence: `${reasons.join("、")} · 照片 ${photos} 张` } : x)));
             setDone(true);
             onSubmitted && onSubmitted();
           }}>提交</button>
@@ -741,9 +787,15 @@ function Returns() {
           <div className="mcard" key={r.id}>
             <div className="hd"><b>退货返厂单</b><span style={{ color: RET_TONE(r.status), fontSize: 12.5 }}>{r.status}</span></div>
             <div className="mrow"><span>返厂单号</span><b className="mono">{r.id}</b></div>
-            <div className="mrow"><span>商品</span><b>{r.emoji} {r.product} × {r.qty}</b></div>
+            <div className="mrow"><span>申请时间</span><b className="mono">{r.createdAt}</b></div>
+            <div className="mrow"><span>关联销售订单</span><b className="mono">{r.orderNo}</b></div>
+            <div className="mrow"><span>关联供货单</span><b className="mono">{r.supplyNo}</b></div>
+            <div className="mrow"><span>商品</span><b style={{ fontWeight: 400, textAlign: "right" }}>{r.emoji} {r.product}　{r.spec}</b></div>
+            <div className="mrow"><span>退货数量</span><b>{r.qty} 件</b></div>
             <div className="mrow"><span>退货原因</span><b style={{ fontWeight: 400 }}>{r.reason}</b></div>
+            <div className="mrow"><span>退回方</span><b>{r.returnTo}</b></div>
             <div className="mrow"><span>返厂路径</span><b style={{ fontWeight: 400, textAlign: "right" }}>{r.viaHq ? `门店 → 总部仓 → ${r.returnTo}` : `门店 → ${r.returnTo}`}</b></div>
+            <div className="mrow"><span>退款状态</span><b style={{ fontWeight: 400, textAlign: "right", color: r.refunded ? "#25c7a5" : "#f5a623" }}>{r.refundNote}</b></div>
             <div className="macts">
               <button className="btn sm" onClick={() => setDetail(r)}>查看详情</button>
               {r.status === "待返厂" && <button className="btn primary sm" onClick={() => setSheet({ k: "ship", r })}>填写寄出物流</button>}
@@ -757,6 +809,20 @@ function Returns() {
       {sheet?.k === "new" && <NewReturnSheet onClose={() => setSheet(null)} onSubmit={create} />}
       {sheet?.k === "ship" && <ShipReturnSheet row={sheet.r} onClose={() => setSheet(null)} onSubmit={ship} />}
     </div>
+  );
+}
+
+/* 退回地址：门店寄件时照着填快递单，取自供应商「地址库 › 售后地址」，不在返厂单里另存 */
+function AddrRows({ who }) {
+  const a = afterAddrOf(who);
+  if (!a) return <div className="note">「{who}」尚未在供应商地址库维护售后地址，请联系总部补充</div>;
+  return (
+    <>
+      <div className="mrow"><span>收件人</span><b>{a.name}</b></div>
+      <div className="mrow"><span>联系电话</span><b className="mono">{a.phone}</b></div>
+      <div className="mrow"><span>收货地址</span><b style={{ fontWeight: 400, textAlign: "right" }}>{fmtAddr(a)}</b></div>
+      <div className="mrow"><span>邮编</span><b className="mono">{a.postcode}</b></div>
+    </>
   );
 }
 
@@ -792,6 +858,11 @@ function ReturnDetail({ row, onClose }) {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="mcard">
+          <div className="hd"><b>退回地址</b><span className="note" style={{ fontSize: 11.5 }}>供应商售后地址</span></div>
+          <AddrRows who={row.returnTo} />
         </div>
 
         <div className="mcard">
@@ -836,6 +907,7 @@ function NewReturnSheet({ onClose, onSubmit }) {
           <div className="mrow"><span>规格</span><b style={{ fontWeight: 400 }}>{src.spec}</b></div>
           <div className="mrow"><span>退回方</span><b>{src.returnTo}</b></div>
           <div className="mrow"><span>返厂路径</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.viaHq ? `门店 → 总部仓 → ${src.returnTo}` : `门店 → ${src.returnTo}`}</b></div>
+          <div className="mrow"><span>退回地址</span><b style={{ fontWeight: 400, textAlign: "right" }}>{fmtAddr(afterAddrOf(src.returnTo)) || "该供应商未维护"}</b></div>
         </div>
 
         <div className="mfield">
@@ -880,8 +952,9 @@ function ShipReturnSheet({ row, onClose, onSubmit }) {
           <b style={{ fontSize: 15 }}>填写寄出物流</b>
           <span onClick={onClose} style={{ marginLeft: "auto", color: "#999", fontSize: 20, lineHeight: 1, cursor: "pointer" }}>×</span>
         </div>
-        <div style={{ fontSize: 12.5, color: "#666", marginBottom: 12 }}>
-          返厂单 {row.id} · 寄往 {row.hops[0].to}
+        <div className="mcard" style={{ margin: "0 0 12px" }}>
+          <div className="hd"><b>寄往</b><span className="note" style={{ fontSize: 11.5 }}>返厂单 {row.id}</span></div>
+          <AddrRows who={row.hops[0].to} />
         </div>
 
         <div className="mfield">

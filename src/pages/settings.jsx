@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useToast, Pager, usePaged } from "../ui.jsx";
 import { addressBookStore, expressTplStore, addrStore } from "../store.js";
+import { SUPPLIER_SELF } from "../data.js";
 
 /* ============================================================================
    通用设置 —— 照真实 SaaS「设置 › 通用设置」复刻
@@ -283,8 +284,8 @@ function AddrModal({ store, type, editing, onClose, onSaved }) {
 }
 
 /* store 可传：租户用 addressBookStore，供应商用自己的 addrStore —— 一份地址、各自维护 */
-export function AddressBook({ store = addressBookStore }) {
-  const all = store.use();
+export function AddressBook({ store = addressBookStore, filter }) {
+  const all = store.use().filter((a) => !filter || filter(a));
   const [tab, setTab] = useState("ship");
   const [modal, setModal] = useState(null);   // null | {} | 编辑的行
   const [toast, tip] = useToast();
@@ -361,7 +362,8 @@ export function AddressBook({ store = addressBookStore }) {
    ============================================================================ */
 /* 供应商后台的地址库：同一套表单，数据是自己的地址簿（发货弹窗从这里选发货地址） */
 export function SupplierAddressBook() {
-  return <AddressBook store={addrStore} />;
+  /* 地址簿按主体归属过滤：原型只有一个供应商登录态（JOJO），正式版一供应商一登录态、无需过滤 */
+  return <AddressBook store={addrStore} filter={(a) => a.owner === SUPPLIER_SELF} />;
 }
 
 export function ExpressTemplate() {

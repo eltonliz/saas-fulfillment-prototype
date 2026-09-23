@@ -950,12 +950,20 @@ SUPPLIER_DOCS.find((d) => d.id === "FHD2609170018").received = 2; // 收货异�
 }
 
 
-/* 供应商地址簿：发货地址（发货时选）与售后地址（同意退货时给买家寄回用） */
+/* 供应商地址簿（发货地址 / 售后地址），owner = 归属供应商主体。
+   原型只有一个供应商登录态（JOJO），其余主体只保留退货地址——门店返厂要寄到它，发货地址没有页面用得上 */
+export const SUPPLIER_SELF = "JOJO供应商";
 export const SUP_ADDRESSES = [
-  { id: "ad1", type: "ship", name: "JOJO供应商", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路 16 号", postcode: "510630", isDefault: true },
-  { id: "ad2", type: "ship", name: "JOJO供应商（备用仓）", phone: "18100010003", region: "广东省/广州市/白云区", detail: "太和镇兴太三路 6 号", postcode: "510080", isDefault: false },
-  { id: "ad3", type: "after", name: "JOJO供应商（退货组）", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路 16 号 A 栋 1 楼退货组", postcode: "510630", isDefault: true },
+  { id: "ad1", owner: "JOJO供应商", type: "ship", name: "JOJO供应商", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路 16 号", postcode: "510630", isDefault: true },
+  { id: "ad2", owner: "JOJO供应商", type: "ship", name: "JOJO供应商（备用仓）", phone: "18100010003", region: "广东省/广州市/白云区", detail: "太和镇兴太三路 6 号", postcode: "510080", isDefault: false },
+  { id: "ad3", owner: "JOJO供应商", type: "after", name: "JOJO供应商（退货组）", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路 16 号 A 栋 1 楼退货组", postcode: "510630", isDefault: true },
+  { id: "ad4", owner: "供应商001", type: "after", name: "供应商001（退货组）", phone: "18100010002", region: "广东省/深圳市/南山区", detail: "科技园南区 8 栋 2 楼退货组", postcode: "518057", isDefault: true },
+  { id: "ad5", owner: "供应商002", type: "after", name: "供应商002（退货组）", phone: "13979554185", region: "江西省/南昌市/青山湖区", detail: "高新大道 199 号 3 号库", postcode: "330029", isDefault: true },
+  { id: "ad6", owner: "供应商003", type: "after", name: "供应商003（退货组）", phone: "13122223333", region: "浙江省/杭州市/余杭区", detail: "仓前街道文一西路 1218 号 5 号库", postcode: "311121", isDefault: true },
 ];
+/* 返厂寄件地址：门店/总仓把货退回供应商时，取该供应商「地址库 › 售后地址」 */
+export const afterAddrOf = (supplier) => SUP_ADDRESSES.find((a) => a.owner === supplier && a.type === "after") || null;
+export const fmtAddr = (a) => (a ? `${a.region.replace(/\//g, "")} ${a.detail}` : "");
 
 /* ==========================================================================
    租户后台 › 设置 › 地址库（照真实 SaaS 复刻）
