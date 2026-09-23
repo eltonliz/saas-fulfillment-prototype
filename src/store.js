@@ -30,7 +30,7 @@ export const returnStore = createStore(RETURNS);             // 退货返厂单
 export const orderStore = createStore(ORDERS);               // 销售订单
 export const productStore = createStore(PRODUCTS);           // 商品（租户后台）
 export const addrStore = createStore(SUP_ADDRESSES);         // 供应商地址簿（发货地址 / 售后地址）
-export const afterSaleStore = createStore(AFTER_SALES);      // 售后单（代发：供应商处理、租户只读，两侧同一份）
+export const afterSaleStore = createStore(AFTER_SALES);      // 售后单（代发：总部审核退款、供应商只做货源，两侧同一份）
 
 /* ============================================================================
    G2②：门店长时间不点「确认到货」→ 系统自动确认，避免客户提货码一直不生效

@@ -19,7 +19,7 @@ const canShipOrder = (o) => {
 };
 
 /* 一件代发（供应商直发消费者·快递）：租户后台只读——能看到、不能操作；
-   发货与售后均在供应商后台完成，两侧共享同一份数据 */
+   发货由供应商完成；售后由总部审核与退款（供应商只做签收验收）。两侧共享同一份数据 */
 const isDropship = (o) => o.supplyMode === "供应商直配" && o.delivery === "快递发货";
 
 const STEPS = ["买家下单", "买家付款", "商家发货", "买家签收", "交易完成"];
@@ -52,7 +52,7 @@ export function OrderManagement({ onOpenSupply }) {
 
   return (
     <>
-      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）订单的<b style={{ margin: "0 4px" }}>发货与售后均在供应商后台操作</b>，本页<b style={{ margin: "0 4px" }}>只读可见</b>、两侧数据实时共享</div>
+      <div className="alert"><span className="ic">i</span>一件代发（供应商直发消费者 · 快递）订单的<b style={{ margin: "0 4px" }}>发货</b>在供应商后台操作，本页<b style={{ margin: "0 4px" }}>只读可见</b>；<b style={{ margin: "0 4px" }}>售后</b>在「售后管理」由总部审核与退款</div>
 
       <div className="filters">
         <div className="row">
