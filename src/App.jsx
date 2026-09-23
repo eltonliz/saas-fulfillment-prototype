@@ -8,7 +8,7 @@ import { SupplyDispatch, SupplyReceipt, SupplyDiff } from "./pages/supply.jsx";
 import { SupDirect, SupToHq, SupToStore, SupDiff, SupAfterSales, SupAccount } from "./pages/supplier.jsx";
 import { AfterSales } from "./pages/aftersale.jsx";
 import { SupplierMaster } from "./pages/supplierMaster.jsx";
-import { GeneralSetting, AddressBook, ExpressTemplate } from "./pages/settings.jsx";
+import { GeneralSetting, AddressBook, ExpressTemplate, SupplierAddressBook } from "./pages/settings.jsx";
 import { StoreApp } from "./pages/app.jsx";
 import { BuyerApp } from "./pages/buyer.jsx";
 import { SupplierLogin } from "./pages/login.jsx";
@@ -46,6 +46,7 @@ const SUPPLIER = {
   配送差异: { crumbs: ["供货", "配送差异"], tabs: ["一件代发", "发总部仓", "发门店", "配送差异", "售后处理", "退货返厂"] },
   售后处理: { crumbs: ["供货", "售后处理"], tabs: ["一件代发", "发总部仓", "发门店", "配送差异", "售后处理", "退货返厂"] },
   退货返厂: { crumbs: ["供货", "退货返厂"], tabs: ["一件代发", "发总部仓", "发门店", "配送差异", "售后处理", "退货返厂"] },
+  地址库: { crumbs: ["地址库"], tabs: ["地址库"] },
   账号管理: { crumbs: ["设置", "账号管理"], tabs: ["账号管理"] },
 };
 
@@ -158,6 +159,7 @@ export function App() {
             {page === "配送差异" && <SupDiff />}
             {page === "售后处理" && <SupAfterSales />}
             {page === "退货返厂" && <SupplierReturns />}
+            {page === "地址库" && <SupplierAddressBook />}
             {page === "账号管理" && <SupAccount />}
           </>
         )}

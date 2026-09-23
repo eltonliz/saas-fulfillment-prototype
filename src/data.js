@@ -441,6 +441,7 @@ export const SUPPLIER_MENU = [
   { ico: "🗺", label: "业务流程图", isNew: true },
   { ico: "📋", label: "场景清单" },
   { ico: "⇄", label: "供货", isNew: true, children: ["一件代发", "发总部仓", "发门店", "配送差异", "售后处理", "退货返厂"] },
+  { ico: "📍", label: "地址库", isNew: true },
   { ico: "👤", label: "账号管理" },
 ];
 
@@ -903,9 +904,9 @@ SUPPLIER_DOCS.find((d) => d.id === "FHD2609170018").received = 2; // 收货异�
 
 /* 供应商地址簿：发货地址（发货时选）与售后地址（同意退货时给买家寄回用） */
 export const SUP_ADDRESSES = [
-  { id: "ad1", type: "ship", name: "JOJO供应商", phone: "18100010002", region: "广东省 广州市 天河区", detail: "科苑路 16 号", isDefault: true },
-  { id: "ad2", type: "ship", name: "JOJO供应商（备用仓）", phone: "18100010003", region: "广东省 广州市 白云区", detail: "太和镇兴太三路 6 号", isDefault: false },
-  { id: "ad3", type: "after", name: "JOJO供应商（退货组）", phone: "18100010002", region: "广东省 广州市 天河区", detail: "科苑路 16 号 A 栋 1 楼退货组", isDefault: true },
+  { id: "ad1", type: "ship", name: "JOJO供应商", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路 16 号", postcode: "510630", isDefault: true },
+  { id: "ad2", type: "ship", name: "JOJO供应商（备用仓）", phone: "18100010003", region: "广东省/广州市/白云区", detail: "太和镇兴太三路 6 号", postcode: "510080", isDefault: false },
+  { id: "ad3", type: "after", name: "JOJO供应商（退货组）", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路 16 号 A 栋 1 楼退货组", postcode: "510630", isDefault: true },
 ];
 
 /* ==========================================================================

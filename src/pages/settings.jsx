@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useToast, Pager, usePaged } from "../ui.jsx";
-import { addressBookStore, expressTplStore } from "../store.js";
+import { addressBookStore, expressTplStore, addrStore } from "../store.js";
 
 /* ============================================================================
    通用设置 —— 照真实 SaaS「设置 › 通用设置」复刻
@@ -201,7 +201,7 @@ const citiesOf = (p) => Object.keys(REGION[p] || {});
 const districtsOf = (p, c) => Object.keys(REGION[p]?.[c] || {});
 const streetsOf = (p, c, d) => REGION[p]?.[c]?.[d] || [];
 
-function AddrModal({ type, editing, onClose, onSaved }) {
+function AddrModal({ store, type, editing, onClose, onSaved }) {
   const [name, setName] = useState(editing?.name || "");
   const [phone, setPhone] = useState(editing?.phone || "");
   const [detail, setDetail] = useState(editing?.detail || "");
@@ -218,7 +218,7 @@ function AddrModal({ type, editing, onClose, onSaved }) {
 
   const save = () => {
     const patch = { name: name.trim(), phone: phone.trim(), region, detail: detail.trim(), postcode: postcode.trim(), isDefault };
-    addressBookStore.set((as) => {
+    store.set((as) => {
       /* 默认互斥：同类型下只留一个默认 */
       const cleared = isDefault ? as.map((a) => (a.type === type ? { ...a, isDefault: false } : a)) : as;
       return editing
@@ -282,8 +282,9 @@ function AddrModal({ type, editing, onClose, onSaved }) {
   );
 }
 
-export function AddressBook() {
-  const all = addressBookStore.use();
+/* store 可传：租户用 addressBookStore，供应商用自己的 addrStore —— 一份地址、各自维护 */
+export function AddressBook({ store = addressBookStore }) {
+  const all = store.use();
   const [tab, setTab] = useState("ship");
   const [modal, setModal] = useState(null);   // null | {} | 编辑的行
   const [toast, tip] = useToast();
@@ -292,10 +293,10 @@ export function AddressBook() {
   const tabDef = ADDR_TABS.find((t) => t.k === tab);
 
   const setDefault = (id) => {
-    addressBookStore.set((as) => as.map((a) => (a.type === tab ? { ...a, isDefault: a.id === id } : a)));
+    store.set((as) => as.map((a) => (a.type === tab ? { ...a, isDefault: a.id === id } : a)));
     tip("已设为默认");
   };
-  const del = (id) => { addressBookStore.set((as) => as.filter((a) => a.id !== id)); tip("已删除"); };
+  const del = (id) => { store.set((as) => as.filter((a) => a.id !== id)); tip("已删除"); };
 
   return (
     <>
@@ -348,7 +349,7 @@ export function AddressBook() {
       </div>
       <Pager {...pd} />
 
-      {modal && <AddrModal type={tab} editing={modal.id ? modal : null} onClose={() => setModal(null)} onSaved={() => { tip(modal.id ? "已保存" : "地址已添加"); setModal(null); }} />}
+      {modal && <AddrModal store={store} type={tab} editing={modal.id ? modal : null} onClose={() => setModal(null)} onSaved={() => { tip(modal.id ? "已保存" : "地址已添加"); setModal(null); }} />}
       {toast}
     </>
   );
@@ -358,6 +359,11 @@ export function AddressBook() {
    快递模板 —— 照真实 SaaS「设置 › 快递模板」复刻
    按「可配送范围 + 计费方式」算运费；计费方式决定表头是「首件/续件」还是「首重/续重」
    ============================================================================ */
+/* 供应商后台的地址库：同一套表单，数据是自己的地址簿（发货弹窗从这里选发货地址） */
+export function SupplierAddressBook() {
+  return <AddressBook store={addrStore} />;
+}
+
 export function ExpressTemplate() {
   const list = expressTplStore.use();
   const [sel, setSel] = useState({});

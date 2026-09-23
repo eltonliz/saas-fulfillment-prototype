@@ -551,7 +551,6 @@ function SupOrderShipModal({ order, onClose, onDone }) {
   /* 发货地址取地址簿中「发货地址」类；默认地址优先选中 */
   const addresses = addrStore.use().filter((a) => a.type === "ship");
   const [addrId, setAddrId] = useState(() => (addresses.find((a) => a.isDefault) || addresses[0] || {}).id);
-  const [addOpen, setAddOpen] = useState(false);
 
   return (
     <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -604,7 +603,7 @@ function SupOrderShipModal({ order, onClose, onDone }) {
 
           <div style={{ display: "flex", alignItems: "center", margin: "26px 0 12px" }}>
             <h3 style={{ fontSize: 15, margin: 0, borderLeft: "none", paddingLeft: 0 }}>选择发货地址</h3>
-            <button className="btn link" style={{ marginLeft: "auto" }} onClick={() => setAddOpen(true)}>+ 添加地址</button>
+            <span className="note" style={{ marginLeft: "auto" }}>地址在「地址库」维护，这里只做选择</span>
           </div>
           <table className="tbl-tight">
             <thead><tr><th style={{ width: 46, background: "#fff" }}></th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
@@ -643,7 +642,6 @@ function SupOrderShipModal({ order, onClose, onDone }) {
           }}>确定</button>
         </div>
       </div>
-      {addOpen && <SupAddressModal defaultType="ship" onClose={() => setAddOpen(false)} onSaved={(a) => { setAddrId(a.id); setAddOpen(false); }} />}
     </div>
   );
 }
@@ -696,78 +694,6 @@ function SupEditTrackModal({ no, desc, carrier: c0, tracking: t0, lockText, sync
     </div>
   );
 }
-
-/* ============================================================================
-   新增地址（发货地址 / 售后地址共用一个地址簿）
-   发货地址：发货弹窗选择；售后地址：同意退货时提供给买家寄回
-   ============================================================================ */
-function SupAddressModal({ defaultType = "ship", onClose, onSaved }) {
-  const [type, setType] = useState(defaultType);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [region, setRegion] = useState("");
-  const [detail, setDetail] = useState("");
-  const [isDefault, setIsDefault] = useState(false);
-  const ok = name.trim() && phone.trim() && region.trim() && detail.trim();
-
-  const save = () => {
-    const addr = { id: "ad" + Date.now(), type, name: name.trim(), phone: phone.trim(), region: region.trim(), detail: detail.trim(), isDefault };
-    /* 同类型下「设为默认」互斥：旧的默认自动取消 */
-    addrStore.set((as) => [...as.map((a) => (a.type === type && isDefault ? { ...a, isDefault: false } : a)), addr]);
-    onSaved(addr);
-  };
-
-  return (
-    <div className="gmock" style={{ zIndex: 120 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="gbox" style={{ width: 520 }}>
-        <b>新增地址</b>
-        <p>发货地址在发货弹窗中选择；售后地址在同意退货时发送给买家</p>
-
-        <div className="frow" style={{ marginTop: 16 }}>
-          <label><i>*</i>地址类型</label>
-          <div className="fc" style={{ display: "flex", gap: 20 }}>
-            {[["ship", "发货地址"], ["after", "售后地址"]].map(([k, t]) => (
-              <label key={k} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-                <input type="radio" checked={type === k} onChange={() => setType(k)} />{t}
-              </label>
-            ))}
-          </div>
-        </div>
-        <div className="frow">
-          <label><i>*</i>联系人</label>
-          <div className="fc"><input className="ctl" placeholder="请输入联系人姓名" value={name} onChange={(e) => setName(e.target.value)} /></div>
-        </div>
-        <div className="frow">
-          <label><i>*</i>联系电话</label>
-          <div className="fc"><input className="ctl" placeholder="请输入联系电话" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
-        </div>
-        <div className="frow">
-          <label><i>*</i>所在地区</label>
-          <div className="fc"><input className="ctl" placeholder="省 / 市 / 区（真实系统为四级联动）" value={region} onChange={(e) => setRegion(e.target.value)} /></div>
-        </div>
-        <div className="frow">
-          <label><i>*</i>详细地址</label>
-          <div className="fc"><input className="ctl" placeholder="街道、门牌号等" value={detail} onChange={(e) => setDetail(e.target.value)} /></div>
-        </div>
-        <div className="frow">
-          <label>设为默认</label>
-          <div className="fc">
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-              <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />
-              同时把该类型下的其他地址取消默认
-            </label>
-          </div>
-        </div>
-
-        <div className="gfoot">
-          <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={!ok} onClick={save}>保存</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ============================================================================
    代发批量回传三件套（订单维度模板）
    列：订单号 / 收件人 / 收件人电话 / 收货地址 / 商品 / 规格 / 待发数量（锁定）+ 快递公司 / 物流单号（待填）
@@ -1092,7 +1018,7 @@ function SupShipModal({ doc, onClose, onDone }) {
 
           <div style={{ display: "flex", alignItems: "center", margin: "18px 0 8px" }}>
             <h3 style={{ fontSize: 14, margin: 0 }}>选择发货地址</h3>
-            <button className="btn link" style={{ marginLeft: "auto" }}>+ 添加地址</button>
+            <span className="note" style={{ marginLeft: "auto" }}>地址在「地址库」维护，这里只做选择</span>
           </div>
           <table className="tbl-tight">
             <thead><tr><th style={{ width: 36 }}></th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
