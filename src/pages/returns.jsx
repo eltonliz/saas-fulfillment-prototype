@@ -305,18 +305,18 @@ function ReturnDetailDrawer({ row, portal, onClose }) {
             </div>
           </section>
 
-          <section className="card">
-            <h3>退款说明</h3>
-            <div className="cbody">
-              {supplier
-                ? <div className="note" style={{ padding: 10, lineHeight: 1.9 }}>
-                    退款金额与消费者 PII <b>已脱敏</b>。退款由总部独立执行，<b>不阻塞</b>返厂流程。
-                  </div>
-                : <div className="note" style={{ padding: 10, lineHeight: 1.9 }}>
-                    {row.refundNote}。门店收到退货即触发总部退款，返厂在途不影响客户退款。
-                  </div>}
-            </div>
-          </section>
+          {/* 返厂单只管货：退款归售后管理，本单不承载退款信息。
+              供应商视角保留一条口径说明——它本来就不该看到钱 */}
+          {supplier && (
+            <section className="card">
+              <h3>关于退款</h3>
+              <div className="cbody">
+                <div className="note" style={{ padding: 10, lineHeight: 1.9 }}>
+                  退款金额与消费者 PII <b>已脱敏</b>。退款由总部按售后规则独立执行，<b>不阻塞</b>返厂流程。
+                </div>
+              </div>
+            </section>
+          )}
         </div>
         <div className="foot"><button className="btn plain" onClick={onClose}>关闭</button></div>
       </div>

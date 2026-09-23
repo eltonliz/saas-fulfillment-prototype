@@ -7,7 +7,7 @@ export function Shell({ portal, onPortal, active, crumbs, tabs, menu, projectLab
   const [open, setOpen] = useState(() => new Set(["商品", "交易", "门店", "进销存", "供货", "供应商"]));
   const [showHl, setShowHl] = useState(true);
   const [showReq, setShowReq] = useState(true);
-  const [reqW, setReqW] = useState(380);
+  const [reqW, setReqW] = useState(430);
   const [childPage, setChildPage] = useState(null);
   /* 联动：后端页面用 active 菜单项，手机端（门店APP/买家端）由机内切页上报 childPage */
   const reqKey = childPage || (portal === "tenant" ? `t:${active}` : portal === "supplier" ? `s:${active}` : "");

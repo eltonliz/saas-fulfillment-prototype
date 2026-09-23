@@ -795,7 +795,6 @@ function Returns() {
             <div className="mrow"><span>退货原因</span><b style={{ fontWeight: 400 }}>{r.reason}</b></div>
             <div className="mrow"><span>退回方</span><b>{r.returnTo}</b></div>
             <div className="mrow"><span>返厂路径</span><b style={{ fontWeight: 400, textAlign: "right" }}>{r.viaHq ? `门店 → 总部仓 → ${r.returnTo}` : `门店 → ${r.returnTo}`}</b></div>
-            <div className="mrow"><span>退款状态</span><b style={{ fontWeight: 400, textAlign: "right", color: r.refunded ? "#25c7a5" : "#f5a623" }}>{r.refundNote}</b></div>
             <div className="macts">
               <button className="btn sm" onClick={() => setDetail(r)}>查看详情</button>
               {r.status === "待返厂" && <button className="btn primary sm" onClick={() => setSheet({ k: "ship", r })}>填写寄出物流</button>}
@@ -863,13 +862,6 @@ function ReturnDetail({ row, onClose }) {
         <div className="mcard">
           <div className="hd"><b>退回地址</b><span className="note" style={{ fontSize: 11.5 }}>供应商售后地址</span></div>
           <AddrRows who={row.returnTo} />
-        </div>
-
-        <div className="mcard">
-          <div className="hd"><b>退款说明</b></div>
-          <div style={{ fontSize: 12.5, color: "#666", lineHeight: 1.9 }}>
-            {row.refundNote}。门店收到退货即触发总部退款，返厂在途不影响客户退款。
-          </div>
         </div>
 
         <button className="btn plain" style={{ width: "100%" }} onClick={onClose}>关闭</button>
