@@ -38,6 +38,7 @@ function Row({ label, children, note, hl, hlText, sub, last }) {
 export function GeneralSetting() {
   const [tab, setTab] = useState("交易设置");
   const [sw, setSw] = useState({ 极速退款: true, 支付有礼校验: false, 寄送商品: false, 核销商品: false, 限制用户退款申请: false });
+  const [cond, setCond] = useState("订单发货");
   const [toast, tip] = useToast();
   const flip = (k) => setSw((s) => ({ ...s, [k]: !s[k] }));
   const Sw = ({ k, lock }) => (
@@ -134,21 +135,25 @@ export function GeneralSetting() {
         <div style={{ paddingLeft: 40 }}>
           <div style={{ display: "block", width: "fit-content", padding: "10px 14px", marginBottom: 20 }}>
             <div style={{ fontSize: 13.5, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <select className="ctl" defaultValue="订单发货" style={{ width: 118, height: 30 }}>
+              <select className="ctl" value={cond} onChange={(e) => setCond(e.target.value)} style={{ width: 118, height: 30 }}>
                 {["用户下单", "商品下架", "订单发货", "无条件"].map((o) => <option key={o}>{o}</option>)}
               </select>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <input type="radio" name="refundCond" defaultChecked /> <Num v={1} /> <Unit v="天" opts={["天", "小时"]} />
-              </label>
+              {cond === "用户下单" && (
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <input type="radio" name="refundCond" defaultChecked /> 下单后 <Num v={1} /> <Unit v="天" opts={["天", "小时"]} /> 内
+                </label>
+              )}
+              <span>不允许发起退款申请</span>
             </div>
-            <div style={{ fontSize: 13.5, marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <input type="radio" name="refundCond" /> 第 <Num v={1} />
-                <input className="ctl" defaultValue="00:00:00" style={{ width: 96, height: 30, textAlign: "center" }} />
-              </label>
-              <span>前用户发起退款申请，不允许发起，单个用户每天仅限 <Num v={3} /> 次</span>
-            </div>
-            <div className="note" style={{ marginTop: 8 }}>注：退款金额与退款数量不匹配时，为避免损失，仍需要审核</div>
+            {cond === "用户下单" && (
+              <div style={{ fontSize: 13.5, marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <input type="radio" name="refundCond" /> 第 <Num v={1} />
+                  <input className="ctl" defaultValue="00:00:00" style={{ width: 96, height: 30, textAlign: "center" }} />
+                  <span>前</span>
+                </label>
+              </div>
+            )}
           </div>
         </div>
 
