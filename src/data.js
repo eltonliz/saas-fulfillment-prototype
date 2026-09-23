@@ -432,7 +432,7 @@ export const MENU = [
   // ★ 进销存新增一级菜单
   { ico: "⇄", label: "进销存", isNew: true, children: ["发货管理", "收货管理", "配送差异", "退货返厂"] },
   { ico: "⬢", label: "供应商", children: ["供应商管理"] },
-  { ico: "⚙", label: "设置", isNew: true, children: ["通用设置"] },
+  { ico: "⚙", label: "设置", isNew: true, children: ["快递模板", "地址库", "通用设置"] },
 ];
 
 /* 供应商后台菜单（照业务规则 §2.3 供应商侧菜单） */
@@ -906,6 +906,36 @@ export const SUP_ADDRESSES = [
   { id: "ad1", type: "ship", name: "JOJO供应商", phone: "18100010002", region: "广东省 广州市 天河区", detail: "科苑路 16 号", isDefault: true },
   { id: "ad2", type: "ship", name: "JOJO供应商（备用仓）", phone: "18100010003", region: "广东省 广州市 白云区", detail: "太和镇兴太三路 6 号", isDefault: false },
   { id: "ad3", type: "after", name: "JOJO供应商（退货组）", phone: "18100010002", region: "广东省 广州市 天河区", detail: "科苑路 16 号 A 栋 1 楼退货组", isDefault: true },
+];
+
+/* ==========================================================================
+   租户后台 › 设置 › 地址库（照真实 SaaS 复刻）
+   三个页签：发货地址 / 售后地址 / 仓库地址；同类型下「默认」互斥
+   · 发货地址：供应商发货时选它（发货弹窗）
+   · 售后地址：总部在「售后管理」同意退货时选它，随同意发给买家当寄回地址
+   · 仓库地址：总部仓 / 门店收货点，供内部单据参照
+   ========================================================================== */
+export const ADDRESS_BOOK = [
+  { id: "ab1", type: "ship", name: "张三", phone: "13800138000", region: "广东省/广州市/天河区", detail: "体育西路100号", postcode: "510000", isDefault: true },
+  { id: "ab2", type: "ship", name: "九天教育总仓", phone: "18100020001", region: "广东省/广州市/荔湾区", detail: "宝华路76号", postcode: "510150", isDefault: false },
+  { id: "ab3", type: "ship", name: "JOJO供应商", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路16号", postcode: "510630", isDefault: false },
+  { id: "ab4", type: "ship", name: "康师傅店长", phone: "18100010003", region: "广东省/佛山市/高明区", detail: "云勇林场", postcode: "528500", isDefault: false },
+  { id: "ab5", type: "after", name: "JOJO供应商（退货组）", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路16号 A栋1楼退货组", postcode: "510630", isDefault: true },
+  { id: "ab6", type: "after", name: "九天教育退货组", phone: "18100020003", region: "河南省/三门峡市/义马市", detail: "朝阳路街道 8 号退货仓", postcode: "472300", isDefault: false },
+  { id: "ab7", type: "after", name: "9071门店退货点", phone: "18100002222", region: "辽宁省/铁岭市/银州区", detail: "工人街 28 号", postcode: "112000", isDefault: false },
+  { id: "ab8", type: "warehouse", name: "九天教育总仓", phone: "18100020002", region: "广东省/广州市/荔湾区", detail: "宝华路76号 A栋", postcode: "510150", isDefault: true },
+  { id: "ab9", type: "warehouse", name: "备用仓", phone: "13966584556", region: "内蒙古自治区/通辽市/库伦旗", detail: "额勒顺镇", postcode: "028200", isDefault: false },
+];
+
+/* ==========================================================================
+   租户后台 › 设置 › 快递模板（照真实 SaaS 复刻）
+   按「可配送范围 + 计费方式」算运费；同一区域命中多模板时取最后保存的
+   ========================================================================== */
+export const EXPRESS_TPL = [
+  { id: "et1", name: "华东按件", area: "上海市", chargeBy: "按件", first: "1", firstFee: "10", next: "1", nextFee: "5", enabled: true },
+  { id: "et2", name: "华南按重量", area: "广东省", chargeBy: "按重量", first: "0.1", firstFee: "10", next: "0.1", nextFee: "5", enabled: true },
+  { id: "et3", name: "浙甘京专线", area: "浙江省,甘肃省,北京市", chargeBy: "按重量", first: "0.1", firstFee: "10", next: "0.1", nextFee: "5", enabled: true },
+  { id: "et4", name: "东北专线", area: "黑龙江省,吉林省,辽宁省", chargeBy: "按件", first: "1", firstFee: "12", next: "1", nextFee: "6", enabled: false },
 ];
 
 /* 配送差异单（双来源，谁被上报谁审核：总部上报 → 供应商审核；门店上报 → 总部审核） */

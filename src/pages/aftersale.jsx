@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
-import { afterSaleStore, addrStore } from "../store.js";
+import { afterSaleStore, addressBookStore } from "../store.js";
 
 /* 1:1 复刻真实 SAAS「售后管理」页（交易 > 售后管理）：
    列表（页签/筛选/列/备注·详情）+ 整页「售后详情」（状态卡 + 步骤条 + 买家备注 +
@@ -142,12 +142,13 @@ export function AfterSales() {
   /* 一件代发售后单：总部审核 + 总部退款，供应商只做货源（签收验收）。两侧同一份数据 */
   const dropship = afterSaleStore.use().map((r) => ({ ...r, dropship: true }));
   const rows = [...dropship, ...own];
-  const afterAddrs = addrStore.use().filter((a) => a.type === "after");
-  const afterAddr = afterAddrs.find((a) => a.isDefault) || afterAddrs[0];
+  /* 退货寄回地址取自「设置 › 地址库 › 售后地址」 */
+  const afterAddrs = addressBookStore.use().filter((a) => a.type === "after");
   const [tab, setTab] = useState("全部");
   const [note, setNote] = useState(null);     // 备注
   const [detail, setDetail] = useState(null); // 售后详情（整页复刻）
   const [back, setBack] = useState(null);     // 拒绝签收退货（填退回物流单号）
+  const [pickAddr, setPickAddr] = useState(null); // 同意退货：先选售后地址
   const [toast, tip] = useToast();
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((r) => r.no));
 
@@ -160,24 +161,27 @@ export function AfterSales() {
   };
   const addTimeline = (r, t, lines) => { r.timeline = [...r.timeline, { t, lines: lines || [], at: now() }]; };
 
-  /* 待总部审核：同意 / 拒绝（代发单由总部审核，退货地址取供应商的默认售后地址） */
-  const agree = (row) => {
+  /* 待总部审核：同意 / 拒绝 */
+  const agree = (row, addr) => {
     act(row, (r) => {
       if (r.way === "仅退款") {
         addTimeline(r, "总部已同意售后申请");
         r.status = "待总部退款";
       } else {
         addTimeline(r, "总部已同意售后申请，等待买家退货");
-        if (r.dropship && afterAddr) {
-          addTimeline(r, "退货地址已发送给买家（取自供应商售后地址）",
-            [`寄回地址：${afterAddr.region} ${afterAddr.detail}`, `联系人：${afterAddr.name}　电话：${afterAddr.phone}`]);
+        if (addr) {
+          addTimeline(r, "退货地址已发送给买家（取自「设置 › 地址库 › 售后地址」）",
+            [`寄回地址：${addr.region} ${addr.detail}`, `联系人：${addr.name}　电话：${addr.phone}`]);
         }
         r.status = "待买家退货";
       }
       return r;
     });
-    tip(row.way === "仅退款" ? "已同意 → 待总部退款" : "已同意 → 等待买家退货");
+    setPickAddr(null);
+    tip(row.way === "仅退款" ? "已同意 → 待总部退款" : "已同意并发送退货地址 → 等待买家退货");
   };
+  /* 点「同意」：仅退款直接同意；代发的退货退款先选售后地址（自营退货退回总仓 / 门店，不选地址） */
+  const onAgree = (row) => (row.way === "仅退款" || !row.dropship ? agree(row) : setPickAddr(row));
   /* 代发专属：待总部退款 → 确认退款；退货异常 → 总部裁决 */
   const hqRefund = (row) => {
     act(row, (r) => {
@@ -306,7 +310,7 @@ export function AfterSales() {
                 <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   {d.dropship ? (
                     <span className="hl" data-hl="进销存：总部审核 + 总部退款，供应商只做货源">
-                      {d.status === "待总部审核" && <><button className="btn primary" onClick={() => agree(d)}>同意</button><button className="btn plain" style={{ marginLeft: 10 }} onClick={() => refuseApply(d)}>拒绝</button></>}
+                      {d.status === "待总部审核" && <><button className="btn primary" onClick={() => onAgree(d)}>同意</button><button className="btn plain" style={{ marginLeft: 10 }} onClick={() => refuseApply(d)}>拒绝</button></>}
                       {d.status === "待总部退款" && <button className="btn primary" onClick={() => hqRefund(d)}>确认退款</button>}
                       {d.status === "退货异常" && <><button className="btn primary" onClick={() => hqForceRefund(d)}>仍向买家退款</button><button className="btn plain" style={{ marginLeft: 10 }} onClick={() => hqCloseAbnormal(d)}>认可拒签，关闭售后</button></>}
                       {["待买家退货", "待供应商签收"].includes(d.status) && (
@@ -324,7 +328,7 @@ export function AfterSales() {
                     </span>
                   ) : (
                     <>
-                      {d.status === "待总部审核" && <><button className="btn primary" onClick={() => agree(d)}>同意</button><button className="btn plain" onClick={() => refuseApply(d)}>拒绝</button></>}
+                      {d.status === "待总部审核" && <><button className="btn primary" onClick={() => onAgree(d)}>同意</button><button className="btn plain" onClick={() => refuseApply(d)}>拒绝</button></>}
                       {d.status === "待总部签收" && <><button className="btn primary" onClick={() => agreeSign(d)}>同意签收退货</button><button className="btn plain" onClick={() => setBack(d)}>拒绝签收退货</button></>}
                       {d.status === "待买家退货" && <span style={{ color: "#25c7a5", fontSize: 13, cursor: "pointer" }} onClick={() => buyerShipped(d)}>（原型：模拟买家已寄回）</span>}
                       {d.status === "待总部退款" && <button className="btn primary" onClick={() => refund(d)}>原路退款</button>}
@@ -415,6 +419,7 @@ export function AfterSales() {
         {toast}
         {note && <NoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
         {back && <BackModal row={back} onClose={() => setBack(null)} onOk={(no) => refuseSign(back, no)} />}
+        {pickAddr && <HqAddrPick row={pickAddr} addrs={afterAddrs} onClose={() => setPickAddr(null)} onOk={(a) => agree(pickAddr, a)} />}
       </>
     );
   }
@@ -514,7 +519,45 @@ export function AfterSales() {
 
       {toast}
       {note && <NoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
+      {pickAddr && <HqAddrPick row={pickAddr} addrs={afterAddrs} onClose={() => setPickAddr(null)} onOk={(a) => agree(pickAddr, a)} />}
     </>
+  );
+}
+
+/* ---------------- 同意退货：选售后地址（取自「设置 › 地址库 › 售后地址」） ----------------
+   总部同意后系统把这一个地址发给买家，买家按此地址把货寄回供应商 */
+function HqAddrPick({ row, addrs, onClose, onOk }) {
+  const [id, setId] = useState(() => (addrs.find((a) => a.isDefault) || addrs[0] || {}).id);
+  const picked = addrs.find((a) => a.id === id);
+  return (
+    <div className="gmock" style={{ zIndex: 130 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="gbox" style={{ width: 660 }}>
+        <b>同意售后申请</b>
+        <p>{row.no} · {row.product} · {row.way}　退款金额 ￥{String(row.refund).replace("¥", "")}</p>
+        <div className="note" style={{ marginTop: 10, lineHeight: 1.9 }}>
+          退货退款需要给买家一个寄回地址：同意后系统把选中的<b>售后地址</b>发给买家，买家按此地址把货退回供应商。
+          地址在「<b>设置 › 地址库 › 售后地址</b>」维护，这里只做选择。
+        </div>
+        <table className="tbl-tight" style={{ marginTop: 14 }}>
+          <thead><tr><th style={{ width: 46, background: "#fff" }}></th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
+          <tbody>
+            {addrs.map((a) => (
+              <tr key={a.id}>
+                <td><input type="radio" checked={id === a.id} onChange={() => setId(a.id)} /></td>
+                <td className="tw">{a.name}{a.isDefault && <span className="tag" style={{ marginLeft: 6 }}>默认</span>}</td>
+                <td className="tw mono">{a.phone}</td>
+                <td>{a.region} {a.detail}</td>
+              </tr>
+            ))}
+            {!addrs.length && <tr><td colSpan={4} style={{ textAlign: "center", padding: 24, color: "#999" }}>地址库还没有售后地址，请先到「设置 › 地址库 › 售后地址」添加</td></tr>}
+          </tbody>
+        </table>
+        <div className="gfoot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" disabled={!picked} onClick={() => onOk(picked)}>同意并发送地址</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

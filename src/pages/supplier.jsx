@@ -1335,52 +1335,6 @@ const MASK = <span className="tag gray">已脱敏</span>;
 
 const asNow = () => new Date().toISOString().slice(0, 19).replace("T", " ");
 
-/* ============================================================================
-   售后地址（退货寄回地址）：总部同意退货时，系统取本供应商的默认售后地址发给买家
-   ============================================================================ */
-function SupAfterAddrManage({ onClose }) {
-  const list = addrStore.use().filter((a) => a.type === "after");
-  const [addOpen, setAddOpen] = useState(false);
-
-  return (
-    <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="gbox" style={{ width: 640 }}>
-        <b>售后地址</b>
-        <div className="note" style={{ marginTop: 10, lineHeight: 1.9 }}>
-          退货退款的售后，<b>总部同意后会把默认售后地址发给买家</b>，买家按此地址把货寄回本供应商。默认地址同类型下互斥。
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", margin: "16px 0 8px" }}>
-          <b style={{ fontSize: 13.5 }}>本供应商的售后地址</b>
-          <button className="btn link" style={{ marginLeft: "auto" }} onClick={() => setAddOpen(true)}>+ 添加地址</button>
-        </div>
-        <table className="tbl-tight">
-          <thead><tr><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th><th style={{ width: 96 }}>默认寄回</th></tr></thead>
-          <tbody>
-            {list.map((a) => (
-              <tr key={a.id}>
-                <td className="tw">{a.name}</td>
-                <td className="tw mono">{a.phone}</td>
-                <td>{a.region} {a.detail}</td>
-                <td>
-                  {a.isDefault ? <span className="tag">默认</span>
-                    : <button className="btn link" onClick={() => addrStore.set((as) => as.map((x) => (x.type === "after" ? { ...x, isDefault: x.id === a.id } : x)))}>设为默认</button>}
-                </td>
-              </tr>
-            ))}
-            {!list.length && <tr><td colSpan={4} style={{ textAlign: "center", padding: 20, color: "#999" }}>暂无售后地址，请先添加</td></tr>}
-          </tbody>
-        </table>
-
-        <div className="gfoot">
-          <button className="btn primary" onClick={onClose}>完成</button>
-        </div>
-        {addOpen && <SupAddressModal defaultType="after" onClose={() => setAddOpen(false)} onSaved={() => setAddOpen(false)} />}
-      </div>
-    </div>
-  );
-}
-
 export function SupAfterSales() {
   /* 只展示涉及货源的售后（退货退款）；仅退款不涉及货，供应商不参与、不展示 */
   const rows = afterSaleStore.use().filter((r) => r.way === "退货退款");
@@ -1388,7 +1342,6 @@ export function SupAfterSales() {
   const [note, setNote] = useState(null);
   const [detail, setDetail] = useState(null);
   const [back, setBack] = useState(null);
-  const [addrOpen, setAddrOpen] = useState(false);
   const [toast, tip] = useToast();
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((r) => r.asNo));
 
@@ -1594,7 +1547,6 @@ export function SupAfterSales() {
           <div className="actions">
             <button className="btn primary">查询</button>
             <button className="btn">重置</button>
-            <button className="btn" onClick={() => setAddrOpen(true)}>售后地址</button>
           </div>
         </div>
       </div>
@@ -1665,7 +1617,6 @@ export function SupAfterSales() {
 
       {toast}
       {note && <AsNoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
-      {addrOpen && <SupAfterAddrManage onClose={() => setAddrOpen(false)} />}
     </>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { useToast } from "../ui.jsx";
+import { useToast, Pager, usePaged } from "../ui.jsx";
+import { addressBookStore, expressTplStore } from "../store.js";
 
 /* ============================================================================
    通用设置 —— 照真实 SaaS「设置 › 通用设置」复刻
@@ -174,5 +175,337 @@ export function GeneralSetting() {
 
       {toast}
     </>
+  );
+}
+
+/* ============================================================================
+   地址库 —— 照真实 SaaS「设置 › 地址库」复刻
+   三个页签：发货地址 / 售后地址 / 仓库地址；同类型下「默认」互斥
+   地址在主数据维护，使用方（供应商发货、总部同意退货）都只做「选」
+   ============================================================================ */
+const ADDR_TABS = [
+  { k: "ship", t: "发货地址", hint: "供应商发货时从地址库里选，随发货记入订单的配送信息" },
+  { k: "after", t: "售后地址", hint: "总部在「售后管理」同意退货时从这里选，随同意发给买家当寄回地址" },
+  { k: "warehouse", t: "仓库地址", hint: "总部仓 / 门店收货点，供内部单据参照" },
+];
+
+/* 省 / 市 / 区 / 街道 四级联动的最小数据集（原型够用即可） */
+const REGION = {
+  广东省: { 广州市: { 天河区: ["体育西路", "科苑路"], 荔湾区: ["宝华路", "逢源街"] }, 佛山市: { 高明区: ["云勇林场", "荷城街道"] } },
+  河南省: { 洛阳市: { 孟津县: ["城关镇", "朝阳镇"] }, 三门峡市: { 义马市: ["朝阳路街道"] } },
+  辽宁省: { 铁岭市: { 银州区: ["工人街", "红旗街"] } },
+  上海市: { 上海市: { 黄浦区: ["南京东路", "人民广场"] } },
+};
+const PROVINCES = Object.keys(REGION);
+const citiesOf = (p) => Object.keys(REGION[p] || {});
+const districtsOf = (p, c) => Object.keys(REGION[p]?.[c] || {});
+const streetsOf = (p, c, d) => REGION[p]?.[c]?.[d] || [];
+
+function AddrModal({ type, editing, onClose, onSaved }) {
+  const [name, setName] = useState(editing?.name || "");
+  const [phone, setPhone] = useState(editing?.phone || "");
+  const [detail, setDetail] = useState(editing?.detail || "");
+  const [postcode, setPostcode] = useState(editing?.postcode || "");
+  const [isDefault, setIsDefault] = useState(editing?.isDefault || false);
+  const init = (editing?.region || "").split("/");
+  const [prov, setProv] = useState(init[0] || "");
+  const [city, setCity] = useState(init[1] || "");
+  const [dist, setDist] = useState(init[2] || "");
+  const [street, setStreet] = useState(init[3] || "");
+  const tab = ADDR_TABS.find((t) => t.k === type);
+  const region = [prov, city, dist, street].filter(Boolean).join("/");
+  const ok = name.trim() && phone.trim() && region && detail.trim();
+
+  const save = () => {
+    const patch = { name: name.trim(), phone: phone.trim(), region, detail: detail.trim(), postcode: postcode.trim(), isDefault };
+    addressBookStore.set((as) => {
+      /* 默认互斥：同类型下只留一个默认 */
+      const cleared = isDefault ? as.map((a) => (a.type === type ? { ...a, isDefault: false } : a)) : as;
+      return editing
+        ? cleared.map((a) => (a.id === editing.id ? { ...a, ...patch } : a))
+        : [...cleared, { id: "ab" + Date.now(), type, ...patch }];
+    });
+    onSaved();
+  };
+
+  const Sel = ({ v, opts, onPick, ph }) => (
+    <select className="ctl" style={{ width: 128 }} value={v} onChange={(e) => onPick(e.target.value)}>
+      <option value="">{ph}</option>
+      {opts.map((o) => <option key={o}>{o}</option>)}
+    </select>
+  );
+
+  return (
+    <div className="gmock" style={{ zIndex: 130 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="gbox" style={{ width: 660 }}>
+        <b>{editing ? "编辑" : "新增"}{tab?.t}</b>
+        <div className="frow" style={{ marginTop: 16 }}>
+          <label><i>*</i>联系人</label>
+          <div className="fc"><input className="ctl" style={{ width: "100%" }} maxLength={20} placeholder="请输入联系人" value={name} onChange={(e) => setName(e.target.value)} /><span className="note">{name.length}/20</span></div>
+        </div>
+        <div className="frow">
+          <label><i>*</i>联系电话</label>
+          <div className="fc"><input className="ctl" style={{ width: "100%" }} maxLength={11} placeholder="请输入联系电话" value={phone} onChange={(e) => setPhone(e.target.value)} /><span className="note">{phone.length}/11</span></div>
+        </div>
+        <div className="frow">
+          <label><i>*</i>所在地区</label>
+          <div className="fc" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Sel v={prov} opts={PROVINCES} ph="请选择省份" onPick={(v) => { setProv(v); setCity(""); setDist(""); setStreet(""); }} />
+            <Sel v={city} opts={citiesOf(prov)} ph="请选择城市" onPick={(v) => { setCity(v); setDist(""); setStreet(""); }} />
+            <Sel v={dist} opts={districtsOf(prov, city)} ph="请选择区县" onPick={(v) => { setDist(v); setStreet(""); }} />
+            <Sel v={street} opts={streetsOf(prov, city, dist)} ph="请选择街道" onPick={setStreet} />
+          </div>
+        </div>
+        <div className="frow">
+          <label><i>*</i>详细地址</label>
+          <div className="fc"><textarea className="ctl" rows={2} maxLength={100} placeholder="请输入详细地址" style={{ width: "100%", padding: 8, fontFamily: "inherit", resize: "vertical" }} value={detail} onChange={(e) => setDetail(e.target.value)} /><span className="note">{detail.length}/100</span></div>
+        </div>
+        <div className="frow">
+          <label>邮编</label>
+          <div className="fc"><input className="ctl" maxLength={8} placeholder="请输入邮编" value={postcode} onChange={(e) => setPostcode(e.target.value)} /><span className="note">{postcode.length}/8</span></div>
+        </div>
+        <div className="frow">
+          <label>设为默认</label>
+          <div className="fc">
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+              <input type="checkbox" checked={isDefault} onChange={() => setIsDefault((v) => !v)} />
+              设为{tab?.t}的默认地址（同类型下互斥）
+            </label>
+          </div>
+        </div>
+        <div className="gfoot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" disabled={!ok} onClick={save}>确定</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AddressBook() {
+  const all = addressBookStore.use();
+  const [tab, setTab] = useState("ship");
+  const [modal, setModal] = useState(null);   // null | {} | 编辑的行
+  const [toast, tip] = useToast();
+  const list = all.filter((a) => a.type === tab);
+  const pd = usePaged(list, 10);
+  const tabDef = ADDR_TABS.find((t) => t.k === tab);
+
+  const setDefault = (id) => {
+    addressBookStore.set((as) => as.map((a) => (a.type === tab ? { ...a, isDefault: a.id === id } : a)));
+    tip("已设为默认");
+  };
+  const del = (id) => { addressBookStore.set((as) => as.filter((a) => a.id !== id)); tip("已删除"); };
+
+  return (
+    <>
+      <div className="tabs" style={{ display: "flex", gap: 28, borderBottom: "1px solid var(--line)", marginBottom: 16, paddingLeft: 8 }}>
+        {ADDR_TABS.map((t) => (
+          <span key={t.k} onClick={() => { setTab(t.k); pd.setPage(1); }}
+            style={{
+              paddingBottom: 12, fontSize: 14, cursor: "pointer",
+              color: tab === t.k ? "var(--brand)" : "var(--text-2)",
+              borderBottom: tab === t.k ? "2px solid var(--brand)" : "2px solid transparent",
+              fontWeight: tab === t.k ? 600 : 400,
+            }}>{t.t}</span>
+        ))}
+      </div>
+
+      <div className="alert"><span className="ic">i</span>{tabDef?.hint}</div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, margin: "10px 0" }}>
+        <button className="btn primary" onClick={() => setModal({})}>添加地址</button>
+        <button className="btn" onClick={() => tip("已刷新")}>刷新</button>
+      </div>
+
+      <div className="tbl-wrap">
+        <table className="tbl-tight">
+          <thead><tr>
+            <th>联系人</th><th className="tw">联系电话</th><th className="tw">所在地区</th>
+            <th>详细地址</th><th className="tw">邮编</th><th className="tw" style={{ width: 90 }}>是否默认</th><th className="tw" style={{ width: 170 }}>操作</th>
+          </tr></thead>
+          <tbody>
+            {pd.pageRows.map((a) => (
+              <tr key={a.id}>
+                <td>{a.name}</td>
+                <td className="tw mono">{a.phone}</td>
+                <td className="tw">{a.region}</td>
+                <td>{a.detail}</td>
+                <td className="tw mono">{a.postcode || "-"}</td>
+                <td className="tw">{a.isDefault ? <span className="tag">默认</span> : "否"}</td>
+                <td className="tw">
+                  <div className="op-col">
+                    <button className="gray" onClick={() => setModal(a)}>编辑</button>
+                    {!a.isDefault && <button className="gray" onClick={() => setDefault(a.id)}>设置默认</button>}
+                    <button className="gray" style={{ color: "#f5522e" }} onClick={() => del(a.id)}>删除</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!list.length && <tr><td colSpan={7} style={{ textAlign: "center", padding: 40, color: "#999" }}>暂无地址</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      <Pager {...pd} />
+
+      {modal && <AddrModal type={tab} editing={modal.id ? modal : null} onClose={() => setModal(null)} onSaved={() => { tip(modal.id ? "已保存" : "地址已添加"); setModal(null); }} />}
+      {toast}
+    </>
+  );
+}
+
+/* ============================================================================
+   快递模板 —— 照真实 SaaS「设置 › 快递模板」复刻
+   按「可配送范围 + 计费方式」算运费；计费方式决定表头是「首件/续件」还是「首重/续重」
+   ============================================================================ */
+export function ExpressTemplate() {
+  const list = expressTplStore.use();
+  const [sel, setSel] = useState({});
+  const [open, setOpen] = useState(false);
+  const [toast, tip] = useToast();
+  const allSel = list.length > 0 && list.every((t) => sel[t.id]);
+  const toggleAll = () => setSel(allSel ? {} : Object.fromEntries(list.map((t) => [t.id, true])));
+  const flip = (id) => { expressTplStore.set((ts) => ts.map((t) => (t.id === id ? { ...t, enabled: !t.enabled } : t))); };
+  const del = (id) => { expressTplStore.set((ts) => ts.filter((t) => t.id !== id)); tip("已删除"); };
+
+  return (
+    <>
+      <div className="alert"><span className="ic">i</span>快递模板按「可配送范围 + 计费方式」算运费，下单时按收货地址命中；同一区域命中多个模板时取最后保存的那个</div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, margin: "10px 0" }}>
+        <button className="btn primary" onClick={() => setOpen(true)}>新增快递模板</button>
+        <button className="btn" onClick={() => tip("已刷新")}>刷新</button>
+      </div>
+
+      <div className="batchbar" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+          <input type="checkbox" checked={allSel} onChange={toggleAll} />批量全选/取消
+        </label>
+        {Object.keys(sel).filter((k) => sel[k]).length > 0 && (
+          <span className="note">已选 {Object.keys(sel).filter((k) => sel[k]).length} 个</span>
+        )}
+      </div>
+
+      <div className="tbl-wrap">
+        <table className="tbl-tight">
+          <thead><tr>
+            <th style={{ width: 36 }}></th>
+            <th>模板名称</th><th className="tw">可配送范围</th><th className="tw">计费方式</th>
+            <th className="tw">首件(个)/首重(kg)</th><th className="tw">运费(元)</th>
+            <th className="tw">续件(个)/续重(kg)</th><th className="tw">续费(元)</th>
+            <th className="tw" style={{ width: 160 }}>操作</th>
+          </tr></thead>
+          <tbody>
+            {list.map((t) => (
+              <tr key={t.id}>
+                <td><input type="checkbox" checked={!!sel[t.id]} onChange={() => setSel((s) => ({ ...s, [t.id]: !s[t.id] }))} /></td>
+                <td>{t.name}{!t.enabled && <span className="tag gray" style={{ marginLeft: 6 }}>已禁用</span>}</td>
+                <td className="tw">{t.area}</td>
+                <td className="tw">{t.chargeBy}</td>
+                <td className="tw mono">{t.first}</td>
+                <td className="tw mono">{t.firstFee}</td>
+                <td className="tw mono">{t.next}</td>
+                <td className="tw mono">{t.nextFee}</td>
+                <td className="tw">
+                  <div className="op-col">
+                    <button className="gray" onClick={() => tip("编辑快递模板（原型未展开）")}>编辑</button>
+                    <button className="gray" onClick={() => flip(t.id)}>{t.enabled ? "禁用" : "启用"}</button>
+                    <button className="gray" style={{ color: "#f5522e" }} onClick={() => del(t.id)}>删除</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!list.length && <tr><td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#999" }}>暂无快递模板</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {open && <TplModal onClose={() => setOpen(false)} onSaved={() => { tip("快递模板已保存"); setOpen(false); }} />}
+      {toast}
+    </>
+  );
+}
+
+function TplModal({ onClose, onSaved }) {
+  const [name, setName] = useState("");
+  const [chargeBy, setChargeBy] = useState("按件");
+  const [area, setArea] = useState([]);
+  const [first, setFirst] = useState(chargeBy === "按件" ? "1" : "0.1");
+  const [firstFee, setFirstFee] = useState("10");
+  const [next, setNext] = useState(chargeBy === "按件" ? "1" : "0.1");
+  const [nextFee, setNextFee] = useState("5");
+  const ok = name.trim() && area.length > 0;
+  const unit = chargeBy === "按件" ? "件" : "kg";
+
+  const save = () => {
+    expressTplStore.set((ts) => [...ts, {
+      id: "et" + Date.now(), name: name.trim(), area: area.join(","),
+      chargeBy, first, firstFee, next, nextFee, enabled: true,
+    }]);
+    onSaved();
+  };
+
+  return (
+    <div className="gmock" style={{ zIndex: 130 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="gbox" style={{ width: 760 }}>
+        <b>新增快递模板</b>
+        <div className="frow" style={{ marginTop: 16 }}>
+          <label><i>*</i>模板名称</label>
+          <div className="fc"><input className="ctl" style={{ width: "100%" }} maxLength={30} placeholder="请输入模板名称" value={name} onChange={(e) => setName(e.target.value)} /><span className="note">{name.length}/30</span></div>
+        </div>
+        <div className="frow">
+          <label><i>*</i>计费方式</label>
+          <div className="fc" style={{ display: "flex", gap: 20 }}>
+            {["按件", "按重量"].map((c) => (
+              <label key={c} style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                <input type="radio" checked={chargeBy === c} onChange={() => { setChargeBy(c); setFirst(c === "按件" ? "1" : "0.1"); setNext(c === "按件" ? "1" : "0.1"); }} />{c}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+            <b style={{ fontSize: 13.5 }}>配送区域</b>
+            <button className="btn link" style={{ marginLeft: "auto", fontSize: 13 }}
+              onClick={() => setArea((a) => (a.length === PROVINCES.length ? [] : [...PROVINCES]))}>
+              {area.length === PROVINCES.length ? "取消全选" : "选择可配送范围"}
+            </button>
+          </div>
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 10 }}>
+            {PROVINCES.map((p) => (
+              <label key={p} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={area.includes(p)} onChange={() => setArea((a) => (a.includes(p) ? a.filter((x) => x !== p) : [...a, p]))} />{p}
+              </label>
+            ))}
+          </div>
+          <table className="tbl-tight">
+            <thead><tr>
+              <th>可配送范围</th>
+              <th className="tw">首{unit}</th><th className="tw">运费(元)</th>
+              <th className="tw">续{unit}</th><th className="tw">续费(元)</th>
+            </tr></thead>
+            <tbody>
+              {area.length ? (
+                <tr>
+                  <td>{area.join("，")}</td>
+                  <td className="tw"><input className="ctl" style={{ width: 70 }} value={first} onChange={(e) => setFirst(e.target.value)} /></td>
+                  <td className="tw"><input className="ctl" style={{ width: 70 }} value={firstFee} onChange={(e) => setFirstFee(e.target.value)} /></td>
+                  <td className="tw"><input className="ctl" style={{ width: 70 }} value={next} onChange={(e) => setNext(e.target.value)} /></td>
+                  <td className="tw"><input className="ctl" style={{ width: 70 }} value={nextFee} onChange={(e) => setNextFee(e.target.value)} /></td>
+                </tr>
+              ) : (
+                <tr><td colSpan={5} style={{ textAlign: "center", padding: 28, color: "#999" }}>无数据</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="gfoot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" disabled={!ok} onClick={save}>保存</button>
+        </div>
+      </div>
+    </div>
   );
 }
