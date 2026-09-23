@@ -17,6 +17,13 @@ const Unit = ({ v, opts = ["分钟", "小时", "天"], w = 88 }) => (
 );
 const Txt = ({ children }) => <span style={{ fontSize: 13.5 }}>{children}</span>;
 
+/* 「限制用户退款申请」的条件——拦的是「货已经动了的单」，与「极速退款」的放行条件不是同一套 */
+const COND_NOTE = {
+  订单发货: "订单发货或核销后，不允许买家自助发起退款申请",
+  商品核销: "自提订单核销后，不允许买家自助发起退款申请",
+  全部订单: "不限制条件，买家一律不允许自助发起退款申请",
+};
+
 /* 左标签 + 右侧内容；sub=true 用于「极速退款」灰底面板里的子项（标签更窄） */
 function Row({ label, children, note, hl, hlText, sub, last }) {
   return (
@@ -135,36 +142,28 @@ export function GeneralSetting() {
         <div style={{ paddingLeft: 40 }}>
           <div style={{ display: "block", width: "fit-content", padding: "10px 14px", marginBottom: 20 }}>
             <div style={{ fontSize: 13.5, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <select className="ctl" value={cond} onChange={(e) => setCond(e.target.value)} style={{ width: 118, height: 30 }}>
-                {["用户下单", "商品下架", "订单发货", "无条件"].map((o) => <option key={o}>{o}</option>)}
+              <select className="ctl" value={cond} onChange={(e) => setCond(e.target.value)} style={{ width: 128, height: 30 }}>
+                {["订单发货", "商品核销", "全部订单"].map((o) => <option key={o}>{o}</option>)}
               </select>
-              {cond === "用户下单" && (
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <input type="radio" name="refundCond" defaultChecked /> 下单后 <Num v={1} /> <Unit v="天" opts={["天", "小时"]} /> 内
-                </label>
-              )}
-              <span>不允许发起退款申请</span>
+              <span>{COND_NOTE[cond]}</span>
             </div>
-            {cond === "用户下单" && (
-              <div style={{ fontSize: 13.5, marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <input type="radio" name="refundCond" /> 第 <Num v={1} />
-                  <input className="ctl" defaultValue="00:00:00" style={{ width: 96, height: 30, textAlign: "center" }} />
-                  <span>前</span>
-                </label>
-              </div>
-            )}
           </div>
         </div>
 
-        <div className="hl" data-hl="进销存：代发单由供应商执行" style={{ display: "block", marginLeft: 40, marginTop: 6 }}>
+        {/* 限制条件说明：与「极速退款」的说明区同形式，属于本项设置自身的说明，不进红框 */}
+        <div style={{ background: "#f7f7f7", padding: "14px 18px", marginLeft: 0, marginBottom: 22 }}>
+          <div style={{ fontSize: 12.5, lineHeight: 2.1, color: "var(--text-2)", paddingLeft: 132 }}>
+            <div>订单发货：订单<b>已发货</b>或已核销后，买家不能自助发起退款申请；待发货且未核销时，买家可正常发起</div>
+            <div>商品核销：自提订单<b>已核销</b>后，买家不能自助发起退款申请；未核销时，买家可正常发起</div>
+            <div>全部订单：不限制条件，买家一律不能自助发起退款申请（谨慎使用）</div>
+            <div>—— 三个条件是「货已经动了的单」的递进：发货拦截、核销拦截、全拦。原「用户下单 / 商品下架」两条不适用于限制场景，未引入</div>
+          </div>
+        </div>
+
+        <div className="hl" data-hl="进销存：代发单由供应商执行" style={{ display: "block", marginLeft: 40, marginBottom: 20 }}>
           <div style={{ background: "#f7f7f7", padding: "14px 18px", fontSize: 12.5, lineHeight: 2, color: "var(--text-2)" }}>
-            <div>用户下单选项1：下单后X天前，指的是每笔订单的下单后X天24小时内不允许发起退款申请；也可切换为直接使用小时制</div>
-            <div>用户下单选项2：假如设置第1天12:00:00前，如今天10:00:00下单，则次日的中午12点前该笔订单不允许发起退款申请</div>
-            <div>商品下架：不限制下单时间，只要商品处于上架状态，用户在未核销时不允许发起退款申请；下架后买家可以正常发起</div>
-            <div>订单发货：不限制下单时间，商品在未核销时，且订单状态为【待发货】时，不允许发起退款申请；核销或者订单发货后，买家可以正常发起</div>
-            <div>无条件：不限制任意条件，买家均不允许发起退款申请</div>
-            <div>—— 进销存口径：① 不允许发起 ≠ 不能退——买家可联系商家走线下协商退款；② 一件代发订单的退款限制 / 审核由<b>供应商</b>执行（流到供应商后台 · 售后处理），不是平台</div>
+            <div>进销存口径①：不允许发起 ≠ 不能退——买家可联系商家走线下协商退款；买家端「申请售后」入口对该订单置灰并给出提示</div>
+            <div>进销存口径②：一件代发订单的退款限制由<b>供应商</b>执行（流到供应商后台 · 售后处理），不是平台</div>
           </div>
         </div>
 
