@@ -223,7 +223,10 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                 </td>
                 <td>
                   <div className="op-col">
-                    <button className="gray" onClick={() => onOpen("detail", d)}>详情</button>
+                    {/* 收货方的待收货行：重点是「这单是给谁的」，详情让位给关联订单 */}
+                    {mode === "receive" && statusText(d) === "待收货"
+                      ? <button onClick={() => onOpen("order", d)}>关联订单</button>
+                      : <button className="gray" onClick={() => onOpen("detail", d)}>详情</button>}
                     {/* 补发单的发货操作收口在配送差异页，本列表只读监控 */}
                     {mode === "ship" && canShip(d) && (d.isMakeup
                       ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>在配送差异发货</span>
@@ -320,11 +323,12 @@ export function SupplyReceipt() {
           —— 对应的自提订单<b style={{ margin: "0 4px" }}>提货码已随之激活</b>
         </div>
       )}
-      <DocTable rows={rows} tab={tab} setTab={setTab} tabs={["全部", "待收货", "已收货", "收货异常"]} mode="receive" onOpen={(k, d) => setModal({ k, d })} />
+      <DocTable rows={rows} tab={tab} setTab={setTab} tabs={["全部", "待发货", "待收货", "已收货", "收货异常"]} mode="receive" onOpen={(k, d) => setModal({ k, d })} />
 
       {modal?.k === "receive" && <ReceiveDrawer doc={modal.d} onClose={() => setModal(null)} onDone={(p) => { tip(applyReceive(modal.d, p)); setModal(null); }} />}
       {modal?.k === "ship" && <ShipDrawer doc={modal.d} onClose={() => setModal(null)} onDone={(p) => { tip(applyShip(modal.d, p)); setModal(null); }} />}
       {modal?.k === "detail" && <DocDetailDrawer doc={modal.d} onClose={() => setModal(null)} mode="receive" />}
+      {modal?.k === "order" && <RelatedOrderDrawer doc={modal.d} onClose={() => setModal(null)} />}
       {modal?.k === "track" && <TrackDrawer doc={modal.d} onClose={() => setModal(null)} />}
       {toast}
     </>
@@ -1071,6 +1075,65 @@ export function ReceiveAbnormal({ doc, ro }) {
         <div>处理流程：{diff ? "差异审核由总部执行；" : "按规则补发单不再新开差异单，转线下处理；"}{ro ? "供应商只读知情，" : ""}审核通过后生成补发任务，由原发货方补发。</div>
       </div>
     </>
+  );
+}
+
+/* ============================================================================
+   关联订单 —— 收货方在「待收货」行点开：这张供货单对应的销售订单是给谁的
+   ============================================================================ */
+function RelatedOrderDrawer({ doc, onClose }) {
+  const order = orderStore.use().find((o) => o.no === doc.orderNo);
+  const buyer = order?.buyer || {};
+  const Row = ({ k, children }) => (
+    <tr><td className="tw" style={{ width: 110, color: "var(--text-2)" }}>{k}</td><td>{children}</td></tr>
+  );
+  return (
+    <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="drawer" style={{ width: 640 }}>
+        <header>关联销售订单<button className="x" onClick={onClose}>×</button></header>
+        <div className="body">
+          {!order && (
+            <div className="alert"><span className="ic">i</span>销售订单 <b className="mono">{doc.orderNo}</b> 不在当前租户的订单列表里（历史或已归档），下面只显示供货单上的快照。</div>
+          )}
+
+          <table className="tbl-tight" style={{ marginBottom: 16 }}>
+            <tbody>
+              <Row k="销售订单号"><span className="mono">{doc.orderNo}</span></Row>
+              <Row k="订单状态">{order ? <span className="tag">{order.status}</span> : "—"}</Row>
+              <Row k="下单时间"><span className="mono">{order?.createdAt || "—"}</span></Row>
+              <Row k="供货模式">{order?.supplyMode ? `${order.supplyMode}${order.goodsSource ? ` · ${order.goodsSource}` : ""}` : "—"}</Row>
+              <Row k="配送方式">{order?.delivery ? `${order.delivery}${order.store ? ` · ${order.store}` : ""}` : "—"}</Row>
+            </tbody>
+          </table>
+
+          <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 8 }}>收货人</div>
+          <table className="tbl-tight" style={{ marginBottom: 16 }}>
+            <tbody>
+              <Row k="收件人">{buyer["收件人"] || buyer["昵称"] || "—"}</Row>
+              <Row k="收件人电话">{buyer["收件人电话"] || "—"}</Row>
+              <Row k="收件人地址">{buyer["收件人地址"] || "—"}</Row>
+            </tbody>
+          </table>
+
+          <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 8 }}>商品</div>
+          <table className="tbl-tight">
+            <thead><tr><th>商品</th><th className="tw">规格</th><th className="tw">订单数量</th><th className="tw">本单应发</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div className="prod-cell"><span className="thumb" style={{ background: "#f4f7f6" }}>{doc.emoji}</span><div><div>{doc.product}</div><small>{doc.spec}</small></div></div></td>
+                <td className="tw">{doc.spec}</td>
+                <td className="tw mono">{order?.qty ?? "—"}</td>
+                <td className="tw mono">{doc.qty}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+            <button className="btn plain" onClick={onClose}>关闭</button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

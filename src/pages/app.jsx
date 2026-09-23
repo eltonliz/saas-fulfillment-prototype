@@ -503,8 +503,10 @@ function Diffs({ cards, onDetail, onEvidence }) {
             <div className="mrow"><span>配货差异总数量</span><b style={{ color: "#f5522e" }}>{c.diffCount}</b></div>
             <div className="mrow"><span>关联供货编号</span><b className="mono">{c.supplyNo}</b></div>
             <div className="macts">
-              <button className="btn sm" onClick={() => onDetail(c)}>查看详情</button>
-              {c.state === "待举证" && <button className="btn primary sm" onClick={() => onEvidence(c)}>去举证</button>}
+              {/* 待举证时还没内容可看，详情入口收起来，只留「去举证」 */}
+              {c.state === "待举证"
+                ? <button className="btn primary sm" onClick={() => onEvidence(c)}>去举证</button>
+                : <button className="btn sm" onClick={() => onDetail(c)}>查看详情</button>}
             </div>
           </div>
         ))}
