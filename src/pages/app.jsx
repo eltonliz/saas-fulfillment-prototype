@@ -589,7 +589,8 @@ function SrcDocBlock({ diff, docs }) {
       <div className="hd"><b>来源供货单</b><span className="note" style={{ fontSize: 11.5 }}>{src.leg === "hq_store" ? "总仓 → 门店" : "供应商 → 门店"}</span></div>
       <div className="mrow"><span>供货单号</span><b className="mono">{src.id}</b></div>
       <div className="mrow"><span>发货方</span><b>{src.shipper}</b></div>
-      <div className="mrow"><span>商品</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.emoji} {src.product}　{src.spec}</b></div>
+      <div className="mrow"><span>商品</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.emoji} {src.product}</b></div>
+      <div className="mrow"><span>规格</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.spec}</b></div>
       <div className="mrow"><span>快递公司</span><b>{src.carrier || "—"}</b></div>
       <div className="mrow"><span>物流单号</span><b className="mono">{src.tracking || "—"}</b></div>
       <div className="mrow"><span>物流轨迹</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.track || "尚未发货"}</b></div>
@@ -790,7 +791,8 @@ function Returns() {
             <div className="mrow"><span>申请时间</span><b className="mono">{r.createdAt}</b></div>
             <div className="mrow"><span>关联销售订单</span><b className="mono">{r.orderNo}</b></div>
             <div className="mrow"><span>关联供货单</span><b className="mono">{r.supplyNo}</b></div>
-            <div className="mrow"><span>商品</span><b style={{ fontWeight: 400, textAlign: "right" }}>{r.emoji} {r.product}　{r.spec}</b></div>
+            <div className="mrow"><span>商品</span><b style={{ fontWeight: 400, textAlign: "right" }}>{r.emoji} {r.product}</b></div>
+            <div className="mrow"><span>规格</span><b style={{ fontWeight: 400, textAlign: "right" }}>{r.spec}</b></div>
             <div className="mrow"><span>退货数量</span><b>{r.qty} 件</b></div>
             <div className="mrow"><span>退货原因</span><b style={{ fontWeight: 400 }}>{r.reason}</b></div>
             <div className="mrow"><span>退回方</span><b>{r.returnTo}</b></div>
@@ -838,7 +840,9 @@ function ReturnDetail({ row, onClose }) {
         <div className="mcard">
           <div className="mrow"><span>返厂单号</span><b className="mono">{row.id}</b></div>
           <div className="mrow"><span>关联供货单</span><b className="mono">{row.supplyNo}</b></div>
-          <div className="mrow"><span>商品</span><b>{row.product} {row.spec} × {row.qty}</b></div>
+          <div className="mrow"><span>商品</span><b>{row.product}</b></div>
+          <div className="mrow"><span>规格</span><b style={{ fontWeight: 400 }}>{row.spec}</b></div>
+          <div className="mrow"><span>退货数量</span><b>{row.qty} 件</b></div>
           <div className="mrow"><span>退货原因</span><b style={{ fontWeight: 400 }}>{row.reason}</b></div>
           <div className="mrow"><span>当前状态</span><b style={{ color: RET_TONE(row.status) }}>{row.status}</b></div>
         </div>

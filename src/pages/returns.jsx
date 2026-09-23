@@ -137,7 +137,9 @@ function ForwardDrawer({ row, onClose, onDone }) {
             <h3>返厂单 {row.id}</h3>
             <div className="cbody">
               <div className="frow"><label>退回方</label><div className="fc"><input value={row.returnTo} readOnly /></div></div>
-              <div className="frow"><label>商品</label><div className="fc"><input value={`${row.product} ${row.spec} × ${row.qty}`} readOnly /></div></div>
+              <div className="frow"><label>商品</label><div className="fc"><input value={row.product} readOnly /></div></div>
+              <div className="frow"><label>规格</label><div className="fc"><input value={row.spec} readOnly /></div></div>
+              <div className="frow"><label>退货数量</label><div className="fc"><input value={`${row.qty} 件`} readOnly /></div></div>
               <div className="frow"><label>退货原因</label><div className="fc"><input value={row.reason} readOnly /></div></div>
             </div>
           </section>
@@ -273,7 +275,9 @@ function ReturnDetailDrawer({ row, portal, onClose }) {
               <div className="frow"><label>退货门店</label><div className="fc"><input value={row.store} readOnly /></div></div>
               <div className="frow"><label>关联供货单</label><div className="fc"><input className="mono" value={row.supplyNo} readOnly /></div></div>
               {!supplier && <div className="frow"><label>关联销售订单</label><div className="fc"><input className="mono" value={row.orderNo} readOnly /></div></div>}
-              <div className="frow"><label>商品</label><div className="fc"><input value={`${row.product} ${row.spec} × ${row.qty}`} readOnly /></div></div>
+              <div className="frow"><label>商品</label><div className="fc"><input value={row.product} readOnly /></div></div>
+              <div className="frow"><label>规格</label><div className="fc"><input value={row.spec} readOnly /></div></div>
+              <div className="frow"><label>退货数量</label><div className="fc"><input value={`${row.qty} 件`} readOnly /></div></div>
               <div className="frow"><label>退货原因</label><div className="fc"><input value={row.reason} readOnly /></div></div>
               <div className="frow"><label>退回方</label><div className="fc"><input value={row.returnTo} readOnly /></div></div>
               <div className="frow"><label>当前状态</label><div className="fc">
