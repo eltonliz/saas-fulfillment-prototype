@@ -52,8 +52,7 @@ const awaitSupShip = (d) => !isSelfShip(d) && ["待发货", "部分收货"].incl
 const canReceive = (d) => ["已发货", "部分收货"].includes(d.status);
 
 /* ============================================================================
-   收货提交：数量定状态（决策 3）、异常定差异单（决策 1）、举证并入收货（决策 4）、
-   补发闭环终态（决策 5）、预留库存回写字段（决策 6）
+   收货提交：数量定状态（决策 3）、异常定差异单（决策 1）、举证并入收货（决策 4）、补发闭环终态（决策 5）
    ============================================================================ */
 const STORE_ADDR = { "9071门店": "辽宁省铁岭市银州区工人街 28 号", "九天门店": "广东省广州市荔湾区宝华路 76 号" };
 /* 生成下一个 FHD 单号（跨两端去重） */
@@ -159,11 +158,7 @@ function applyReceive(doc, p) {
   const full = recv >= sent;
   const status = p.result === "收货异常" ? "收货异常" : full ? "已收货" : "部分收货";
 
-  patchDoc(doc.id, {
-    items, received: recv, status,
-    /* 决策 6：本期不落到可售库存，但预留字段与 payload，第二版接「存」时直接消费 */
-    stockWriteback: { qty: got, to: doc.receiver, written: false, note: "第二版接「存」后回写可售库存" },
-  });
+  patchDoc(doc.id, { items, received: recv, status });
 
   /* 提货码分配必须**先于**异常分支：少货也是「到货了一部分」，
      先下单的那几笔如果货已齐，就该能提货，不能因为同批有别的商品短少而一起卡住 */
@@ -365,7 +360,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch, onAppend }) 
   );
 }
 
-/* ---------------- 待汇总订单（自提单池子：货要到门店去交接，还没有变成发货任务） ----------------
+/* ---------------- 自提订单（池子：货要到门店才能交接，还没进发货任务） ----------------
    池子里只有「上门自提」的订单，所以配送方式是恒定的，不占一列；门店这一列就是这个单要去自提的门店 */
 export function OrderPool({ scope }) {
   const orders = orderStore.use();
@@ -380,7 +375,7 @@ export function OrderPool({ scope }) {
     <>
       <div className="alert">
         <span className="ic">i</span>
-        <b style={{ margin: "0 4px" }}>{pool.length}</b> 笔已支付的自提单待汇总成发货任务
+        <b style={{ margin: "0 4px" }}>{pool.length}</b> 笔已支付的自提单还没生成发货任务
         {pool.length > 0 && <>，最早一笔已等待 <b style={{ margin: "0 4px" }}>{waitH}</b> 小时</>}
         <button className="btn primary" style={{ marginLeft: "auto" }} disabled={!pool.length} onClick={() => setGen({ k: "new" })}>生成发货任务</button>
       </div>
@@ -413,7 +408,7 @@ export function OrderPool({ scope }) {
                 <td className="tw">{supplyLabelOf(o)}</td>
               </tr>
             ))}
-            {!pool.length && <tr><td colSpan={6} style={{ textAlign: "center", padding: 34, color: "#999" }}>没有待汇总的订单——待发货的都已生成发货任务</td></tr>}
+            {!pool.length && <tr><td colSpan={6} style={{ textAlign: "center", padding: 34, color: "#999" }}>没有待生成任务的自提单</td></tr>}
           </tbody>
         </table>
       </div>
@@ -449,7 +444,7 @@ export function GenTaskModal({ scope, pool, task, onClose, onDone }) {
         <div className="body">
           <div className="alert">
             <span className="ic">i</span>把「发往同一门店、支付时间在截止点之前」的订单汇总成一张发货任务，每个门店各一张。
-            订单进入任务后不会再次出现在待汇总订单里，避免重复发货。
+            订单进入任务后不会再次出现在自提订单里，避免重复发货。
           </div>
 
           <div className="frow" style={{ marginTop: 14 }}>
@@ -536,7 +531,7 @@ export function GenTaskModal({ scope, pool, task, onClose, onDone }) {
 
 /* ============================ 供货发货 ============================ */
 export function SupplyDispatch() {
-  const [view, setView] = useState("pool");     // pool 待汇总订单 / tasks 发货任务
+  const [view, setView] = useState("pool");     // pool 自提订单 / tasks 发货任务
   const [tab, setTab] = useState("全部");
   const [modal, setModal] = useState(null);
   const [batch, setBatch] = useState(null);
@@ -552,7 +547,7 @@ export function SupplyDispatch() {
     <>
       {/* 日常按订单看（订单池），发货按任务看（汇总单）——批次是发货方显式生成的，不是系统按时间切的 */}
       <div className="tabs" style={{ display: "flex", gap: 28, borderBottom: "1px solid var(--line)", marginBottom: 16, paddingLeft: 8 }}>
-        {[["pool", "待汇总订单"], ["tasks", "发货任务"]].map(([k, t]) => (
+        {[["pool", "自提订单"], ["tasks", "发货任务"]].map(([k, t]) => (
           <span key={k} onClick={() => setView(k)}
             style={{ paddingBottom: 12, fontSize: 14, cursor: "pointer",
               color: view === k ? "var(--brand)" : "var(--text-2)",
@@ -1628,24 +1623,6 @@ function DocDetailDrawer({ doc, onClose, mode }) {
               ))}
             </div>
           ) : <div className="note">尚未发货，暂无物流信息</div>}
-
-          {/* 决策 6：本期不回写可售库存，但收货时已留下待回写字段，第二版直接消费 */}
-          <h3 style={{ fontSize: 14, margin: "18px 0 10px", borderLeft: "3px solid #25c7a5", paddingLeft: 9 }}>库存回写（本期预留）</h3>
-          {doc.stockWriteback ? (
-            <div className="filters">
-              <div className="row" style={{ gap: 30 }}>
-                <div className="field"><label>本次实收</label><b className="mono">{doc.stockWriteback.qty}</b></div>
-                <div className="field"><label>回写目标</label><b>{doc.stockWriteback.to}</b></div>
-                <div className="field"><label>已回写</label><span className="tag gray">{doc.stockWriteback.written ? "是" : "否（本期不写）"}</span></div>
-              </div>
-            </div>
-          ) : (
-            <div className="note">{["已收货", "部分收货", "收货异常"].includes(doc.status) ? "本期收货不落可售库存，该单无待回写记录。" : "该单尚未收货，暂无待回写记录。"}</div>
-          )}
-          <div className="note" style={{ marginBottom: 12 }}>
-            本期「只做销」：收货<b>不产生仓库库存</b>，这批实收也不会落到宿主商品的可售库存上。
-            卡片里这条记录是<b>留给第二版接「存」时的回写凭证</b>——届时直接消费即可，不必回头改供货链路。
-          </div>
 
         </div>
         <div className="foot"><button className="btn plain" onClick={onClose}>关闭</button></div>

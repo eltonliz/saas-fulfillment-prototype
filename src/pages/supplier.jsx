@@ -38,7 +38,7 @@ export function SupTasks({ leg, title, desc }) {
   return (
     <>
       <div className="tabs" style={{ display: "flex", gap: 28, borderBottom: "1px solid var(--line)", marginBottom: 16, paddingLeft: 8 }}>
-        {[["pool", "待汇总订单"], ["tasks", "发货任务"]].map(([k, t]) => (
+        {[["pool", "自提订单"], ["tasks", "发货任务"]].map(([k, t]) => (
           <span key={k} onClick={() => setView(k)}
             style={{ paddingBottom: 12, fontSize: 14, cursor: "pointer",
               color: view === k ? "var(--brand)" : "var(--text-2)",
