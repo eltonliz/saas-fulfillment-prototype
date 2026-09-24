@@ -48,7 +48,8 @@ const upstreamReady = (d) => {
 const awaitHqReceive = (d) => isSelfShip(d) && ["待发货", "部分收货"].includes(d.status) && !upstreamReady(d);
 const canShip = (d) => isSelfShip(d) && ["待发货", "部分收货"].includes(d.status) && upstreamReady(d);
 const awaitSupShip = (d) => !isSelfShip(d) && ["待发货", "部分收货"].includes(d.status);
-const canReceive = (d) => ["已发货", "部分收货"].includes(d.status);
+/* 已到的货都收完了（实收 = 已发）就别再给「收货」—— 那条路进去没有可收的东西，等发货方补齐 */
+const canReceive = (d) => ["已发货", "部分收货"].includes(d.status) && receivedOf(d) < sentOf(d);
 
 /* ============================================================================
    收货提交：数量定状态（决策 3）、异常定差异单（决策 1）、举证并入收货（决策 4）、补发闭环终态（决策 5）
@@ -150,8 +151,9 @@ export function applyReceive(doc, p) {
   });
   const recv = items.reduce((a, i) => a + (i.received || 0), 0);
   const sent = items.reduce((a, i) => a + (i.sent || 0), 0);
-  /* 收满基准 = 已发数量（供应商未发齐的部分属「未发」，不按少收判） */
-  const full = recv >= sent;
+  /* 收满基准 = **应发总量**：发货方少发时，收货方把已到的收齐仍算「部分收货」，
+     等发货方补齐、收货方继续收，收满应发总量才结案（未发的部分不算少收，不开差异单） */
+  const full = recv >= items.reduce((a, i) => a + (i.qty || 0), 0);
   const status = p.result === "收货异常" ? "收货异常" : full ? "已收货" : "部分收货";
 
   patchDoc(doc.id, { items, received: recv, status });
@@ -319,7 +321,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                 <td className="tw">{d.shipper}</td>
                 <td>{d.receiver}<small>{d.receiverAddr}</small></td>
                 <td className="tw mono">{qtyOf(d)}/{sentOf(d)}
-                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {receivedOf(d)}｜待补 {qtyOf(d) - receivedOf(d)} 件</small>}
+                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {receivedOf(d)}｜待补 {qtyOf(d) - receivedOf(d)} 件{sentOf(d) < qtyOf(d) ? `（发货方待发 ${qtyOf(d) - sentOf(d)} 件）` : ""}</small>}
                   {d.status === "收货异常" && !d.makeupAnomaly && <small style={{ color: "#f5522e" }}>实收 {receivedOf(d)}｜差 {Math.max(0, qtyOf(d) - receivedOf(d))} 件</small>}
                   {d.makeupAnomaly && <small style={{ color: "#f5522e" }}>补发仍有异常 · 转线下</small>}
                 </td>
@@ -768,8 +770,8 @@ export function SupplyDiff() {
                       <button className="gray" onClick={() => setDetail(d)}>详情</button>
                       {d.status === "待总部审核" && <button onClick={() => setPass(d)}>审核</button>}
                       {/* 补发单闭环在配送差异页：本方为发货责任方（总部仓链路）→ 本页直接发货；供应商链路由供应商在其配送差异页发货 */}
-                      {d.makeup && mk?.leg === "hq_store" && mk?.status === "待发货" && <button onClick={() => setShip(mk)}>发货</button>}
-                      {d.makeup && mk && mk.leg !== "hq_store" && mk.status === "待发货" && <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>}
+                      {d.makeup && mk?.leg === "hq_store" && ["待发货", "部分收货"].includes(mk?.status) && <button onClick={() => setShip(mk)}>发货{mk.status === "部分收货" ? "（补齐）" : ""}</button>}
+                      {d.makeup && mk && mk.leg !== "hq_store" && ["待发货", "部分收货"].includes(mk.status) && <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>}
                     </div>
                   </td>
                 </tr>
@@ -991,11 +993,13 @@ export function OrderRefsPop({ item, orders, onClose, mask }) {
 
 /* ============================ 发货弹窗（版式与真实 SaaS「发货」弹窗一致） ============================ */
 function ShipDrawer({ doc, onClose, onDone }) {
-  /* 汇总批次是**整批发**：这批货就是要一次发往这个门店，不再问「每个商品发几件」 */
-  const lines = itemsOf(doc).map((it) => {
-    const remain = doc.status === "部分收货" ? it.qty - (it.received || 0) : it.qty - (it.sent || 0);
-    return { product: it.product, spec: it.spec, emoji: it.emoji, qty: it.qty, out: Math.max(0, remain), from: it.from || [] };
-  });
+  /* 一次发一部分是常态（货没备齐，先发装好的那几箱），所以「本次发货」按商品行可改：
+     默认发满未发数量，改小就是少发，剩余部分之后再点「发货（补齐）」。上限 = 应发 − 已发 */
+  const [lines, setLines] = useState(() => itemsOf(doc).map((it) => {
+    const remain = Math.max(0, (it.qty || 0) - (it.sent || 0));
+    return { product: it.product, spec: it.spec, emoji: it.emoji, qty: it.qty, max: remain, out: remain, from: it.from || [] };
+  }));
+  const setOut = (i, v) => setLines((a) => a.map((x, j) => (j === i ? { ...x, out: Math.max(0, Math.min(x.max, v)) } : x)));
   /* 包裹可以多个：一批装不下就拆包，每个包裹一条运单号 */
   const [pk, setPk] = useState([{ carrier: "", tracking: "" }]);
   const setPkAt = (i, k, v) => setPk((a) => a.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
@@ -1019,7 +1023,7 @@ function ShipDrawer({ doc, onClose, onDone }) {
               </tr>
             </thead>
             <tbody>
-              {lines.map((l) => (
+              {lines.map((l, i) => (
                 <tr key={l.product}>
                   <td>
                     <div className="prod-cell">
@@ -1032,9 +1036,15 @@ function ShipDrawer({ doc, onClose, onDone }) {
                   </td>
                   <td className="tw">￥0.01</td>
                   <td className="tw">{l.qty}</td>
-                  <td className="tw mono">{l.out}</td>
-                  <td className="tw"><span style={{ color: "#25c7a5" }}>本次发 {l.out}</span></td>
-                  <td className="tw">{doc.status}</td>
+                  <td className="tw mono">{l.max}</td>
+                  <td className="tw">
+                    <span className="qty">
+                      <button className="btn plain sm" onClick={() => setOut(i, l.out - 1)}>−</button>
+                      <input value={l.out} readOnly style={{ width: 44, textAlign: "center", height: 28 }} />
+                      <button className="btn plain sm" disabled={l.out >= l.max} onClick={() => setOut(i, l.out + 1)}>＋</button>
+                    </span>
+                  </td>
+                  <td className="tw">{l.max === 0 ? "已发齐" : `已发 ${l.qty - l.max}`}</td>
                 </tr>
               ))}
             </tbody>
@@ -1093,7 +1103,10 @@ function ShipDrawer({ doc, onClose, onDone }) {
               ))}
             </tbody>
           </table>
-          <div className="note">这一批（{lines.length} 种商品、{totalOut} 件）整批发往 {doc.receiver}；装不下时可以拆成多个包裹，每个包裹一条运单号。</div>
+          <div className="note">
+            这一批发往 {doc.receiver}：本次共发 {lines.length} 种商品、{totalOut} 件。
+            装不下可以拆成多个包裹（每个包裹一条运单号）；<b>也可以先只发一部分</b>——把「本次发货」改小，剩余部分之后再点「发货（补齐）」，收货方按已到的数量先收。
+          </div>
 
         </div>
         <div className="foot">
@@ -1120,8 +1133,8 @@ export function applyShip(doc, p) {
   const pk = [...packagesOf(doc), ...(p.packages || []).filter((x) => x.tracking && x.tracking.trim()).map((x) => ({ carrier: x.carrier, tracking: x.tracking.trim(), track: at }))];
   patchDoc(doc.id, {
     items, sent, packages: pk,
-    /* 部分发货：未发满保持「待发货」便于继续发；发满转「已发货」 */
-    status: sent >= qty ? "已发货" : "待发货",
+    /* 少发（未发满）转「部分收货」：发货方继续补齐、收货方按已到的先收，两侧都能动 */
+    status: sent >= qty ? "已发货" : "部分收货",
   });
   const n = (p.lines || []).reduce((a, x) => a + x.qty, 0);
   return `供货单 ${doc.id} 已发货 ${n} 件${p.packages?.length ? `，${p.packages.length} 个包裹` : ""}` + (sent < qty ? `，剩余 ${qty - sent} 件可再发` : "");
@@ -1132,7 +1145,7 @@ export function applyShipBatch(rows) {
   /* 批量 / 导入是「整批发货」：把该批未发完的商品一次发完，物流按一个包裹登记 */
   rows.forEach(({ doc, carrier, tracking }) => {
     const lines = itemsOf(doc).map((it) => {
-      const remain = doc.status === "部分收货" ? it.qty - (it.received || 0) : it.qty - (it.sent || 0);
+      const remain = (it.qty || 0) - (it.sent || 0);
       return { product: it.product, qty: Math.max(0, remain) };
     }).filter((x) => x.qty > 0);
     if (lines.length) applyShip(doc, { lines, packages: [{ carrier, tracking }] });
@@ -1143,6 +1156,8 @@ export function applyShipBatch(rows) {
 /* ============================ 收货抽屉（累计实收 F9 / R2 / R3） ============================ */
 function ReceiveDrawer({ doc, onClose, onDone }) {
   const recv = receivedOf(doc);
+  const sentTotal = sentOf(doc);
+  const qtyTotal = qtyOf(doc);
   /* 一批多商品：逐行登记本次实收（店员是按商品点数的，不是按订单） */
   const [lines, setLines] = useState(itemsOf(doc).map((it) => {
     const remain = Math.max(0, (it.sent || 0) - (it.received || 0));
@@ -1175,6 +1190,7 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
 
           <div className="alert" style={{ marginBottom: 12 }}>
             <span className="ic">i</span>已累计收到 <b style={{ margin: "0 4px" }}>{recv}</b> 件，本次还能收 <b style={{ margin: "0 4px" }}>{remain}</b> 件
+            {sentTotal < qtyTotal && <>　｜　发货方尚未发齐（应发 {qtyTotal} 件、已发 {sentTotal} 件）：先收已到的 {remain} 件，剩余 {qtyTotal - sentTotal} 件等发货方补齐后本单继续收，收满才结案</>}
           </div>
 
           <table>

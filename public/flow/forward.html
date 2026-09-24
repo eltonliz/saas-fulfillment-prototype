@@ -52,7 +52,7 @@
   <div class="frame">
     <p class="eyebrow">进销存 · 业务流程图 / FORWARD FULFILLMENT</p>
     <h1>正向履约主流程</h1>
-    <p class="sub">两类订单走两条路：<b>快递单</b>由发货方直发消费者（一件代发 / 总仓直发）；<b>自提单</b>的货要到门店去交接 —— 支付后先进「自提订单」池，由发货方选门店 + 支付时间截止点<b>显式生成发货任务</b>，按门店汇总成批发出（一批可拆多包裹、上限 50）</p>
+    <p class="sub">两类订单走两条路：<b>快递单</b>由发货方直发消费者（一件代发 / 总仓直发）；<b>自提单</b>的货要到门店去交接 —— 支付后先进「自提订单」池，由发货方选门店 + 支付时间截止点<b>显式生成发货任务</b>，按门店汇总成批发出（一批可拆多包裹、上限 50；货没备齐可以先发一部分，剩下的之后再补齐）</p>
 
     <svg viewBox="0 0 1280 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="forward-flow-title forward-flow-desc">
       <title id="forward-flow-title">正向履约主流程</title>
@@ -87,7 +87,7 @@
       <path d="M440,240 V252 Q440,260 448,260 H512 Q520,260 520,268 V272" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
       <!-- 2b. 系统定发货方 → 生成发货任务（自提单：进池后按门店汇总成批） -->
       <path d="M482,200 H520" fill="none" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
-      <!-- 2c. 生成发货任务 → 供应商发货（整批发；一批可拆多包裹） -->
+      <!-- 2c. 生成发货任务 → 供应商发货（可发满、也可少发；一批可拆多包裹） -->
       <path d="M596,244 V272" fill="none" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
       <!-- 3. 供应商发货 → 总部仓（发总仓） -->
       <path d="M614,300 H652 Q660,300 660,308 V360" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
@@ -145,7 +145,7 @@
       <!-- 供应商发货 -->
       <rect x="482" y="272" width="132" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
       <text x="548" y="296" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">供应商发货</text>
-      <text x="548" y="314" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">整批发 · 可拆多包裹</text>
+      <text x="548" y="314" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">可少发 · 可拆多包裹</text>
 
       <!-- 总部仓收货转发 -->
       <rect x="634" y="360" width="132" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>

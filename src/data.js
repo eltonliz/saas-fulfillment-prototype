@@ -990,10 +990,10 @@ export const SUPPLY_DOCS = [
     shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
     orderNos: ["ORD260917000139"],
     items: [
-      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 6, sent: 6, received: 4, from: [{ orderNo: "ORD260917000139", qty: 6 }] },
+      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 6, sent: 4, received: 4, from: [{ orderNo: "ORD260917000139", qty: 6 }] },
     ],
     packages: [{ carrier: "韵达快递", tracking: "YD1122334477", track: "已发货 2026-09-18 10:00:00" }],
-    qty: 6, sent: 6, received: 4,
+    qty: 6, sent: 4, received: 4,
     status: "部分收货",
   },
   {
@@ -1001,10 +1001,10 @@ export const SUPPLY_DOCS = [
     shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
     orderNos: ["ORD260916000142", "ORD260917000130"],
     items: [
-      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 15, sent: 15, received: 6, from: [{ orderNo: "ORD260916000142", qty: 6 }, { orderNo: "ORD260917000130", qty: 9 }] },
+      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 15, sent: 6, received: 6, from: [{ orderNo: "ORD260916000142", qty: 6 }, { orderNo: "ORD260917000130", qty: 9 }] },
     ],
     packages: [{ carrier: "圆通速递", tracking: "YT9900887766", track: "已发货 2026-09-17 09:20:00" }, { carrier: "圆通速递", tracking: "YT9900887711", track: "已发货 2026-09-18 07:20:00" }],
-    qty: 15, sent: 15, received: 6,
+    qty: 15, sent: 6, received: 6,
     status: "部分收货",
   },
   /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
@@ -1039,10 +1039,10 @@ export const SUPPLY_DOCS = [
     shipper: "供应商002", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", 
     orderNos: [],
     items: [
-      { product: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", qty: 132, sent: 132, received: 100, from: [] },
+      { product: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", qty: 132, sent: 100, received: 100, from: [] },
     ],
     packages: [{ carrier: "顺丰速运", tracking: "SF7712004915", track: "已发货 2026-09-19 15:10:00" }],
-    qty: 132, sent: 132, received: 100,
+    qty: 132, sent: 100, received: 100,
     status: "部分收货",
   },
   /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
@@ -1090,10 +1090,10 @@ export const SUPPLY_DOCS = [
     shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "供应商供货", 
     orderNos: [],
     items: [
-      { product: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", qty: 20, sent: 20, received: 12, from: [] },
+      { product: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", qty: 20, sent: 12, received: 12, from: [] },
     ],
     packages: [{ carrier: "顺丰速运", tracking: "SF7712007733", track: "已发货 2026-09-19 16:20:00" }],
-    qty: 20, sent: 20, received: 12,
+    qty: 20, sent: 12, received: 12,
     status: "部分收货",
   },
   /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，

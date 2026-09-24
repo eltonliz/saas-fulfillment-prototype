@@ -279,9 +279,10 @@ function Receipts({ cards, onOpen, mode, setMode, chip, setChip, kw, setKw }) {
               <div className="mrow"><span>供货路径</span><b>{legTextOf(d)}</b></div>
               <div className="mrow"><span>商品</span><b>{l.emoji} {l.more ? `${l.first} 等 ${n} 种` : l.first}</b></div>
               {!l.more && <div className="mrow"><span>规格</span><b>{l.spec}</b></div>}
-              <div className="mrow"><span>{sent ? "发货数量" : "应发数量"}</span><b>{sent || qtyOf(d)} 件</b></div>
+              <div className="mrow"><span>{isPartial(d) ? "应发 / 已发" : sent ? "发货数量" : "应发数量"}</span><b>{isPartial(d) ? `${qtyOf(d)} / ${sent}` : sent || qtyOf(d)} 件</b></div>
               {/* 部分收货是「还差着补」，收货异常是「已经少了」——两种口径不能共用一句话 */}
-              {isPartial(d) && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {received}｜待补 {sent - received} 件</b></div>}
+              {isPartial(d) && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {received}｜待补 {qtyOf(d) - received} 件</b></div>}
+              {isPartial(d) && sent < qtyOf(d) && <div className="mrow"><span>发货方待发</span><b style={{ color: "#f5a623" }}>{qtyOf(d) - sent} 件</b></div>}
               {d.status === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>实收 {received}｜差 {sent - received} 件</b></div>}
               <div className="mrow"><span>发货主体</span><b>{d.shipper}</b></div>
               <div className="mrow"><span>发货时间</span><b className="mono">{sent ? d.batchAt || "—" : "未发货"}</b></div>
@@ -297,7 +298,10 @@ function Receipts({ cards, onOpen, mode, setMode, chip, setChip, kw, setKw }) {
                 {/* 待收货时「确认收货」进的就是供货单详情，再挂一个「查看详情」是重复入口 */}
                 {st !== "待收货" && <button className="btn sm" onClick={() => onOpen(d)}>查看详情</button>}
                 {pk.length > 0 && <button className="btn sm" onClick={() => setTrack(d)}>查看物流</button>}
-                {st === "待收货" && <button className="btn primary sm" onClick={() => onOpen(d)}>确认收货</button>}
+                {/* 已到的都收完了、货还在发货方手上时，别给「确认收货」的假入口 —— 那条路进去没有可收的东西 */}
+                {st === "待收货" && (received >= sent
+                  ? <button className="btn sm" onClick={() => onOpen(d)}>查看详情</button>
+                  : <button className="btn primary sm" onClick={() => onOpen(d)}>确认收货</button>)}
               </div>
             </div>
           );
@@ -425,7 +429,8 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
   const items = itemsOf(card);
   const sent = sentOf(card);
   const received = receivedOf(card);
-  const due = Math.max(0, sent - received);     // 本次应收 = 还没收到的那部分
+  const qtyTotal = items.reduce((a, it) => a + (it.qty || 0), 0);
+  const due = Math.max(0, sent - received);     // 本次应收 = 还没收到的那部分（发货方少发时就是已到的那部分）
   const receivable = st === "待收货" && due > 0;
   /* 按商品逐行登记实收 —— 店员是照着货点数，不是按订单点 */
   const [lines, setLines] = useState(items.map((it) => ({
@@ -467,11 +472,12 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
         <div className="mrow"><span>供货路径</span><b>{legTextOf(card)}</b></div>
         <div className="mrow"><span>商品</span><b>{label.emoji} {label.more ? `${label.first} 等 ${items.length} 种` : label.first}</b></div>
         {!label.more && <div className="mrow"><span>规格</span><b>{label.spec}</b></div>}
-        <div className="mrow"><span>{sent ? "发货数量" : "应发数量"}</span><b>{sent || qtyOf(card)} 件</b></div>
+        <div className="mrow"><span>{isPartial(card) ? "应发 / 已发" : sent ? "发货数量" : "应发数量"}</span><b>{isPartial(card) ? `${qtyOf(card)} / ${sent}` : sent || qtyOf(card)} 件</b></div>
         <div className="mrow"><span>发货主体</span><b>{card.shipper}</b></div>
         <div className="mrow"><span>发货时间</span><b className="mono">{sent ? card.batchAt || "—" : "未发货"}</b></div>
         {/* 部分收货是「还差着补」，收货异常是「已经少了」—— 两种口径不共用一句话 */}
-        {isPartial(card) && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {received}｜待补 {sent - received} 件</b></div>}
+        {isPartial(card) && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {received}｜待补 {qtyOf(card) - received} 件</b></div>}
+        {isPartial(card) && sent < qtyOf(card) && <div className="mrow"><span>发货方待发</span><b style={{ color: "#f5a623" }}>{qtyOf(card) - sent} 件</b></div>}
         {card.status === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>实收 {received}｜差 {sent - received} 件</b></div>}
         {pk.length > 0 && (
           <div className="mrow"><span>{pk.length > 1 ? "包裹" : "物流单号"}</span>
@@ -513,11 +519,24 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
         <div className="mcard"><div style={{ fontSize: 12.5, color: "#999", textAlign: "center", padding: "4px 0" }}>{card.shipper} 尚未发货，发货后可查看物流并确认收货</div></div>
       )}
 
+      {st === "待收货" && !receivable && (
+        <div className="mcard">
+          <div style={{ fontSize: 12.5, color: "#f5a623", lineHeight: 1.9 }}>
+            已到的 {received} 件都收完了，应发 {qtyOf(card)} 件里还有 {qtyOf(card) - received} 件在发货方手上 —— 等发货方补齐后本单再继续收，收满才结案。
+          </div>
+        </div>
+      )}
+
       {receivable && (
         <>
           <div className="mcard">
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>收货信息（按商品核对，短缺请下调实收）</div>
             <div className="mrow"><span>本次应收</span><b className="mono">{due}</b></div>
+            {sent < qtyTotal && (
+              <div className="note" style={{ marginTop: 4 }}>
+                发货方尚未发齐（应发 {qtyTotal} 件、已发 {sent} 件）：先收已到的 {due} 件，剩余 {qtyTotal - sent} 件等补齐后再收；收满应发数量本单才结案。
+              </div>
+            )}
             <div className="mrow"><span>少发数量</span><b className="mono" style={{ color: shortage ? "#f5522e" : "#333" }}>{short}</b></div>
             {lines.map((it, i) => (
               <div key={it.product} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: "1px solid #f2f2f2" }}>

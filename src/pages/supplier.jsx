@@ -114,7 +114,7 @@ export function SupTasks({ leg, title, desc }) {
                 <td className="tw">{LEG_LABEL[d.leg]}</td>
                 <td>{d.receiver}<small>{d.receiverAddr}</small></td>
                 <td className="tw mono">{qtyOf(d)}/{sentOf(d)}
-                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {receivedOf(d)}｜待补 {qtyOf(d) - receivedOf(d)} 件</small>}
+                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {receivedOf(d)}｜待补 {qtyOf(d) - receivedOf(d)} 件{sentOf(d) < qtyOf(d) ? `（发货方待发 ${qtyOf(d) - sentOf(d)} 件）` : ""}</small>}
                   {d.status === "收货异常" && !d.makeupAnomaly && <small style={{ color: "#f5522e" }}>实收 {receivedOf(d)}｜差 {Math.max(0, qtyOf(d) - receivedOf(d))} 件</small>}
                   {d.makeupAnomaly && <small style={{ color: "#f5522e" }}>补发仍有异常 · 转线下</small>}
                 </td>
@@ -974,11 +974,12 @@ export const SupToStore = () => <SupTasks leg="supplier_inbound" title="发门�
 
 /* ---------------- 供应商发货弹窗（版式与真实 SaaS「发货」弹窗一致） ---------------- */
 function SupShipModal({ doc, onClose, onDone }) {
-  /* 汇总批次整批发，不逐商品问数量 */
-  const lines = itemsOf(doc).map((it) => {
-    const remain = doc.status === "部分收货" ? it.qty - (it.received || 0) : it.qty - (it.sent || 0);
-    return { product: it.product, spec: it.spec, emoji: it.emoji, qty: it.qty, out: Math.max(0, remain), from: it.from || [] };
-  });
+  /* 「本次发货」按商品行可改：默认发满未发数量，改小就是少发，剩余之后再点「发货（补齐）」 */
+  const [lines, setLines] = useState(() => itemsOf(doc).map((it) => {
+    const remain = Math.max(0, (it.qty || 0) - (it.sent || 0));
+    return { product: it.product, spec: it.spec, emoji: it.emoji, qty: it.qty, max: remain, out: remain, from: it.from || [] };
+  }));
+  const setOut = (i, v) => setLines((a) => a.map((x, j) => (j === i ? { ...x, out: Math.max(0, Math.min(x.max, v)) } : x)));
   const [pk, setPk] = useState([{ carrier: "", tracking: "" }]);
   const setPkAt = (i, k, v) => setPk((a) => a.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
   const totalOut = lines.reduce((a, x) => a + x.out, 0);
@@ -1001,7 +1002,7 @@ function SupShipModal({ doc, onClose, onDone }) {
               </tr>
             </thead>
             <tbody>
-              {lines.map((l) => (
+              {lines.map((l, i) => (
                 <tr key={l.product}>
                   <td>
                     <div className="prod-cell">
@@ -1014,9 +1015,15 @@ function SupShipModal({ doc, onClose, onDone }) {
                   </td>
                   <td className="tw"><span className="tag gray">已脱敏</span></td>
                   <td className="tw">{l.qty}</td>
-                  <td className="tw mono">{l.out}</td>
-                  <td className="tw"><span style={{ color: "#25c7a5" }}>本次发 {l.out}</span></td>
-                  <td className="tw">{doc.status}</td>
+                  <td className="tw mono">{l.max}</td>
+                  <td className="tw">
+                    <span className="qty">
+                      <button className="btn plain sm" onClick={() => setOut(i, l.out - 1)}>−</button>
+                      <input value={l.out} readOnly style={{ width: 44, textAlign: "center", height: 28 }} />
+                      <button className="btn plain sm" disabled={l.out >= l.max} onClick={() => setOut(i, l.out + 1)}>＋</button>
+                    </span>
+                  </td>
+                  <td className="tw">{l.max === 0 ? "已发齐" : `已发 ${l.qty - l.max}`}</td>
                 </tr>
               ))}
             </tbody>
@@ -1075,7 +1082,10 @@ function SupShipModal({ doc, onClose, onDone }) {
               ))}
             </tbody>
           </table>
-          <div className="note">这一批（{lines.length} 种商品、{totalOut} 件）整批发往 {doc.receiver}；装不下时可以拆成多个包裹，每个包裹一条运单号。</div>
+          <div className="note">
+            这一批发往 {doc.receiver}：本次共发 {lines.length} 种商品、{totalOut} 件。
+            装不下可以拆成多个包裹（每个包裹一条运单号）；<b>也可以先只发一部分</b>——把「本次发货」改小，剩余部分之后再点「发货（补齐）」，收货方按已到的数量先收。
+          </div>
 
         </div>
         <div className="foot">
@@ -1229,7 +1239,7 @@ export function SupDiff() {
                 <td className="tw">
                   <div className="op-col">
                     {d.status === "待供应商审核" && <button onClick={() => setAudit(d)}>审核</button>}
-                    {d.makeup && makeupOf(d)?.status === "待发货" && <button onClick={() => setShip(makeupOf(d))}>发货</button>}
+                    {d.makeup && ["待发货", "部分收货"].includes(makeupOf(d)?.status) && <button onClick={() => setShip(makeupOf(d))}>发货{makeupOf(d).status === "部分收货" ? "（补齐）" : ""}</button>}
                   </div>
                 </td>
               </tr>
