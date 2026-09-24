@@ -996,7 +996,6 @@ function SupShipModal({ doc, onClose, onDone }) {
           <table className="tbl-tight">
             <thead>
               <tr>
-                <th style={{ width: 40 }}><input type="checkbox" /></th>
                 <th>商品信息</th><th className="tw">订单关联</th><th className="tw">单价(元)</th><th className="tw">数量/单位</th>
                 <th className="tw">未发货数量</th><th className="tw">本次发货</th><th className="tw">发货状态</th>
               </tr>
@@ -1004,7 +1003,6 @@ function SupShipModal({ doc, onClose, onDone }) {
             <tbody>
               {lines.map((l) => (
                 <tr key={l.product}>
-                  <td><input type="checkbox" checked readOnly /></td>
                   <td>
                     <div className="prod-cell">
                       <span className="thumb" style={{ background: "#f4f7f6" }}>{l.emoji}</span>
