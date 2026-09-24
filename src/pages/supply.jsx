@@ -45,10 +45,10 @@ const upstreamReady = (d) => {
   const up = supplyStore.get().find((x) => x.leg === "supplier_to_hq" && ordersOf(x).includes(d.no));
   return !up || up.status === "已收货";
 };
-const awaitHqReceive = (d) => isSelfShip(d) && ["待发货", "部分收货"].includes(d.status) && !upstreamReady(d);
-const canShip = (d) => isSelfShip(d) && ["待发货", "部分收货"].includes(d.status) && upstreamReady(d);
-const awaitSupShip = (d) => !isSelfShip(d) && ["待发货", "部分收货"].includes(d.status);
-const canReceive = (d) => ["已发货", "部分收货"].includes(d.status);
+const awaitHqReceive = (d) => isSelfShip(d) && d.status === "待发货" && !upstreamReady(d);
+const canShip = (d) => isSelfShip(d) && d.status === "待发货" && upstreamReady(d);
+const awaitSupShip = (d) => !isSelfShip(d) && d.status === "待发货";
+const canReceive = (d) => d.status === "已发货";
 
 /* ============================================================================
    收货提交：数量定状态（决策 3）、异常定差异单（决策 1）、举证并入收货（决策 4）、补发闭环终态（决策 5）
@@ -158,7 +158,10 @@ export function applyReceive(doc, p) {
   const shortShip = Math.max(0, qty - sent);    // 发货方还没发：系统自己知道，不用举证
   const isDiff = shortRecv + shortShip > 0;
   const full = !isDiff;
-  const status = isDiff ? "收货异常" : "已收货";
+  /* 到货短少才算「收货异常」（实物与发货登记对不上）；
+     只是发货方没发齐 → 「部分收货」—— 货已确认收下、单子结案，但带「部分收货」标签，
+     剩下的量走差异单 → 补发单，由补发单回到「待收货」 */
+  const status = shortRecv > 0 ? "收货异常" : shortShip > 0 ? "部分收货" : "已收货";
 
   patchDoc(doc.id, { items, received: recv, status });
 
@@ -245,8 +248,8 @@ export function applyReceive(doc, p) {
       extra += `，系统自动生成「总部仓 → ${store}」发货任务 ${id}（${fresh.length} 笔自提订单）`;
     }
   }
-  const undone = items.reduce((a, i) => a + Math.max(0, (i.sent || 0) - (i.received || 0)), 0);
-  return full ? `供货单 ${doc.id} 已收货${extra}` : `供货单 ${doc.id} 部分收货，待补 ${undone} 件`;
+  return full ? `供货单 ${doc.id} 已收货${extra}`
+    : `供货单 ${doc.id} ${status}：应发 ${qty}、实收 ${recv}，差额 ${qty - recv} 件已开配送差异单，审核通过后由补发单补齐${extra}`;
 }
 
 /* 补发单标记（列表通用）：补发单 + 源差异单 + 原供货单，关联关系一眼可见 */
@@ -276,10 +279,12 @@ const Thumb = ({ d }) => {
 };
 
 function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
-  /* 收货管理为收货方视角：单据「已发货」在收货侧显示为「待收货」（数据层状态不变） */
+  /* 收货管理为收货方视角：「已发货」= 还没确认收货（显示「待收货」）；
+     「部分收货」= 已经确认收过、只是没发齐 → 归「已收货」（状态词保留，卡上看得到是部分） */
   const statusText = (d) => {
-    if (mode === "receive" && ["已发货", "部分收货"].includes(d.status)) return "待收货"; // 收货方视角
-    if (mode === "ship" && d.status === "部分收货") return "已发货"; // 发货方视角：过程态归「已发货」
+    if (mode === "receive" && d.status === "已发货") return "待收货";
+    if (mode === "receive" && d.status === "部分收货") return "已收货";
+    if (mode === "ship" && d.status === "部分收货") return "已发货";   // 发货方视角：货已发出，对方收了一部分
     return d.status;
   };
   const list = rows.filter((d) => (tab === "全部" ? true : statusText(d) === tab));
@@ -338,7 +343,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                 <td className="tw">{packagesOf(d).length ? <span onClick={() => onOpen("track", d)} style={{ color: "#25c7a5", cursor: "pointer" }}>{packagesOf(d).length > 1 ? `查看 ${packagesOf(d).length} 个包裹` : "查看物流轨迹"}</span> : "-"}</td>
                 <td className="tw">
                   <span className={`tag ${statusText(d) === "待发货" ? "warn" : statusText(d) === "待收货" ? "blue" : statusText(d) === "收货异常" ? "danger" : ""}`}>{statusText(d)}</span>
-                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>部分收货</small>}
+                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>未收满：实收 {receivedOf(d)}／应发 {qtyOf(d)}</small>}
                   {d.autoConfirmed && <small style={{ color: "#2f80ed" }}>系统自动确认</small>}
                 </td>
                 <td>
@@ -776,8 +781,8 @@ export function SupplyDiff() {
                       <button className="gray" onClick={() => setDetail(d)}>详情</button>
                       {d.status === "待总部审核" && <button onClick={() => setPass(d)}>审核</button>}
                       {/* 补发单闭环在配送差异页：本方为发货责任方（总部仓链路）→ 本页直接发货；供应商链路由供应商在其配送差异页发货 */}
-                      {d.makeup && mk?.leg === "hq_store" && ["待发货", "部分收货"].includes(mk?.status) && <button onClick={() => setShip(mk)}>发货{mk.status === "部分收货" ? "（补齐）" : ""}</button>}
-                      {d.makeup && mk && mk.leg !== "hq_store" && ["待发货", "部分收货"].includes(mk.status) && <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>}
+                      {d.makeup && mk?.leg === "hq_store" && mk?.status === "待发货" && <button onClick={() => setShip(mk)}>发货</button>}
+                      {d.makeup && mk && mk.leg !== "hq_store" && mk.status === "待发货" && <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>由供应商发货</span>}
                     </div>
                   </td>
                 </tr>
@@ -1112,7 +1117,7 @@ function ShipDrawer({ doc, onClose, onDone }) {
           </table>
           <div className="note">
             这一批发往 {doc.receiver}：本次共发 {lines.length} 种商品、{totalOut} 件。
-            装不下可以拆成多个包裹（每个包裹一条运单号）；<b>也可以先只发一部分</b>——把「本次发货」改小，剩余部分之后再点「发货（补齐）」，收货方按已到的数量先收。
+            装不下可以拆成多个包裹（每个包裹一条运单号）；<b>也可以先只发一部分</b>——把「本次发货」改小。没发齐的部分不在这张单上补：收货方按已到的数量确认收货，差额在那一刻自动开配送差异单，审核通过后以补发单补到收货方。
           </div>
 
         </div>
@@ -1140,8 +1145,9 @@ export function applyShip(doc, p) {
   const pk = [...packagesOf(doc), ...(p.packages || []).filter((x) => x.tracking && x.tracking.trim()).map((x) => ({ carrier: x.carrier, tracking: x.tracking.trim(), track: at }))];
   patchDoc(doc.id, {
     items, sent, packages: pk,
-    /* 少发（未发满）转「部分收货」：发货方继续补齐、收货方按已到的先收，两侧都能动 */
-    status: sent >= qty ? "已发货" : "部分收货",
+    /* 发了就是「已发货」：没发齐的部分不改状态（收货方那侧只是「还没收完」），
+       差额等到收货方确认收货时按应发总量算、开差异单走补发 */
+    status: "已发货",
   });
   const n = (p.lines || []).reduce((a, x) => a + x.qty, 0);
   return `供货单 ${doc.id} 已发货 ${n} 件${p.packages?.length ? `，${p.packages.length} 个包裹` : ""}` + (sent < qty ? `，剩余 ${qty - sent} 件可再发` : "");
@@ -1698,7 +1704,7 @@ function DocDetailDrawer({ doc, onClose, mode }) {
             <div className="row" style={{ gap: 30 }}>
               <div className="field"><label>供货单号</label><b className="mono">{doc.id}</b></div>
               <div className="field"><label>供货路径</label><b>{legLabelOf(doc)}</b></div>
-              <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{mode === "receive" && ["已发货", "部分收货"].includes(doc.status) ? "待收货" : doc.status}</span></div>
+              <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{mode === "receive" && doc.status === "已发货" ? "待收货" : doc.status}</span></div>
             </div>
             {doc.isMakeup && (
               <div className="row"><div className="field"><label>单据类型</label>

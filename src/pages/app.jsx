@@ -29,9 +29,8 @@ export const storeDocsOf = (supplyDocs, supplierDocs) => {
 const MODES = ["供应商直配", "总部仓直配", "总部仓直配 · 自有货"];
 const modeOf = (d) => (d.leg === "supplier_inbound" ? MODES[0] : d.goodsSource === "总部自有" ? MODES[2] : MODES[1]);
 const legTextOf = (d) => (d.leg === "supplier_inbound" ? "供应商 → 门店" : d.goodsSource === "总部自有" ? "总部自有 → 门店" : "总部仓 → 门店");
-/* 发货方的状态词换成收货方的：已发货 → 待收货；「部分收货」在收货方这边仍是「待收货」（加标记），
-   只有确认收货那一刻实收 ≠ 应收才判「收货异常」——与后台收货管理同一口径 */
-const stateOf = (d) => (["已发货", "部分收货"].includes(d.status) ? "待收货" : d.status);
+/* 收货方视角：「已发货」= 还没确认 → 待收货；「部分收货」= 已确认收过、只是没发齐 → 归「已收货」并带标签 */
+const stateOf = (d) => (d.status === "已发货" ? "待收货" : d.status === "部分收货" ? "已收货" : d.status);
 const isPartial = (d) => d.status === "部分收货";
 
 /* 移动端底部弹层的壳，物流 / 关联订单共用 */
@@ -267,7 +266,8 @@ function Receipts({ cards, onOpen, mode, setMode, chip, setChip, kw, setKw }) {
           return (
             <div className="mcard" key={d.id}>
               <div className="hd"><b>供货单信息</b>
-                {isPartial(d) && <span style={{ marginLeft: "auto", marginRight: 6, fontSize: 10.5, color: "#f5a623", border: "1px solid #ffd8a8", background: "#fff7e8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>部分收货</span>}
+                {d.isMakeup && <span style={{ marginLeft: "auto", marginRight: 6, fontSize: 10.5, color: "#25c7a5", border: "1px solid #a8e6d8", background: "#eefbf8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>补发</span>}
+                {isPartial(d) && <span style={{ marginLeft: d.isMakeup ? 0 : "auto", marginRight: 6, fontSize: 10.5, color: "#f5a623", border: "1px solid #ffd8a8", background: "#fff7e8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>部分收货</span>}
                 <span style={{ color: STATE_TONE(st) }}>{st}</span></div>
               <div className="mrow"><span>供货单号</span><b className="mono">{d.id}</b></div>
               <div className="mrow"><span>供货路径</span><b>{legTextOf(d)}</b></div>
@@ -455,6 +455,7 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
         <span style={{ color: tone, fontSize: 15 }}>{STATE_ICON(st)}</span>
         <b>{st}</b>
+        {card.isMakeup && <span style={{ fontSize: 10.5, color: "#25c7a5", border: "1px solid #a8e6d8", background: "#eefbf8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>补发</span>}
         {isPartial(card) && <span style={{ fontSize: 10.5, color: "#f5a623", border: "1px solid #ffd8a8", background: "#fff7e8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>部分收货</span>}
         <span className="note" style={{ display: "inline", marginLeft: "auto", fontSize: 11.5 }}>供货单编号 {card.id}</span>
         <span onClick={copyNo} style={{ color: "#25c7a5", fontSize: 12, cursor: "pointer" }}>{copied ? "已复制" : "复制"}</span>
@@ -462,6 +463,7 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
 
       <div className="mcard">
         <div className="hd"><b>供货单信息</b><span style={{ color: tone, fontSize: 12.5 }}>{st}</span></div>
+        {card.isMakeup && <div className="mrow"><span>单据类型</span><b style={{ color: "#25c7a5" }}>配送差异补发单{card.reshipOf ? `（源差异单 ${card.reshipOf}）` : ""}</b></div>}
         <div className="mrow"><span>供货单号</span><b className="mono">{card.id}</b></div>
         <div className="mrow"><span>供货路径</span><b>{legTextOf(card)}</b></div>
         <div className="mrow"><span>商品</span><b>{label.emoji} {label.more ? `${label.first} 等 ${items.length} 种` : label.first}</b></div>

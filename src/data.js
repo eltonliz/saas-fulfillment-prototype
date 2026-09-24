@@ -1086,6 +1086,17 @@ export const SUPPLY_DOCS = [
   /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
      否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
   {
+    id: "FHD2609190008", leg: "hq_store", source: "配送差异补发", batchAt: "2026-09-20 09:10:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
+    orderNos: [],
+    items: [
+      { product: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", qty: 8, sent: 8, received: 0, from: [] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712007755", track: "已发货 2026-09-20 10:30:00" }],
+    qty: 8, sent: 8, received: 0,
+    status: "已发货", isMakeup: true, reshipOf: "DIFF2609190006",
+  },
+  {
     id: "FHD2609190007", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 09:48:00",
     shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "供应商供货", 
     orderNos: [],
@@ -1528,7 +1539,10 @@ export const DIFFS = [
   { id: "DIFF2609170010", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180093", shipper: "供应商002", summary: "相机 应收8/实收7 差1", diffQty: 1, status: "补发中", evidence: "少货 · 照片 2 张", makeup: "FHD2609180095" },
   { id: "DIFF2609160001", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180094", shipper: "JOJO供应商", summary: "奶粉(复制) 应收2/实收1 差1", diffQty: 1, status: "补发完成", evidence: "少货 · 照片 1 张", makeup: "FHD2609160092" },
   { id: "DIFF2609150003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180093", shipper: "供应商002", summary: "华为手机 应收1/实收1 错货 1 件", diffQty: 1, status: "审核不通过", evidence: "错货 · 照片 2 张", rejectReason: "错货商品已线下换回，无需补发" },
-  { id: "DIFF2609140001", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170094", shipper: "供应商002", summary: "苹果 应收6/实收5 差1", diffQty: 1, status: "已关闭", evidence: "少货 · 照片 2 张" },
+  { id: "DIFF2609140001", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170094", shipper: "供应商002", summary: "苹果 应收6/实收4 差2｜发货方未发齐 2 件", diffQty: 2, status: "已关闭", evidence: "少发（发货方未发齐 2 件）· 无需举证" },
+  /* 门店确认收货时按应发总量算差 → 少发那部分当场开单：不举证，直接进审核 / 补发 */
+  { id: "DIFF2609190005", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609190003", shipper: "供应商002", summary: "得佑婴幼儿手口湿巾 弱酸无残留 应收132/实收100 差32｜发货方未发齐 32 件", diffQty: 32, status: "待总部审核", evidence: "少发（发货方未发齐 32 件）· 无需举证", note: "到货 100 件已入库，未发的 32 件等补发" },
+  { id: "DIFF2609190006", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609190007", shipper: "九天教育总仓", summary: "儿童书包 应收20/实收12 差8｜发货方未发齐 8 件", diffQty: 8, status: "补发中", evidence: "少发（发货方未发齐 8 件）· 无需举证", makeup: "FHD2609190008" },
 ];
 
 /* ==========================================================================
