@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SUPPLY_DOCS, itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, allocateByOrder, supplyLabelOf } from "../data.js";
+import { SUPPLY_DOCS, itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, allocateByOrder, supplyLabelOf, matchOrder } from "../data.js";
 import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 import { supplyStore, supplierStore, diffStore, orderStore, addressBookStore, patchDoc, addDoc, addDiff, ARRIVAL_TIMEOUT_DAYS } from "../store.js";
 
@@ -857,17 +857,21 @@ function DiffDetailDrawer({ row, onClose }) {
 /* 订单关联：这张供货单上的某件商品，是哪些销售订单要的 —— 订单号 + 购买者。
    自提单要靠它知道「货到了通知谁」，所以联系方式一并给出。 */
 export function OrderRefsPop({ item, orders, onClose, mask }) {
+  const [kw, setKw] = useState("");
+  const paged = usePaged((item.from || []).map((f) => ({ ...f, order: orders.find((o) => o.no === f.orderNo) })).filter((r) => matchOrder(r.order, kw)), 10);
   /* 供应商侧的买家信息脱敏（供应商只管把货发到门店，不该拿到消费者联系方式） */
   const hide = (t) => (mask && t && t.length > 1 ? t[0] + "*".repeat(t.length - 1) : t);
   const hidePhone = (t) => (mask && t ? t.slice(0, 3) + "****" + t.slice(-4) : t);
-  const rows = (item.from || []).map((f) => ({ ...f, order: orders.find((o) => o.no === f.orderNo) }));
+  const rows = paged.pageRows;
   return (
     <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="drawer" style={{ width: 660, height: "auto", maxHeight: "82vh", borderRadius: 4 }}>
         <header>订单关联<button className="x" onClick={onClose}>×</button></header>
         <div className="body">
-          <div className="note" style={{ marginTop: 0 }}>{item.product}　{item.spec}　共 {rows.length} 笔订单，合计 {item.qty} 件</div>
+          <div className="note" style={{ marginTop: 0 }}>{item.product}　{item.spec}　共 {paged.total} 笔订单，合计 {item.qty} 件</div>
           <div className="note" style={{ marginTop: 2 }}>{mask ? "买家联系方式对供应商脱敏，发货到店后由门店 / 总部通知买家" : "自提单货到后按联系电话通知买家来取"}</div>
+          <input className="ctl" value={kw} onChange={(e) => { setKw(e.target.value); paged.setPage(1); }}
+            placeholder="搜订单号 / 手机号 / 姓名" style={{ width: "100%", height: 32, marginTop: 10 }} />
           <table className="tbl-tight" style={{ marginTop: 10 }}>
             <thead>
               <tr><th>订单号</th><th className="tw">购买数量</th><th>购买者</th><th>联系电话</th><th className="tw">配送方式</th><th className="tw">下单时间</th></tr>
@@ -891,8 +895,10 @@ export function OrderRefsPop({ item, orders, onClose, mask }) {
                   </tr>
                 );
               })}
+              {!rows.length && <tr><td colSpan={6} style={{ textAlign: "center", padding: 26, color: "#999" }}>{kw ? "没有匹配的订单" : "暂无订单"}</td></tr>}
             </tbody>
           </table>
+          <Pager {...paged} />
         </div>
       </div>
     </div>
@@ -1470,8 +1476,13 @@ export function ReceiveAbnormal({ doc, ro }) {
    ============================================================================ */
 function RelatedOrderDrawer({ doc, onClose }) {
   const orders = orderStore.use();
-  const mine = ordersOf(doc).map((no) => orders.find((o) => o.no === no)).filter(Boolean);
-  const missing = ordersOf(doc).length - mine.length;
+  const all = ordersOf(doc).map((no) => orders.find((o) => o.no === no)).filter(Boolean);
+  /* 一批可能上百笔，逐笔铺出来没法看 —— 给搜索（订单号 / 手机号 / 姓名）+ 分页，
+     店员和客服手上有的就是这三样，能直接搜到要核的那一笔 */
+  const [kw, setKw] = useState("");
+  const mine = all.filter((o) => matchOrder(o, kw));
+  const paged = usePaged(mine, 10);
+  const missing = ordersOf(doc).length - all.length;
   const Row = ({ k, children }) => (
     <tr><td className="tw" style={{ width: 110, color: "var(--text-2)" }}>{k}</td><td>{children}</td></tr>
   );
@@ -1494,7 +1505,11 @@ function RelatedOrderDrawer({ doc, onClose }) {
             </tbody>
           </table>
 
-          <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 8 }}>这批货是给谁的（{ordersOf(doc).length} 笔订单）</div>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontWeight: 600, fontSize: 13.5 }}>这批货是给谁的（{mine.length} 笔订单）</span>
+            <input className="ctl" value={kw} onChange={(e) => { setKw(e.target.value); paged.setPage(1); }}
+              placeholder="搜订单号 / 手机号 / 姓名" style={{ marginLeft: "auto", width: 240, height: 30 }} />
+          </div>
           <table className="tbl-tight">
             <thead>
               <tr>
@@ -1503,21 +1518,22 @@ function RelatedOrderDrawer({ doc, onClose }) {
               </tr>
             </thead>
             <tbody>
-              {ordersOf(doc).map((no) => {
-                const o = orders.find((x) => x.no === no);
-                const b = o?.buyer || {};
+              {paged.pageRows.map((o) => {
+                const b = o.buyer || {};
                 return (
-                  <tr key={no}>
-                    <td className="tw mono">{no}</td>
+                  <tr key={o.no}>
+                    <td className="tw mono">{o.no}</td>
                     <td>{b["收件人"] || b["昵称"] || "—"}</td>
                     <td className="mono">{b["收件人电话"] || "—"}</td>
-                    <td className="tw">{o?.delivery ? `${o.delivery}${o.store ? ` · ${o.store}` : ""}` : "—"}</td>
-                    <td className="tw mono">{o?.createdAt || "—"}</td>
+                    <td className="tw">{o.delivery ? `${o.delivery}${o.store ? ` · ${o.store}` : ""}` : "—"}</td>
+                    <td className="tw mono">{o.createdAt || "—"}</td>
                   </tr>
                 );
               })}
+              {!mine.length && <tr><td colSpan={5} style={{ textAlign: "center", padding: 26, color: "#999" }}>{kw ? "没有匹配的订单" : "这批没有销售订单"}</td></tr>}
             </tbody>
           </table>
+          <Pager {...paged} />
           <div className="note">自提单货到后按联系电话通知买家来取，取货时按订单核对。</div>
 
           <div style={{ fontWeight: 600, fontSize: 13.5, margin: "18px 0 8px" }}>商品与订单的对应关系</div>

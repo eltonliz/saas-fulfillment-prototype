@@ -1428,6 +1428,15 @@ export const ORDERS_READY = ORDERS.map((o) => {
   return hits.length ? { ...o, batchNos: hits.map((d) => d.id) } : o;
 });
 
+/* 订单搜索：店员/客服手上有的是订单号、手机号或姓名，三者都能搜到同一笔单。
+   三处订单列表（门店APP 关联订单、后台关联销售订单、商品行的订单关联）共用，避免各写一套 */
+export const matchOrder = (o, kw) => {
+  const k = String(kw || "").trim();
+  if (!k) return true;
+  return [o?.no, o?.buyer?.["昵称"], o?.buyer?.["收件人"], o?.buyer?.["收件人电话"]]
+    .some((v) => String(v || "").toLowerCase().includes(k.toLowerCase()));
+};
+
 /* 一件代发的判定口径（只写这一处）：供应商直配 + 快递发货 = 供应商直发消费者。
    订单列表调它；售后列表不用它——afterSaleStore 装的就是代发售后单（与供应商侧同一份），
    页面按「行在不在这个 store 里」打「代发」标，本地 ROWS 则是自营售后 */

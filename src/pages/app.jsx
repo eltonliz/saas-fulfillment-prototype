@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useReturns, setReturns, patchHop, diffStore, addDiff, supplyStore, supplierStore, orderStore } from "../store.js";
 import { diffInTab, DIFF_TABS, applyReceive } from "./supply.jsx";
-import { afterAddrOf, fmtAddr, itemsOf, qtyOf, sentOf, receivedOf, packagesOf, ordersOf, itemsLabel } from "../data.js";
+import { afterAddrOf, fmtAddr, itemsOf, qtyOf, sentOf, receivedOf, packagesOf, ordersOf, itemsLabel, matchOrder } from "../data.js";
 import { FlowNode, FlowArrow } from "./buyer.jsx";
 import { useReqPage } from "./reqnotes.jsx";
 
@@ -434,20 +434,53 @@ function TrackSheet({ doc, onClose }) {
    所以这里列的是这一批的**全部**订单，不是一笔 */
 function OrderSheet({ doc, onClose }) {
   const orders = orderStore.use();
-  const rows = ordersOf(doc).map((no) => orders.find((o) => o.no === no)).filter(Boolean);
+  const all = ordersOf(doc).map((no) => orders.find((o) => o.no === no)).filter(Boolean);
+  /* 一批可能上百笔：店员手上有的是「手机号 / 姓名 / 订单号」和一个「这单取走没」的问题，
+     所以给搜索 + 待提货筛选 + 分页，而不是把上百张卡一口气铺出来 */
+  const [kw, setKw] = useState("");
+  const [onlyPending, setOnlyPending] = useState(true);
+  const [limit, setLimit] = useState(20);
+  const pending = all.filter((o) => !o.pickupUsed);
+  const list = (onlyPending ? pending : all).filter((o) => matchOrder(o, kw));
+  const shown = list.slice(0, limit);
+  const chip = (on) => ({
+    padding: "4px 12px", borderRadius: 14, fontSize: 12, cursor: "pointer",
+    background: on ? "#e6f7f2" : "#f5f7f8", color: on ? "#25c7a5" : "#666", fontWeight: on ? 600 : 400,
+  });
   return (
     <MPop title="关联订单" onClose={onClose}
-      sub={`供货单号 ${doc.id} · 共 ${ordersOf(doc).length} 笔 · 客户到本店自提`}>
-      {rows.map((o) => (
-        <div className="mcard" key={o.no} style={{ marginBottom: 10 }}>
-          <div className="mrow"><span>销售订单号</span><b className="mono">{o.no}</b></div>
-          <div className="mrow"><span>下单人</span><b>{o.buyer?.["昵称"] || "—"}</b></div>
-          <div className="mrow"><span>联系电话</span><b className="mono">{o.buyer?.["收件人电话"] || "—"}</b></div>
-          <div className="mrow"><span>配送方式</span><b>{o.delivery || "—"}</b></div>
-          <div className="mrow"><span>商品</span><b>{o.emoji} {o.product} × {o.qty}</b></div>
+      sub={`供货单号 ${doc.id} · 共 ${ordersOf(doc).length} 笔 · 待提货 ${pending.length} 笔`}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+        <input value={kw} onChange={(e) => { setKw(e.target.value); setLimit(20); }}
+          placeholder="搜订单号 / 手机号 / 姓名"
+          style={{ flex: 1, height: 34, borderRadius: 17, border: 0, background: "#f5f7f8", padding: "0 14px", fontSize: 12.5 }} />
+        <span style={chip(onlyPending)} onClick={() => { setOnlyPending(true); setLimit(20); }}>待提货</span>
+        <span style={chip(!onlyPending)} onClick={() => { setOnlyPending(false); setLimit(20); }}>全部</span>
+      </div>
+
+      {shown.map((o) => (
+        <div key={o.no} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: "1px solid #f4f6f7" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13 }}>
+              <b>{o.buyer?.["昵称"] || "—"}</b>
+              <span className="mono" style={{ color: "#666", marginLeft: 8, fontSize: 12 }}>{o.buyer?.["收件人电话"] || "—"}</span>
+            </div>
+            <div className="note" style={{ marginTop: 3 }}>
+              <span className="mono">{o.no}</span>　{o.emoji} {o.product} × {o.qty}
+            </div>
+          </div>
+          <span style={{ flex: "none", fontSize: 11, color: o.pickupUsed ? "#999" : "#25c7a5", border: `1px solid ${o.pickupUsed ? "#e5e8eb" : "#b7ebdf"}`, background: o.pickupUsed ? "#fafbfc" : "#f2fbf9", borderRadius: 3, padding: "1px 6px" }}>
+            {o.pickupUsed ? "已提货" : "待提货"}
+          </span>
         </div>
       ))}
-      {!rows.length && <div className="note">这批的销售订单不在当前列表里（历史或已归档）</div>}
+
+      {!shown.length && <div className="note" style={{ padding: "18px 0", textAlign: "center" }}>{kw ? "没有匹配的订单" : "这批没有待提货的订单"}</div>}
+      {list.length > limit && (
+        <button className="btn plain" style={{ width: "100%", marginTop: 12 }} onClick={() => setLimit((n) => n + 20)}>
+          加载更多（还有 {list.length - limit} 笔）
+        </button>
+      )}
       <div className="note">自提单货到后按联系电话通知买家来取，取货时按订单核对。</div>
     </MPop>
   );
