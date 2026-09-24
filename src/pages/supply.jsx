@@ -48,8 +48,7 @@ const upstreamReady = (d) => {
 const awaitHqReceive = (d) => isSelfShip(d) && ["待发货", "部分收货"].includes(d.status) && !upstreamReady(d);
 const canShip = (d) => isSelfShip(d) && ["待发货", "部分收货"].includes(d.status) && upstreamReady(d);
 const awaitSupShip = (d) => !isSelfShip(d) && ["待发货", "部分收货"].includes(d.status);
-/* 已到的货都收完了（实收 = 已发）就别再给「收货」—— 那条路进去没有可收的东西，等发货方补齐 */
-const canReceive = (d) => ["已发货", "部分收货"].includes(d.status) && receivedOf(d) < sentOf(d);
+const canReceive = (d) => ["已发货", "部分收货"].includes(d.status);
 
 /* ============================================================================
    收货提交：数量定状态（决策 3）、异常定差异单（决策 1）、举证并入收货（决策 4）、补发闭环终态（决策 5）
@@ -151,10 +150,15 @@ export function applyReceive(doc, p) {
   });
   const recv = items.reduce((a, i) => a + (i.received || 0), 0);
   const sent = items.reduce((a, i) => a + (i.sent || 0), 0);
-  /* 收满基准 = **应发总量**：发货方少发时，收货方把已到的收齐仍算「部分收货」，
-     等发货方补齐、收货方继续收，收满应发总量才结案（未发的部分不算少收，不开差异单） */
-  const full = recv >= items.reduce((a, i) => a + (i.qty || 0), 0);
-  const status = p.result === "收货异常" ? "收货异常" : full ? "已收货" : "部分收货";
+  const qty = items.reduce((a, i) => a + (i.qty || 0), 0);
+  /* 结案基准 = **应发总量**：实收 < 应发就在确认收货这一刻记一张配送差异单，
+     差多少 = 应发 − 实收（含发货方压根没发的部分），之后按「审核 → 补发单」补齐 ——
+     补发单关联原供货单，这一批发过多少、收了多少、补多少能对上账 */
+  const shortRecv = Math.max(0, sent - recv);   // 到货短少：收货方举证的那部分
+  const shortShip = Math.max(0, qty - sent);    // 发货方还没发：系统自己知道，不用举证
+  const isDiff = shortRecv + shortShip > 0;
+  const full = !isDiff;
+  const status = isDiff ? "收货异常" : "已收货";
 
   patchDoc(doc.id, { items, received: recv, status });
 
@@ -171,7 +175,7 @@ export function applyReceive(doc, p) {
     if (short.length) extra += `，${short.length} 笔订单货未齐、提货码暂不可用`;
   }
 
-  if (p.result === "收货异常") {
+  if (isDiff) {
     /* 决策 5：补发单再出问题 → 只记异常标记，不再开新差异单，转线下 */
     if (doc.isMakeup) {
       patchDoc(doc.id, { makeupAnomaly: true });
@@ -182,19 +186,21 @@ export function applyReceive(doc, p) {
     /* 谁被上报谁审核：总仓收货（供应商 → 总仓）→ 总部上报、供应商审核；门店收货 → 门店上报、总部审核。
        两种来源的举证都在收货环节一次完成，直接进各自「待审核」态。 */
     const byHq = doc.leg === "supplier_to_hq";
+    /* 差异原因：到货短少用收货方当场填的（要举证），发货方没发的系统自己标出来（不用举证） */
+    const reasonText = [shortRecv > 0 ? p.reason : "", shortShip > 0 ? `发货方未发齐 ${shortShip} 件` : ""].filter(Boolean).join(" + ");
     addDiff({
       id: "DIFF" + ymd + String(diffStore.get().length + 1).padStart(4, "0"),
       source: byHq ? "总部上报" : "门店上报", leg: legLabelOf(doc), reporter: byHq ? "总部" : "门店",
       supplyNo: doc.id, shipper: doc.shipper,
       /* 差异摘要按商品逐条列：一批里可能只有某几个商品短少 */
-      summary: items.filter((i) => (i.received || 0) < (i.sent || 0))
-        .map((i) => `${i.product} 应收${i.sent}/实收${i.received} 差${i.sent - i.received}`).join("；") + `｜${p.reason}`,
-      diffQty: items.reduce((a, i) => a + Math.max(0, (i.sent || 0) - (i.received || 0)), 0),
+      summary: items.filter((i) => (i.received || 0) < (i.qty || 0))
+        .map((i) => `${i.product} 应收${i.qty}/实收${i.received} 差${i.qty - i.received}`).join("；") + `｜${reasonText}`,
+      diffQty: shortRecv + shortShip,
       status: byHq ? "待供应商审核" : "待总部审核",
-      evidence: `${p.reason} · 照片 ${p.photos} 张`,
+      evidence: shortRecv > 0 ? `${p.reason} · 照片 ${p.photos} 张` : `少发（发货方未发齐 ${shortShip} 件）· 无需举证`,
       note: p.note,
     });
-    return `供货单 ${doc.id} 已记收货异常，差异单进入「${byHq ? "待供应商审核" : "待总部审核"}」（举证已在收货时完成）${extra}`;
+    return `供货单 ${doc.id} 已记收货异常：应发 ${qty}、实收 ${recv}，差异单 ${shortRecv + shortShip} 件进入「${byHq ? "待供应商审核" : "待总部审核"}」，审核通过后生成补发单${extra}`;
   }
 
   /* 决策 5：补发单收满 → 原供货单同步结案 + 差异单转「补发完成」（不早退，继续走激活/生成） */
@@ -806,8 +812,9 @@ export function SupplyDiff() {
             const orig = all.find((d) => d.id === pass.supplyNo);
             const reshipId = newFhdId();
             /* 补发只补**少的那几个商品**，不复制整批 */
+            /* 补发量 = 应发 − 已收：发货方少发的、到货短少的，一并按补发单补 */
             const miss = itemsOf(orig).map((it) => {
-              const need = (it.sent || 0) - (it.received || 0);
+              const need = (it.qty || 0) - (it.received || 0);
               return need > 0 ? { ...it, qty: need, sent: 0, received: 0 } : null;
             }).filter(Boolean);
             const its = miss.length ? miss : [{ product: "补发商品", spec: "", emoji: "📦", qty: pass.diffQty ?? 1, sent: 0, received: 0, from: [] }];
@@ -1167,13 +1174,15 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState(0);
   const setGot = (i, v) => setLines((a) => a.map((x, j) => (j === i ? { ...x, got: Math.max(0, Math.min(x.should - x.done, v)) } : x)));
-  const remain = lines.reduce((a, x) => a + Math.max(0, x.should - x.done), 0);
+  const remain = lines.reduce((a, x) => a + Math.max(0, x.should - x.done), 0);   // 这次能收的 = 已发 − 已收
   const got = lines.reduce((a, x) => a + x.got, 0);
 
-  /* 收满剩余应收 → 纯正常收货；实收 ≠ 剩余应收 → 按门店APP配送差异同口径当场举证：原因必选 + 照片至少 1 张 */
-  const shortage = got < remain;
-  const result = shortage ? "收货异常" : "正常收货";
-  const canSubmit = !shortage || (reasons.length > 0 && photos > 0);
+  /* 两笔账分开算：
+     · 到货短少 = 能收的没收够 → 收货方要当场举证（原因必选 + 照片至少 1 张）
+     · 发货方没发 = 应发 − 已发 → 系统自己就知道，不用举证，确认收货时一并进差异单 */
+  const shortRecv = remain - got;
+  const shortShip = Math.max(0, qtyTotal - sentTotal);
+  const canSubmit = shortRecv <= 0 || (reasons.length > 0 && photos > 0);
 
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -1189,8 +1198,8 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
           </div>
 
           <div className="alert" style={{ marginBottom: 12 }}>
-            <span className="ic">i</span>已累计收到 <b style={{ margin: "0 4px" }}>{recv}</b> 件，本次还能收 <b style={{ margin: "0 4px" }}>{remain}</b> 件
-            {sentTotal < qtyTotal && <>　｜　发货方尚未发齐（应发 {qtyTotal} 件、已发 {sentTotal} 件）：先收已到的 {remain} 件，剩余 {qtyTotal - sentTotal} 件等发货方补齐后本单继续收，收满才结案</>}
+            <span className="ic">i</span>本单应发 <b style={{ margin: "0 4px" }}>{qtyTotal}</b> 件，已累计收到 <b style={{ margin: "0 4px" }}>{recv}</b> 件，本次还能收 <b style={{ margin: "0 4px" }}>{remain}</b> 件
+            {shortShip > 0 && <>　｜　发货方只发了 {sentTotal} 件：能收的就是这 {sentTotal} 件，未发齐的 {shortShip} 件在确认收货时自动开配送差异单，审核通过后由 {doc.shipper} 补发到 {doc.receiver}</>}
           </div>
 
           <table>
@@ -1219,20 +1228,27 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
           </table>
 
           {/* 收满：只有正常收货，不出现任何异常字段 */}
-          {!shortage && (
+          {shortRecv <= 0 && (
             <div className="frow" style={{ marginTop: 18 }}>
               <label>收货结果</label>
               <div className="fc">
                 <span className="hl" data-hl="系统强判" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  <span className="tag">正常收货</span>
-                  <span className="note" style={{ display: "inline" }}>由「本次实收 vs 剩余应收」自动判定，不可人工修改；收满后本单直接入库</span>
+                  {shortShip > 0
+                    ? <>
+                        <span className="tag warn">开配送差异单</span>
+                        <span className="note" style={{ display: "inline" }}>应发 {qtyTotal} 件、实收 {recv} 件：差额 {shortShip} 件（发货方未发齐）随确认收货一并开差异单，走审核 → 补发单关联原供货单</span>
+                      </>
+                    : <>
+                        <span className="tag">正常收货</span>
+                        <span className="note" style={{ display: "inline" }}>由「本次实收 vs 应发总量」自动判定，不可人工修改；收满后本单直接入库</span>
+                      </>}
                 </span>
               </div>
             </div>
           )}
 
-          {/* 实收 ≠ 剩余应收：直接登记异常，字段与门店APP「配送差异」一致 */}
-          {shortage && (
+          {/* 到货短少：直接登记异常，字段与门店APP「配送差异」一致 */}
+          {shortRecv > 0 && (
             <>
               <div className="frow" style={{ marginTop: 18 }}>
                 <label><i>*</i>配货差异原因</label>
@@ -1245,7 +1261,10 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
                       </label>
                     ))}
                   </div>
-                  <div className="note">本次实收 {got} 件 ≠ 剩余应发 {remain} 件：按商品逐行核对，短少的商品会被记入配送差异单（审核通过后按「谁发货谁补发」）</div>
+                  <div className="note">
+                    本次实收 {got} 件 ≠ 本次能收 {remain} 件：短少的 {shortRecv} 件记入配送差异单（审核通过后按「谁发货谁补发」）
+                    {shortShip > 0 && <>；另有发货方未发齐的 {shortShip} 件一并记入同一张差异单</>}
+                  </div>
                 </div>
               </div>
               <div className="frow">
@@ -1276,7 +1295,7 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
           <button className="btn primary" disabled={!canSubmit}
-            onClick={() => onDone({ result, lines: lines.map((x) => ({ product: x.product, got: x.got })), reason: reasons.join("、"), note: note.trim(), photos })}>确认收货</button>
+            onClick={() => onDone({ lines: lines.map((x) => ({ product: x.product, got: x.got })), reason: reasons.join("、"), note: note.trim(), photos })}>确认收货</button>
         </div>
       </div>
     </div>

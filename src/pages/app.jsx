@@ -120,13 +120,7 @@ export function StoreApp() {
   const commitReceipt = (res) => {
     const d = receiptCard;
     if (!d) return;
-    applyReceive(d, {
-      lines: res.lines,
-      result: res.shortage ? "收货异常" : "正常收货",
-      reason: res.reason,
-      note: res.note,
-      photos: res.photos,
-    });
+    applyReceive(d, { lines: res.lines, reason: res.reason, note: res.note, photos: res.photos });
     setPendingReceipt(null);
     setConfirm(false);
     setView("receipts");
@@ -283,7 +277,7 @@ function Receipts({ cards, onOpen, mode, setMode, chip, setChip, kw, setKw }) {
               {/* 部分收货是「还差着补」，收货异常是「已经少了」——两种口径不能共用一句话 */}
               {isPartial(d) && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {received}｜待补 {qtyOf(d) - received} 件</b></div>}
               {isPartial(d) && sent < qtyOf(d) && <div className="mrow"><span>发货方待发</span><b style={{ color: "#f5a623" }}>{qtyOf(d) - sent} 件</b></div>}
-              {d.status === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>实收 {received}｜差 {sent - received} 件</b></div>}
+              {d.status === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>实收 {received}｜差 {qtyOf(d) - received} 件</b></div>}
               <div className="mrow"><span>发货主体</span><b>{d.shipper}</b></div>
               <div className="mrow"><span>发货时间</span><b className="mono">{sent ? d.batchAt || "—" : "未发货"}</b></div>
               {pk.length > 0 && (
@@ -298,10 +292,7 @@ function Receipts({ cards, onOpen, mode, setMode, chip, setChip, kw, setKw }) {
                 {/* 待收货时「确认收货」进的就是供货单详情，再挂一个「查看详情」是重复入口 */}
                 {st !== "待收货" && <button className="btn sm" onClick={() => onOpen(d)}>查看详情</button>}
                 {pk.length > 0 && <button className="btn sm" onClick={() => setTrack(d)}>查看物流</button>}
-                {/* 已到的都收完了、货还在发货方手上时，别给「确认收货」的假入口 —— 那条路进去没有可收的东西 */}
-                {st === "待收货" && (received >= sent
-                  ? <button className="btn sm" onClick={() => onOpen(d)}>查看详情</button>
-                  : <button className="btn primary sm" onClick={() => onOpen(d)}>确认收货</button>)}
+                {st === "待收货" && <button className="btn primary sm" onClick={() => onOpen(d)}>确认收货</button>}
               </div>
             </div>
           );
@@ -431,7 +422,10 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
   const received = receivedOf(card);
   const qtyTotal = items.reduce((a, it) => a + (it.qty || 0), 0);
   const due = Math.max(0, sent - received);     // 本次应收 = 还没收到的那部分（发货方少发时就是已到的那部分）
-  const receivable = st === "待收货" && due > 0;
+  const unshipped = Math.max(0, qtyTotal - sent);   // 发货方还没发的：系统自己知道，不用门店举证
+  /* 「待收货」就能确认结案：没发齐的部分要在确认这一刻开差异单，不能因为「这次没货可收」把单子憋住 */
+  const receivable = st === "待收货";
+  const canCollect = due > 0;                   // 这一刻还有能收的货
   /* 按商品逐行登记实收 —— 店员是照着货点数，不是按订单点 */
   const [lines, setLines] = useState(items.map((it) => ({
     product: it.product, spec: it.spec, emoji: it.emoji,
@@ -478,7 +472,7 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
         {/* 部分收货是「还差着补」，收货异常是「已经少了」—— 两种口径不共用一句话 */}
         {isPartial(card) && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {received}｜待补 {qtyOf(card) - received} 件</b></div>}
         {isPartial(card) && sent < qtyOf(card) && <div className="mrow"><span>发货方待发</span><b style={{ color: "#f5a623" }}>{qtyOf(card) - sent} 件</b></div>}
-        {card.status === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>实收 {received}｜差 {sent - received} 件</b></div>}
+        {card.status === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>实收 {received}｜差 {qtyOf(card) - received} 件</b></div>}
         {pk.length > 0 && (
           <div className="mrow"><span>{pk.length > 1 ? "包裹" : "物流单号"}</span>
             {pk.length > 1
@@ -519,22 +513,22 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
         <div className="mcard"><div style={{ fontSize: 12.5, color: "#999", textAlign: "center", padding: "4px 0" }}>{card.shipper} 尚未发货，发货后可查看物流并确认收货</div></div>
       )}
 
-      {st === "待收货" && !receivable && (
+      {receivable && !canCollect && (
         <div className="mcard">
           <div style={{ fontSize: 12.5, color: "#f5a623", lineHeight: 1.9 }}>
-            已到的 {received} 件都收完了，应发 {qtyOf(card)} 件里还有 {qtyOf(card) - received} 件在发货方手上 —— 等发货方补齐后本单再继续收，收满才结案。
+            已到的 {received} 件都收完了；本单应发 {qtyTotal} 件，发货方只发了 {sent} 件。确认收货后未到齐的 {qtyTotal - received} 件会自动开配送差异单，审核通过后以补发单补到门店。
           </div>
         </div>
       )}
 
-      {receivable && (
+      {receivable && canCollect && (
         <>
           <div className="mcard">
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>收货信息（按商品核对，短缺请下调实收）</div>
             <div className="mrow"><span>本次应收</span><b className="mono">{due}</b></div>
-            {sent < qtyTotal && (
+            {unshipped > 0 && (
               <div className="note" style={{ marginTop: 4 }}>
-                发货方尚未发齐（应发 {qtyTotal} 件、已发 {sent} 件）：先收已到的 {due} 件，剩余 {qtyTotal - sent} 件等补齐后再收；收满应发数量本单才结案。
+                发货方只发了 {sent} 件（应发 {qtyTotal}）：能收的就是这 {sent} 件；未发齐的 {unshipped} 件在确认收货时自动开配送差异单，走补发单补到门店。
               </div>
             )}
             <div className="mrow"><span>少发数量</span><b className="mono" style={{ color: shortage ? "#f5522e" : "#333" }}>{short}</b></div>
@@ -602,7 +596,7 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
         {receivable && (
           <button className="btn primary" style={{ flex: 2 }}
             disabled={shortage && (!reasons.length || !note.trim() || !photos)}
-            onClick={() => onConfirm({ shortage, lines: lines.map((x) => ({ product: x.product, got: x.got })), reason: reasons.join("、"), note: note.trim(), photos })}>
+            onClick={() => onConfirm({ lines: lines.map((x) => ({ product: x.product, got: x.got })), reason: reasons.join("、"), note: note.trim(), photos })}>
             确认收货
           </button>
         )}

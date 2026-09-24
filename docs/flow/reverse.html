@@ -56,7 +56,7 @@
 
     <svg viewBox="0 0 1280 808" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="reverse-flow-title reverse-flow-desc">
       <title id="reverse-flow-title">逆向与异常流程</title>
-      <desc id="reverse-flow-desc">四条逆向处理链路：发货前退款由系统直接退款并同步关闭发货任务（退款受两项配置约束：「极速退款」命中条件则无需审核自动通过，进销存差异是须同步关闭对应发货任务；「限制用户退款申请」命中条件则不允许买家发起，条件是订单发货 / 商品核销 / 全部订单）；收货点验异常自动生成配送差异单——门店上报由门店举证、总部审核，总部上报（总仓收货）举证随收货完成、由供应商审核，通过后按谁发货谁补发；提货后退货由门店收货发起返厂，实物退回供应商，退款由总部独立执行；供应商直发消费者的一件代发售后走「总部管钱、供应商管货」：总部审核（同意时从地址库的售后地址里选一个发给买家）→ 买家寄回 → 供应商签收验收 → 总部确认退款（原路退回买家）；供应商拒签则转「退货异常」，由总部裁决认可拒签关单或仍向买家退款。两侧共用同一份数据。底部为四条异常防线。注意：防线①「提货码」只在租户开启「启用进销存」时成立（设置 › 通用设置 › 交易设置）；关闭后自提单支付成功即可提货、不产生供货单。</desc>
+      <desc id="reverse-flow-desc">四条逆向处理链路：发货前退款由系统直接退款并同步关闭发货任务（退款受两项配置约束：「极速退款」命中条件则无需审核自动通过，进销存差异是须同步关闭对应发货任务；「限制用户退款申请」命中条件则不允许买家发起，条件是订单发货 / 商品核销 / 全部订单）；收货确认时实收 < 应发就自动生成配送差异单（差额含发货方未发齐的部分，未发齐不用举证、到货短少当场举证）——门店上报由总部审核，总部上报（总仓收货）由供应商审核，通过后按谁发货谁补发；提货后退货由门店收货发起返厂，实物退回供应商，退款由总部独立执行；供应商直发消费者的一件代发售后走「总部管钱、供应商管货」：总部审核（同意时从地址库的售后地址里选一个发给买家）→ 买家寄回 → 供应商签收验收 → 总部确认退款（原路退回买家）；供应商拒签则转「退货异常」，由总部裁决认可拒签关单或仍向买家退款。两侧共用同一份数据。底部为四条异常防线。注意：防线①「提货码」只在租户开启「启用进销存」时成立（设置 › 通用设置 › 交易设置）；关闭后自提单支付成功即可提货、不产生供货单。</desc>
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
         <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
@@ -124,7 +124,7 @@
       <rect x="362" y="264" width="172" height="72" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
       <rect x="370" y="270" width="44" height="20" rx="2" fill="rgba(45,49,66,0.08)"/>
       <text x="392" y="284" fill="#4f5d75" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">系统</text>
-      <text x="448" y="312" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">自动生成配送差异单</text>
+      <text x="448" y="312" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">实收 < 应发 · 开差异单</text>
       <text x="448" y="330" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans SC', sans-serif" text-anchor="middle">异常单不入正常列表</text>
 
       <rect x="570" y="264" width="172" height="72" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
