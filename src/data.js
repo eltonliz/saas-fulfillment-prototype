@@ -1428,6 +1428,20 @@ export const ORDERS_READY = ORDERS.map((o) => {
   return hits.length ? { ...o, batchNos: hits.map((d) => d.id) } : o;
 });
 
+/* 收货场景的搜索：货到现场时，店员手上要么是供货单号、要么是快递面单上的运单号，
+   两样都得能查到同一批货；顺带支持商品名与收货主体。
+   后台收货管理、门店APP 收货管理共用这一份，避免两端搜索口径不一样 */
+export const matchDoc = (d, kw) => {
+  const k = String(kw || "").trim().toLowerCase();
+  if (!k) return true;
+  return [
+    d.id, d.receiver, d.shipper,
+    ...(d.orderNos || []),
+    ...(d.items || []).map((i) => i.product),
+    ...(d.packages || []).flatMap((p) => [p.tracking, p.carrier]),
+  ].some((v) => String(v || "").toLowerCase().includes(k));
+};
+
 /* 自提订单能不能提货：
    · 启用进销存（默认）＝ 货要先到门店，门店确认收货那一刻才激活（写回 pickupReady）
    · 关掉进销存   ＝ 付完款就能提，不等到货 —— 这类租户不自提链路走供货单

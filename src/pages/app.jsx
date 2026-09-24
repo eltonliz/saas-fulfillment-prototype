@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useReturns, setReturns, patchHop, diffStore, addDiff, supplyStore, supplierStore, orderStore } from "../store.js";
 import { diffInTab, DIFF_TABS, applyReceive } from "./supply.jsx";
-import { afterAddrOf, fmtAddr, itemsOf, qtyOf, sentOf, receivedOf, packagesOf, ordersOf, itemsLabel, matchOrder } from "../data.js";
+import { afterAddrOf, fmtAddr, itemsOf, qtyOf, sentOf, receivedOf, packagesOf, ordersOf, itemsLabel, matchOrder, matchDoc } from "../data.js";
 import { FlowNode, FlowArrow } from "./buyer.jsx";
 import { useReqPage } from "./reqnotes.jsx";
 
@@ -112,6 +112,7 @@ export function StoreApp() {
   /* 收货管理的页签与状态筛选放在这里：进详情再返回不该跳回第一个页签 */
   const [rcpMode, setRcpMode] = useState(MODES[0]);
   const [rcpChip, setRcpChip] = useState("全部");
+  const [rcpKw, setRcpKw] = useState("");
   const [pendingReceipt, setPendingReceipt] = useState(null); // 少收待温馨提示确认的收货结果
   useReqPage("app:" + view);
 
@@ -154,7 +155,7 @@ export function StoreApp() {
 
         <div className="mscreen">
           {view === "home" && <Home onGo={setView} />}
-          {view === "receipts" && <Receipts cards={cards} mode={rcpMode} setMode={setRcpMode} chip={rcpChip} setChip={setRcpChip}
+          {view === "receipts" && <Receipts cards={cards} mode={rcpMode} setMode={setRcpMode} chip={rcpChip} setChip={setRcpChip} kw={rcpKw} setKw={setRcpKw}
             onOpen={(c) => { setReceiptCard(c); setView("receive"); }} />}
           {view === "receive" && receiptCard && (
             <Receive
@@ -305,9 +306,11 @@ function Home({ onGo }) {
 }
 
 /* ---------------- 收货管理 ---------------- */
-function Receipts({ cards, onOpen, mode, setMode, chip, setChip }) {
+function Receipts({ cards, onOpen, mode, setMode, chip, setChip, kw, setKw }) {
   const [track, setTrack] = useState(null);
   const [order, setOrder] = useState(null);
+  /* 收货台前是照着快递面单收的：供货单号和快递单号都得能查，才能快速定位要收哪一批 */
+  const hit = (d) => matchDoc(d, kw);
   return (
     <div>
       <div style={{ display: "flex", gap: 20, padding: "12px 14px 0", borderBottom: "1px solid #f1f1f1", background: "#fff" }}>
@@ -320,7 +323,9 @@ function Receipts({ cards, onOpen, mode, setMode, chip, setChip }) {
       </div>
 
       <div style={{ background: "#fff", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #f1f1f1" }}>
-        <span style={{ flex: 1, background: "#f5f7f8", borderRadius: 14, padding: "6px 12px", fontSize: 12, color: "#666" }}>🔍 请输入供货编号/商品名称查询</span>
+        <input value={kw} onChange={(e) => setKw(e.target.value)} placeholder="🔍 供货单号 / 快递单号 / 商品名称"
+          style={{ flex: 1, background: "#f5f7f8", borderRadius: 14, padding: "6px 12px", fontSize: 12, color: "#333", border: 0, outline: "none" }} />
+        {kw && <span onClick={() => setKw("")} style={{ color: "#999", fontSize: 12, cursor: "pointer" }}>清空</span>}
       </div>
 
       <div className="mtabs">
@@ -330,7 +335,7 @@ function Receipts({ cards, onOpen, mode, setMode, chip, setChip }) {
       </div>
 
       <div className="mpad">
-        {cards.filter((c) => modeOf(c) === mode).filter((c) => chip === "全部" || stateOf(c) === chip).map((d) => {
+        {cards.filter((c) => modeOf(c) === mode).filter((c) => chip === "全部" || stateOf(c) === chip).filter(hit).map((d) => {
           const st = stateOf(d);
           const sent = sentOf(d);
           const received = receivedOf(d);
@@ -369,8 +374,8 @@ function Receipts({ cards, onOpen, mode, setMode, chip, setChip }) {
             </div>
           );
         })}
-        {!cards.filter((c) => modeOf(c) === mode).filter((c) => chip === "全部" || stateOf(c) === chip).length && (
-          <div className="mcard" style={{ textAlign: "center", color: "#999", fontSize: 12.5, padding: "26px 0" }}>该状态下暂无供货单</div>
+        {!cards.filter((c) => modeOf(c) === mode).filter((c) => chip === "全部" || stateOf(c) === chip).filter(hit).length && (
+          <div className="mcard" style={{ textAlign: "center", color: "#999", fontSize: 12.5, padding: "26px 0" }}>{kw ? "没有匹配的供货单" : "该状态下暂无供货单"}</div>
         )}
       </div>
 

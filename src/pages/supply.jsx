@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SUPPLY_DOCS, itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, allocateByOrder, supplyLabelOf, matchOrder } from "../data.js";
+import { SUPPLY_DOCS, itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, allocateByOrder, supplyLabelOf, matchOrder, matchDoc } from "../data.js";
 import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 import { supplyStore, supplierStore, diffStore, orderStore, addressBookStore, patchDoc, addDoc, addDiff, ARRIVAL_TIMEOUT_DAYS } from "../store.js";
 
@@ -355,17 +355,59 @@ export function OrderPool({ scope }) {
   const docs = supplyStore.use();
   const [gen, setGen] = useState(null);
   const [toast, tip] = useToast();
-  const pool = poolOf(scope, orders, docs);
+  const all = poolOf(scope, orders, docs);
+  const stores = [...new Set(all.map((o) => o.store))];
+
+  /* 筛选区就是「这次要发哪一批」的圈定范围，生成动作跟着它走：
+     不再把支付时间藏在生成弹窗里，否则页面上看到的和实际要发的对不上。
+     「截止到 X 之前的已支付订单」是发货方每天用的口径，默认给今天 17:00 */
+  const today = new Date().toISOString().slice(0, 10);
+  const [f, setF] = useState({ store: "全部", date: today, time: "17:00" });
+  const [q, setQ] = useState({ store: "全部", date: today, time: "17:00" });
+  const cutoff = q.date ? `${q.date} ${q.time || "23:59"}:59` : "";
+  const pool = all
+    .filter((o) => q.store === "全部" || o.store === q.store)
+    .filter((o) => !cutoff || (o.payTime || o.createdAt || "") <= cutoff);
   const oldest = pool.map((o) => o.payTime || o.createdAt || "").filter(Boolean).sort()[0];
   const waitH = oldest ? Math.max(0, Math.round((Date.now() - new Date(oldest.replace(/-/g, "/")).getTime()) / 36e5)) : 0;
+  const dirty = f.store !== q.store || f.date !== q.date || f.time !== q.time;
 
   return (
     <>
+      <div className="filters">
+        <div className="row">
+          <div className="field"><label>自提门店</label>
+            <select className="ctl" value={f.store} onChange={(e) => setF((v) => ({ ...v, store: e.target.value }))}>
+              {["全部", ...stores].map((x) => <option key={x}>{x}</option>)}
+            </select>
+          </div>
+          <div className="field"><label>支付时间</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="date" className="ctl" style={{ width: 160 }} value={f.date} onChange={(e) => setF((v) => ({ ...v, date: e.target.value }))} />
+              <span className="note" style={{ display: "inline" }}>之前（含）</span>
+              <input type="time" className="ctl" style={{ width: 116 }} value={f.time} onChange={(e) => setF((v) => ({ ...v, time: e.target.value }))} />
+            </div>
+          </div>
+          <div className="actions">
+            <button className="btn primary" onClick={() => setQ(f)}>查询</button>
+            <button className="btn" onClick={() => { const e = { store: "全部", date: "", time: "" }; setF(e); setQ(e); }}>重置</button>
+          </div>
+        </div>
+        <div className="note" style={{ marginTop: 8 }}>
+          只汇总<b>截止到这个时间点之前支付</b>的订单；之后支付的留在池子里等下一批。生成发货任务时，发出去的就是下面列出来的这些。
+        </div>
+      </div>
+
       <div className="alert">
         <span className="ic">i</span>
-        <b style={{ margin: "0 4px" }}>{pool.length}</b> 笔已支付的自提单还没生成发货任务
+        当前筛选出 <b style={{ margin: "0 4px" }}>{pool.length}</b> 笔已支付的自提单待生成发货任务
+        {all.length !== pool.length && <>（池子里共 {all.length} 笔，其余被筛选条件挡住）</>}
         {pool.length > 0 && <>，最早一笔已等待 <b style={{ margin: "0 4px" }}>{waitH}</b> 小时</>}
-        <button className="btn primary" style={{ marginLeft: "auto" }} disabled={!pool.length} onClick={() => setGen({ k: "new" })}>生成发货任务</button>
+        <button className="btn primary" style={{ marginLeft: "auto" }} disabled={!pool.length || dirty}
+          title={dirty ? "筛选条件改过了，先点「查询」再生成" : undefined}
+          onClick={() => setGen({ k: "new" })}>
+          生成发货任务（{pool.length} 笔）
+        </button>
       </div>
 
       <div className="tbl-wrap">
@@ -396,12 +438,16 @@ export function OrderPool({ scope }) {
                 <td className="tw">{supplyLabelOf(o)}</td>
               </tr>
             ))}
-            {!pool.length && <tr><td colSpan={6} style={{ textAlign: "center", padding: 34, color: "#999" }}>没有待生成任务的自提单</td></tr>}
+            {!pool.length && (
+              <tr><td colSpan={6} style={{ textAlign: "center", padding: 34, color: "#999" }}>
+                {all.length ? `当前筛选条件下没有订单（池子里还有 ${all.length} 笔）` : "没有待生成任务的自提单"}
+              </td></tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      {gen && <GenTaskModal scope={scope} pool={pool} onClose={() => setGen(null)}
+      {gen && <GenTaskModal scope={scope} pool={pool} cutoff={cutoff} onClose={() => setGen(null)}
         onDone={(made) => { setGen(null); tip(`已生成 ${made.length} 张发货任务：${made.map((m) => `${m.store} ${m.count} 笔`).join("；")}`); }} />}
       {toast}
     </>
@@ -409,13 +455,12 @@ export function OrderPool({ scope }) {
 }
 
 /* 生成 / 追加发货任务：选门店（可多选）+ 选支付时间截止点，按门店各生成一张 */
-export function GenTaskModal({ scope, pool, onClose, onDone }) {
+export function GenTaskModal({ scope, pool, cutoff, onClose, onDone }) {
+  /* 门店多选：在页面筛选出来的范围里，再挑这次真要发的门店（有些店今天不发货）。
+     支付时间不再重复给 —— 那是页面筛选区的条件，这里只显示，避免两处口径打架 */
   const stores = [...new Set(pool.map((o) => o.store))];
   const [picked, setPicked] = useState(stores);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [time, setTime] = useState("17:00");
-  const cutoff = `${date} ${time}:59`;
-  const will = pool.filter((o) => picked.includes(o.store) && (o.payTime || o.createdAt || "") <= cutoff);
+  const will = pool.filter((o) => picked.includes(o.store) && (!cutoff || (o.payTime || o.createdAt || "") <= cutoff));
   const byStore = {};
   for (const o of will) (byStore[o.store] = byStore[o.store] || []).push(o);
   const toggle = (x) => setPicked((a) => (a.includes(x) ? a.filter((y) => y !== x) : [...a, x]));
@@ -451,14 +496,12 @@ export function GenTaskModal({ scope, pool, onClose, onDone }) {
           </div>
 
           <div className="frow">
-            <label><i className="req">*</i>支付时间</label>
+            <label>支付时间</label>
             <div className="fc">
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <input type="date" className="ctl" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: 170 }} />
-                <span>之前（含）</span>
-                <input type="time" className="ctl" value={time} onChange={(e) => setTime(e.target.value)} style={{ width: 120 }} />
+              <div style={{ fontSize: 13.5 }}>
+                {cutoff ? <>截止到 <b className="mono">{cutoff.slice(0, 16)}</b> 之前（含）支付的订单</> : "不限支付时间"}
               </div>
-              <div className="note">只汇总截止到这个时间点之前支付的订单，之后支付的留在池子里等下一批。</div>
+              <div className="note">这个条件来自列表页的筛选区，要改回上一页改。</div>
             </div>
           </div>
 
@@ -575,26 +618,46 @@ export function SupplyReceipt() {
   const [modal, setModal] = useState(null);
   const [toast, tip] = useToast();
   const docs = supplyStore.use();
-  const rows = docs.filter((d) => RECEIVE_LEGS.includes(d.leg));
+  /* 收货现场是照着快递面单收货的：供货单号和快递单号都得能查，才能快速定位要收哪一批 */
+  const [f, setF] = useState({ leg: "", kw: "", receiver: "全部" });
+  const [q, setQ] = useState({ leg: "", kw: "", receiver: "全部" });
+  const all = docs.filter((d) => RECEIVE_LEGS.includes(d.leg));
+  const rows = all
+    .filter((d) => !q.leg || legLabelOf(d) === q.leg)
+    .filter((d) => q.receiver === "全部" || d.receiver === q.receiver)
+    .filter((d) => matchDoc(d, q.kw));
   const autoList = rows.filter((d) => d.autoConfirmed);
+  const receivers = [...new Set(all.map((d) => d.receiver))];
 
   return (
     <>
       <div className="filters">
         <div className="row">
           <div className="field"><label>供货路径</label>
-            <select className="ctl" defaultValue=""><option value="">请选择供货路径</option><option>供应商 → 总仓</option><option>供应商 → 门店</option><option>总部仓 → 门店</option><option>总部自有 → 门店</option></select>
+            <select className="ctl" value={f.leg} onChange={(e) => setF((v) => ({ ...v, leg: e.target.value }))}>
+              {["", "供应商 → 总仓", "供应商 → 门店", "总部仓 → 门店", "总部自有 → 门店"].map((o) => (
+                <option key={o} value={o}>{o || "请选择供货路径"}</option>
+              ))}
+            </select>
           </div>
-          <div className="field"><label>供货单号</label><input className="ctl w-lg" placeholder="供货单号/销售订单/收货主体" /></div>
+          <div className="field"><label>供货单号</label>
+            <input className="ctl w-lg" value={f.kw} placeholder="供货单号 / 快递单号 / 销售订单 / 商品"
+              onChange={(e) => setF((v) => ({ ...v, kw: e.target.value }))}
+              onKeyDown={(e) => e.key === "Enter" && setQ(f)} /></div>
           <div className="field"><label>收货主体</label>
-            <select className="ctl" defaultValue="全部"><option>全部</option><option>九天教育总仓</option><option>九天门店</option><option>9071门店</option><option>濮源直播间</option></select>
+            <select className="ctl" value={f.receiver} onChange={(e) => setF((v) => ({ ...v, receiver: e.target.value }))}>
+              {["全部", ...receivers].map((o) => <option key={o}>{o}</option>)}
+            </select>
           </div>
-          <div className="actions"><button className="btn primary">查询</button><button className="btn">重置</button></div>
+          <div className="actions">
+            <button className="btn primary" onClick={() => setQ(f)}>查询</button>
+            <button className="btn" onClick={() => { const e = { leg: "", kw: "", receiver: "全部" }; setF(e); setQ(e); }}>重置</button>
+          </div>
         </div>
       </div>
 
       <div className="alert">
-        <span className="ic">i</span>确认内部供货到货
+        <span className="ic">i</span>确认内部供货到货；当前筛选出 <b style={{ margin: "0 4px" }}>{rows.length}</b> 笔供货单
       </div>
       {autoList.length > 0 && (
         <div className="alert" style={{ background: "#eef4ff", color: "#1f5fbf" }}>

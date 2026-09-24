@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, applyShip, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag, DiffAuditModal } from "./supply.jsx";
 import { itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, SUPPLIER_SELF } from "../data.js";
-import { OrderPool, GenTaskModal, poolOf, OrderRefsPop } from "./supply.jsx";
+import { OrderPool, poolOf, OrderRefsPop } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager, Confirm } from "../ui.jsx";
 import { supplierStore, supplyStore, diffStore, orderStore, patchDoc, addrStore, afterSaleStore } from "../store.js";
 
