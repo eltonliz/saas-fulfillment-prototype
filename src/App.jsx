@@ -14,6 +14,7 @@ import { BuyerApp } from "./pages/buyer.jsx";
 import { SupplierLogin } from "./pages/login.jsx";
 import { TenantReturns, SupplierReturns } from "./pages/returns.jsx";
 import { ScenarioList } from "./pages/scenarios.jsx";
+import { StateMatrix } from "./pages/states.jsx";
 import { FlowsView } from "./pages/flows.jsx";
 import { VersionLog } from "./pages/versions.jsx";
 import { useToast } from "./ui.jsx";
@@ -25,6 +26,7 @@ const TENANT = {
   版本记录: { crumbs: ["版本记录"], tabs: ["版本记录"] },
   业务流程图: { crumbs: ["业务流程图"], tabs: ["业务流程图"] },
   场景清单: { crumbs: ["场景清单"], tabs: ["场景清单"] },
+  状态与按钮: { crumbs: ["状态与按钮"], tabs: ["状态与按钮"] },
   商品管理: { crumbs: ["商品", "商品管理"], tabs: ["商品管理", "供应商管理", "订单管理"] },
   订单管理: { crumbs: ["交易", "订单管理"], tabs: ["商品管理", "供应商管理", "订单管理"] },
   售后管理: { crumbs: ["交易", "售后管理"], tabs: ["订单管理", "售后管理"] },
@@ -42,6 +44,7 @@ const SUPPLIER = {
   版本记录: { crumbs: ["版本记录"], tabs: ["版本记录"] },
   业务流程图: { crumbs: ["业务流程图"], tabs: ["业务流程图"] },
   场景清单: { crumbs: ["场景清单"], tabs: ["场景清单"] },
+  状态与按钮: { crumbs: ["状态与按钮"], tabs: ["状态与按钮"] },
   一件代发: { crumbs: ["供货", "一件代发"], tabs: ["一件代发", "发总部仓", "发门店", "配送差异", "售后处理", "退货返厂"] },
   发总部仓: { crumbs: ["供货", "发总部仓"], tabs: ["一件代发", "发总部仓", "发门店", "配送差异", "售后处理", "退货返厂"] },
   发门店: { crumbs: ["供货", "发门店"], tabs: ["一件代发", "发总部仓", "发门店", "配送差异", "售后处理", "退货返厂"] },
@@ -145,6 +148,7 @@ export function App() {
             {page === "版本记录" && <VersionLog />}
             {page === "业务流程图" && <FlowsView />}
             {page === "场景清单" && <ScenarioList />}
+            {page === "状态与按钮" && <StateMatrix />}
             {page === "商品管理" && <ProductManagement onOpenDrawer={() => setDrawer(true)} />}
             {page === "订单管理" && <OrderManagement onOpenSupply={gotoSupply} />}
             {page === "售后管理" && <AfterSales />}
@@ -165,6 +169,7 @@ export function App() {
             {page === "版本记录" && <VersionLog />}
             {page === "业务流程图" && <FlowsView />}
             {page === "场景清单" && <ScenarioList />}
+            {page === "状态与按钮" && <StateMatrix />}
             {page === "一件代发" && <SupDirect onNav={setPage} />}
             {page === "发总部仓" && <SupToHq />}
             {page === "发门店" && <SupToStore />}

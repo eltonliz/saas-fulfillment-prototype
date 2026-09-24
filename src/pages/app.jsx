@@ -104,7 +104,6 @@ const GRID = [
 export function StoreApp() {
   const [view, setView] = useState("home");
   const [confirm, setConfirm] = useState(false);
-  const [mode, setMode] = useState("preview");
   const [diffCard, setDiffCard] = useState(null);   // 当前查看的配送差异单
   /* 收货卡片直接由 store 派生：门店这边收货，后台收货管理立刻同步，不需要另存一份本地状态 */
   const cards = storeDocsOf(supplyStore.use(), supplierStore.use());
@@ -135,14 +134,7 @@ export function StoreApp() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "center", paddingTop: 16 }}>
-        <div style={{ display: "flex", border: "1px solid #e5e8eb", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
-          {[["preview", "📱 页面预览"], ["flow", "流程说明"]].map(([m, label]) => (
-            <button key={m} onClick={() => setMode(m)} style={{ border: 0, padding: "7px 18px", fontSize: 13.5, cursor: "pointer", background: mode === m ? "#e6f7f2" : "#fff", color: mode === m ? "#25c7a5" : "#666", fontWeight: mode === m ? 600 : 400 }}>{label}</button>
-          ))}
-        </div>
-      </div>
-      {mode === "flow" ? <StoreFlowBoard /> : (
+      {(
     <div className="phone-wrap">
       <div className="phone">
         <div className="status"><span>9:41</span><span>📶 🔋</span></div>
@@ -177,69 +169,6 @@ export function StoreApp() {
     </div>
       )}
     </>
-  );
-}
-
-/* ============================================================================
-   流程说明：收货管理 / 配送差异 / 退货返厂 三条流程（拆屏 + 红箭头），供设计对照
-   ============================================================================ */
-
-function StoreFlowBoard() {
-  return (
-    <div style={{ padding: "26px 34px 46px", overflowX: "auto", minHeight: "100%" }}>
-      <div style={{ color: "#e0392f", fontSize: 26, fontWeight: 800, letterSpacing: 1 }}>门店APP · 收货 / 差异 / 返厂流程</div>
-      <div style={{ marginTop: 8, fontSize: 13.5, color: "#5b6672" }}>入口：工作台宫格（底部 Tab 已移除）　｜　<b style={{ color: "#e0392f" }}>红色</b>箭头为跳转路径</div>
-
-      <div style={{ display: "flex", alignItems: "flex-start", marginTop: 28, minWidth: "max-content" }}>
-        <FlowNode idx="①" title="收货管理 · 全部" sub="供应商直配 / 总部仓直配（含自有货）" n="1" dir="store-flow">
-          筛选与后台收货管理一致：全部 / 待收货 / 已收货 / 收货异常；曾部分收货的单归「待收货」并带「部分收货」标记，收满确认后才结案，收货异常到差异页举证。
-        </FlowNode>
-        <FlowArrow label="查看详情 / 确认收货" id="sa1" />
-        <FlowNode idx="②" title="发货单详情 · 确认收货" sub="按商品核对实收" n="2" dir="store-flow">
-          实收不可超过应收（＋到顶置灰）；少发时自动展开备注与图片凭证，且必填备注才能确认。
-        </FlowNode>
-        <FlowArrow label="点「确认收货」" id="sa2" />
-        <FlowNode idx="③" title="温馨提示" sub="实收 ≠ 应收时" n="3" dir="store-flow">
-          收货数量与实际送货有差异时，先弹此提示，确认后自动生成配送差异单。
-        </FlowNode>
-        <FlowArrow label={<>确认后生成差异单<br />（有差异时）</>} id="sa3" />
-        <FlowNode idx="④" title="配送差异 · 全部" sub="收货环节自动生成" n="4" dir="store-flow">
-          状态 待举证 / 待审核 / 审核通过 / 审核不通过 / 已关闭；待举证可「去举证」。
-        </FlowNode>
-        <FlowArrow label="待举证单「去举证」" id="sa4" />
-        <FlowNode idx="⑤" title="举证信息" sub="提交凭证等总部审核" n="5" dir="store-flow">
-          勾选差异原因（少货 / 破损 / 错货 / 其他）+ 说明 + 图片凭证。
-        </FlowNode>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "flex-start", marginTop: 34, minWidth: "max-content" }}>
-        <FlowNode idx="⑥" title="退货返厂 · 全部" sub="自提链路的消费者退货" n="6" dir="store-flow">
-          关联门店已收货的供货单发起返厂；状态 待返厂 / 返厂中 / 已返厂。
-        </FlowNode>
-        <FlowArrow label="＋ 发起退货返厂" id="sb1" />
-        <FlowNode idx="⑦" title="发起退货返厂" sub="选单与原因" n="7" dir="store-flow">
-          选关联供货单自动带出退回方与返厂路径；填退货数量与退货原因。
-        </FlowNode>
-        <FlowArrow label={<>提交后尽快寄出<br />（填物流）</>} id="sb2" />
-        <FlowNode idx="⑧" title="填写寄出物流" sub="登记快递公司 + 单号" n="8" dir="store-flow">
-          待返厂单寄出后登记物流，状态转「返厂中」。
-        </FlowNode>
-        <FlowArrow label="查看详情" id="sb3" />
-        <FlowNode idx="⑨" title="返厂详情" sub="路径逐跳可查" n="9" dir="store-flow">
-          门店 → 供应商，或经总部仓汇总转发；退款与返厂解耦。
-        </FlowNode>
-      </div>
-
-      <div style={{ marginTop: 34, border: "2px dashed #e0392f", borderRadius: 12, padding: "14px 20px", maxWidth: 1180 }}>
-        <div style={{ fontSize: 14.5, fontWeight: 700 }}>口径说明</div>
-        <div style={{ marginTop: 7, fontSize: 13, lineHeight: 1.9, color: "#333" }}>
-          入口：底部 Tab 已移除，收货管理 / 配送差异 / 退货返厂 统一从工作台宫格进入，‹ 返回工作台。<br />
-          收货校验：实收<b>不可超过应收</b>；少发（实收 &lt; 应收）自动展开备注与图片凭证，<b>必填备注</b>后方可确认收货。<br />
-          收货 → 差异：确认收货时<b>实收 ≠ 应收</b> → 自动生成配送差异单 → 门店举证 → 总部审核。<br />
-          退货返厂：与退款<b>解耦</b>（返厂单只承载货的流向、不带钱，退款归「售后管理」独立执行；返厂走 待返厂 → 返厂中 → 已返厂）；返厂路径 门店 → 供应商，或经总部仓汇总转发。
-        </div>
-      </div>
-    </div>
   );
 }
 
