@@ -244,18 +244,21 @@ function Group({ title, items }) {
   );
 }
 
-export function StateMatrix() {
+/* only = 只渲染某一端（门店APP / 买家端在机内没有左侧菜单，用顶栏入口弹出这一端的表） */
+export function StateMatrix({ only }) {
   useReqPage("states");
-  const groups = [...new Set(SECTIONS.map((s) => s.group))];
+  const groups = only ? [only] : [...new Set(SECTIONS.map((s) => s.group))];
   const [grp, setGrp] = useState(groups[0]);
   return (
     <div style={{ padding: "4px 0 40px" }}>
-      <div className="tabs" style={{ display: "flex", gap: 28, borderBottom: "1px solid var(--line)", marginBottom: 20, paddingLeft: 8 }}>
-        {groups.map((g) => (
-          <span key={g} onClick={() => setGrp(g)}
-            style={{ paddingBottom: 12, fontSize: 14, cursor: "pointer", fontWeight: grp === g ? 600 : 400, color: grp === g ? "var(--brand)" : "var(--text-2)", borderBottom: grp === g ? "2px solid var(--brand)" : "2px solid transparent" }}>{g}</span>
-        ))}
-      </div>
+      {!only && (
+        <div className="tabs" style={{ display: "flex", gap: 28, borderBottom: "1px solid var(--line)", marginBottom: 20, paddingLeft: 8 }}>
+          {groups.map((g) => (
+            <span key={g} onClick={() => setGrp(g)}
+              style={{ paddingBottom: 12, fontSize: 14, cursor: "pointer", fontWeight: grp === g ? 600 : 400, color: grp === g ? "var(--brand)" : "var(--text-2)", borderBottom: grp === g ? "2px solid var(--brand)" : "2px solid transparent" }}>{g}</span>
+          ))}
+        </div>
+      )}
       <div className="alert" style={{ marginBottom: 22 }}>
         <span className="ic">i</span>这张表回答两个问题：<b style={{ margin: "0 4px" }}>每个状态下页面上出现哪些按钮</b>、<b style={{ margin: "0 4px" }}>点完流转到哪个状态</b>。口径与实现代码一一对应。
       </div>

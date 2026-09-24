@@ -218,6 +218,9 @@ body.hide-hl .hl::after { display: none; }
 /* 顶栏标注开关 */
 .hl-toggle { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: var(--radius); border: 1px solid #ffb3b3; background: #fff5f5; color: #ff4d4f; cursor: pointer; font-size: 13px; }
 .hl-toggle.off { border-color: var(--line-2); background: #fff; color: var(--text-3); }
+/* 顶栏上的「状态与按钮」入口：中性外观，展开时用主色（手机端没有左侧菜单，靠它进） */
+.nav-toggle { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: var(--radius); border: 1px solid var(--line-2); background: #fff; color: var(--text-2); cursor: pointer; font-size: 13px; }
+.nav-toggle.on { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); }
 
 .legend { background: #fff; border: 1px solid #ffd9d9; border-radius: var(--radius); padding: 12px 16px; font-size: 13px; margin-bottom: 14px; }
 .legend b { display: block; color: var(--text-1); margin-bottom: 8px; font-size: 13px; cursor: pointer; }

@@ -91,7 +91,7 @@ export function App() {
   /* 门店 APP */
   if (portal === "app") {
     return (
-      <Shell portal={portal} onPortal={switchPortal} bare crumbs={["门店 APP（濮源直播间）"]} projectLabel="濮源直播间">
+      <Shell portal={portal} onPortal={switchPortal} bare stateGroup="门店APP" crumbs={["门店 APP（濮源直播间）"]} projectLabel="濮源直播间">
         <StoreApp />
       </Shell>
     );
@@ -100,7 +100,7 @@ export function App() {
   /* 买家端（消费者） */
   if (portal === "buyer") {
     return (
-      <Shell portal={portal} onPortal={switchPortal} bare crumbs={["买家端（消费者）"]} projectLabel="买家端">
+      <Shell portal={portal} onPortal={switchPortal} bare stateGroup="买家端" crumbs={["买家端（消费者）"]} projectLabel="买家端">
         <BuyerApp />
       </Shell>
     );
