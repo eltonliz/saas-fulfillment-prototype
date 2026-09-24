@@ -12,19 +12,18 @@ const LEG_LABEL = {
 /* 自有货的到店单据按业务口径单独显示为「总部自有 → 门店」（货为总部自有、不经供应商） */
 const legLabelOf = (d) => (d.goodsSource === "总部自有" && d.leg === "hq_store" ? "总部自有 → 门店" : LEG_LABEL[d.leg]);
 /* 配送差异状态 Tab —— 按来源分两套业务场景：
-   · 总部上报（供应商 → 总仓）：收货异常当场举证开单 → 供应商审核 → 供应商补发 → 总部收货，故无「待举证/待审核」；
+   · 收货环节少收时**当场完成举证**（差异原因 + 说明 + 图片），所以差异单开出来就直接进「待审核」，没有「待举证」这个中间态；
    · 门店上报：门店举证 → 总部审核 → 按「谁发货谁补发」补发，与门店APP同一套状态口径。
    供应商后台合并展示两类，用同一个 diffInTab（「待审核」含待供应商审核 / 待总部审核）。 */
 export const DIFF_TABS_BY_SOURCE = {
   总部上报: ["全部", "待供应商审核", "待补发", "补发中", "补发完成", "审核不通过", "已关闭"],
-  门店上报: ["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"],
+  门店上报: ["全部", "待审核", "审核通过", "审核不通过", "已关闭"],
 };
-export const DIFF_TABS = ["全部", "待举证", "待审核", "审核通过", "审核不通过", "已关闭"];
+export const DIFF_TABS = ["全部", "待审核", "审核通过", "审核不通过", "已关闭"];
 /* 补发状态三段：待补发（补发单已生成未发货）→ 补发中（已发货在途）→ 补发完成（收货闭环） */
 export const diffInTab = (status, tab) =>
   tab === "全部" ? true
-    : tab === "待举证" ? status === "待举证"
-      : tab === "待审核" ? ["待总部审核", "待供应商审核"].includes(status)
+    : tab === "待审核" ? ["待总部审核", "待供应商审核"].includes(status)
         : tab === "待供应商审核" ? status === "待供应商审核"
           : tab === "待补发" ? status === "待补发"
             : tab === "补发中" ? status === "补发中"
@@ -70,6 +69,8 @@ export function newFhdId() {
    批次不是系统按时间自动切出来的，而是发货方**显式生成**的：选门店 + 选支付时间截止点。
    所以发货侧分两个页签——日常按订单看（订单池），发货按任务看（汇总单）。
    ============================================================================ */
+/* 供应商 → 总仓的收货地址：一批货统一进仓，不落到消费者门店 */
+const HQ_ADDR = "广州市天河区科韵路 16 号";
 export const POOL_SCOPES = {
   /* 租户后台 · 发货管理：总仓发给门店（自提单；供应商供货的还要上游已到总仓） */
   hq_store: { leg: "hq_store", shipper: "九天教育总仓", match: (o) => o.delivery === "上门自提" && o.supplyMode === "总部仓直配" },
@@ -77,7 +78,10 @@ export const POOL_SCOPES = {
   sup_store: { leg: "supplier_inbound", shipper: "JOJO供应商", match: (o) => o.delivery === "上门自提" && o.supplyMode === "供应商直配" },
   /* 供应商后台 · 发总仓：总部仓直配 · 供应商供货 的自提单，货要先到总仓再发门店。
      快递单不进池——货由发货方直发消费者，不经过总仓 / 门店，供货单承载不到它 */
-  sup_hq: { leg: "supplier_to_hq", shipper: "JOJO供应商", match: (o) => o.delivery === "上门自提" && o.supplyMode === "总部仓直配" && o.goodsSource === "供应商供货" },
+  sup_hq: {
+    leg: "supplier_to_hq", shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: HQ_ADDR,
+    match: (o) => o.delivery === "上门自提" && o.supplyMode === "总部仓直配" && o.goodsSource === "供应商供货",
+  },
 };
 const POOL_DONE = ["已完成", "已取消", "已全额退款", "已关闭"];
 
@@ -100,11 +104,14 @@ export function poolOf(scope, orders, supplyDocs) {
 
 /* 生成发货任务：按门店分组，一个门店一张；items 从订单商品汇总，from 保留订单来源可追溯 */
 export function genTasksFrom(scope, pickedStores, cutoff, deps) {
+  const cfg = POOL_SCOPES[scope];
   const { orders, supplyDocs, setOrders } = deps;
   const pool = poolOf(scope, orders, supplyDocs)
     .filter((o) => pickedStores.includes(o.store) && (!cutoff || (o.payTime || o.createdAt || "") <= cutoff));
+  /* 收货方是仓时不按门店拆批：货统一进总仓，门店只是这些订单的自提点 */
   const groups = {};
-  for (const o of pool) (groups[o.store] = groups[o.store] || []).push(o);
+  if (cfg.receiver) groups[cfg.receiver] = pool;
+  else for (const o of pool) (groups[o.store] = groups[o.store] || []).push(o);
   const made = [];
   for (const [store, os] of Object.entries(groups)) {
     const items = [];
@@ -121,9 +128,9 @@ export function genTasksFrom(scope, pickedStores, cutoff, deps) {
     /* 生成只产出「待发货」任务：物流在发货环节填，生成这一步不碰物流。
        任务一旦生成就锁死：不再支持往已有任务里追加订单，避免同一批货改来改去对不上账 */
     addDoc({
-      id, leg: POOL_SCOPES[scope].leg, source: "发货任务生成",
+      id, leg: cfg.leg, source: "发货任务生成",
       batchAt: new Date().toISOString().slice(0, 19).replace("T", " "),
-      shipper: POOL_SCOPES[scope].shipper, receiver: store, receiverAddr: STORE_ADDR[store] || "",
+      shipper: cfg.shipper, receiver: store, receiverAddr: cfg.receiver ? cfg.receiverAddr : (STORE_ADDR[store] || ""),
       orderNos: os.map((o) => o.no), items, packages: [],
       qty: addQty, sent: 0, received: 0, status: "待发货",
     });
@@ -213,17 +220,21 @@ export function applyReceive(doc, p) {
       void no; void src;
     }
     for (const [store, its] of Object.entries(byStore)) {
-      if (supplyStore.get().some((d) => d.leg === "hq_store" && d.receiver === store && d.status === "待发货")) continue;
+      /* 去重按**订单**判，不按门店：门店手上已经有别的待发货批次，不该把这一单漏掉；
+         反过来，已经在任一批次里的订单也不能重复建批（同一单只能进一批） */
+      const covered = new Set(supplyStore.get().filter((d) => d.leg === "hq_store").flatMap((d) => d.orderNos || []));
+      const fresh = its.filter((x) => !covered.has(x.from[0].orderNo));
+      if (!fresh.length) continue;
       const id = newFhdId();
       supplyStore.set((ds) => [{
         id, leg: "hq_store", source: "上游收货自动生成",
         batchAt: new Date().toISOString().slice(0, 19).replace("T", " "),
         shipper: "九天教育总仓", receiver: store, receiverAddr: STORE_ADDR[store] || "",
-        orderNos: its.map((x) => x.from[0].orderNo),
-        items: its, packages: [],
-        qty: its.reduce((a, x) => a + x.qty, 0), sent: 0, received: 0, status: "待发货",
+        orderNos: fresh.map((x) => x.from[0].orderNo),
+        items: fresh, packages: [],
+        qty: fresh.reduce((a, x) => a + x.qty, 0), sent: 0, received: 0, status: "待发货",
       }, ...ds]);
-      extra += `，系统自动生成「总部仓 → ${store}」发货任务 ${id}（${its.length} 笔自提订单）`;
+      extra += `，系统自动生成「总部仓 → ${store}」发货任务 ${id}（${fresh.length} 笔自提订单）`;
     }
   }
   const undone = items.reduce((a, i) => a + Math.max(0, (i.sent || 0) - (i.received || 0)), 0);
@@ -456,6 +467,8 @@ export function OrderPool({ scope }) {
 
 /* 生成 / 追加发货任务：选门店（可多选）+ 选支付时间截止点，按门店各生成一张 */
 export function GenTaskModal({ scope, pool, cutoff, onClose, onDone }) {
+  const cfg = POOL_SCOPES[scope];
+  /* 收货方是仓（供应商 → 总仓）时不挑门店：货统一进仓，只出一张任务 */
   /* 门店多选：在页面筛选出来的范围里，再挑这次真要发的门店（有些店今天不发货）。
      支付时间不再重复给 —— 那是页面筛选区的条件，这里只显示，避免两处口径打架 */
   const stores = [...new Set(pool.map((o) => o.store))];
@@ -464,7 +477,7 @@ export function GenTaskModal({ scope, pool, cutoff, onClose, onDone }) {
   const byStore = {};
   for (const o of will) (byStore[o.store] = byStore[o.store] || []).push(o);
   const toggle = (x) => setPicked((a) => (a.includes(x) ? a.filter((y) => y !== x) : [...a, x]));
-  const n = Object.keys(byStore).length;
+  const n = cfg.receiver ? (will.length ? 1 : 0) : Object.keys(byStore).length;
   /* 订单明细可展开收起：单少时默认摊开（一眼核完），单多时默认收起（别把弹窗撑爆） */
   const [openMap, setOpenMap] = useState({});
   const isOpen = (x, cnt) => (x in openMap ? openMap[x] : cnt <= 3);
@@ -476,14 +489,22 @@ export function GenTaskModal({ scope, pool, cutoff, onClose, onDone }) {
         <header>生成发货任务<button className="x" onClick={onClose}>×</button></header>
         <div className="body">
           <div className="alert">
-            <span className="ic">i</span>把「发往同一门店、支付时间在截止点之前」的订单汇总成一张发货任务，每个门店各一张。
-            订单进入任务后不会再次出现在自提订单里，避免重复发货。
+            <span className="ic">i</span>
+            {cfg.receiver
+              ? <>把支付时间在截止点之前的订单汇总成<b style={{ margin: "0 4px" }}>一张</b>发货任务，统一发往 {cfg.receiver}；门店只是这些订单的自提点，不按门店拆批。订单进入任务后不会再次出现在自提订单里，避免重复发货。</>
+              : <>把「发往同一门店、支付时间在截止点之前」的订单汇总成一张发货任务，每个门店各一张。订单进入任务后不会再次出现在自提订单里，避免重复发货。</>}
           </div>
 
           <div className="frow" style={{ marginTop: 14 }}>
-            <label><i className="req">*</i>发往门店</label>
+            <label><i className="req">*</i>{cfg.receiver ? "收货主体" : "发往门店"}</label>
             <div className="fc">
-              <div className="radio-row" style={{ flexWrap: "wrap", gap: 16 }}>
+              {cfg.receiver && (
+                <>
+                  <div style={{ fontSize: 13.5 }}><b>{cfg.receiver}</b>　<span className="note" style={{ display: "inline" }}>{cfg.receiverAddr}</span></div>
+                  <div className="note">货统一进仓，下面按门店列出这批涉及的自提单；仓收货后再由总部仓发往各门店。</div>
+                </>
+              )}
+              <div className="radio-row" style={{ flexWrap: "wrap", gap: 16, display: cfg.receiver ? "none" : undefined }}>
                 {stores.map((x) => (
                   <label key={x}>
                     <input type="checkbox" checked={picked.includes(x)} onChange={() => toggle(x)} />
@@ -735,7 +756,7 @@ export function SupplyDiff() {
                   <td className="tw">{d.shipper}</td>
                   <td>{d.summary}</td>
                   <td className="tw">{d.evidence}</td>
-                  <td className="tw"><span className={`tag ${d.status === "待举证" || d.status === "待补发" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "补发中" || d.status === "补发完成" ? "" : "gray"}`}>{d.status}</span>{d.rejectReason && <small style={{ color: "#f5522e" }}>原因：{d.rejectReason}</small>}</td>
+                  <td className="tw"><span className={`tag ${d.status === "待补发" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "补发中" || d.status === "补发完成" ? "" : "gray"}`}>{d.status}</span>{d.rejectReason && <small style={{ color: "#f5522e" }}>原因：{d.rejectReason}</small>}</td>
                   <td className="tw">{d.makeup
                     ? <span className="mono" style={{ color: "#25c7a5" }}>
                         {d.makeup}
@@ -888,7 +909,7 @@ function DiffDetailDrawer({ row, onClose }) {
               <div className="frow"><label>差异摘要</label><div className="fc"><input value={row.summary} readOnly /></div></div>
               <div className="frow"><label>举证信息</label><div className="fc"><input value={row.evidence} readOnly /></div></div>
               <div className="frow"><label>举证照片</label><div className="fc" style={{ paddingTop: 6 }}><EvidencePhotos evidence={row.evidence} /></div></div>
-              <div className="frow"><label>当前状态</label><div className="fc"><span className={`tag ${row.status === "待举证" ? "warn" : ["待供应商审核", "待总部审核"].includes(row.status) ? "blue" : row.status === "审核不通过" ? "danger" : row.status === "已关闭" ? "gray" : ""}`}>{row.status}</span></div></div>
+              <div className="frow"><label>当前状态</label><div className="fc"><span className={`tag ${row.status === "待补发" ? "warn" : ["待供应商审核", "待总部审核"].includes(row.status) ? "blue" : row.status === "审核不通过" ? "danger" : row.status === "已关闭" ? "gray" : ""}`}>{row.status}</span></div></div>
               {row.rejectReason && <div className="frow"><label>驳回原因</label><div className="fc"><input value={row.rejectReason} readOnly style={{ color: "#f5522e" }} /></div></div>}
               {row.makeup && <div className="frow"><label>补发供货单</label><div className="fc"><input className="mono" value={row.makeup} readOnly /></div></div>}
               {row.makeup && (
@@ -1078,7 +1099,7 @@ function ShipDrawer({ doc, onClose, onDone }) {
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
           <button className="btn primary" disabled={totalOut < 1 || !parcels.length}
-            onClick={() => onDone({ lines: lines.filter((x) => x.out > 0).map((x) => ({ product: x.product, qty: x.out })), packages: parcels })}>确认发货</button>
+            onClick={() => onDone({ lines: lines.filter((x) => x.out > 0).map((x) => ({ product: x.product, qty: x.out })), packages: parcels, qty: totalOut })}>确认发货</button>
         </div>
       </div>
       {rel && <OrderRefsPop item={rel} orders={orderStore.get()} onClose={() => setRel(null)} />}
@@ -1520,7 +1541,7 @@ export function ReceiveAbnormal({ doc, ro }) {
           <>
             <div>异常情况：<b>{diff.summary}</b></div>
             <div>上报来源：{diff.source}（{diff.reporter}收货点验）</div>
-            <div>凭证：{diff.evidence && diff.evidence !== "—" ? diff.evidence : diff.status === "待举证" ? "收货方待举证" : "—"}</div>
+            <div>凭证：{diff.evidence && diff.evidence !== "—" ? diff.evidence : "—"}</div>
             <div>关联差异单：<span className="mono">{diff.id}</span>　<span className="tag danger">{diff.status}</span>{diff.makeup && <>　补发单 <span className="mono">{diff.makeup}</span></>}</div>
           </>
         ) : (

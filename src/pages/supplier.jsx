@@ -1081,7 +1081,7 @@ function SupShipModal({ doc, onClose, onDone }) {
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
           <button className="btn primary" disabled={!parcels.length || totalOut < 1}
-            onClick={() => onDone({ lines: lines.filter((x) => x.out > 0).map((x) => ({ product: x.product, qty: x.out })), packages: parcels })}>确认发货</button>
+            onClick={() => onDone({ lines: lines.filter((x) => x.out > 0).map((x) => ({ product: x.product, qty: x.out })), packages: parcels, qty: totalOut })}>确认发货</button>
         </div>
       </div>
       {rel && <OrderRefsPop item={rel} orders={orderStore.get()} mask onClose={() => setRel(null)} />}
@@ -1222,7 +1222,7 @@ export function SupDiff() {
                 <td>{d.summary}</td>
                 <td className="tw">{d.evidence}<div style={{ marginTop: 4 }}><EvidencePhotos evidence={d.evidence} size={30} /></div></td>
                 <td className="tw">{d.status === "审核不通过" ? (<><span className="tag danger">不通过</span>{d.rejectReason && <small style={{ color: "#f5522e", display: "block" }}>原因：{d.rejectReason}</small>}</>) : ["待补发", "补发中", "补发完成"].includes(d.status) ? <span className="tag">已通过</span> : <span style={{ color: "#999" }}>—</span>}</td>
-                <td className="tw"><span className={`tag ${d.status === "待举证" || d.status === "待补发" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "已关闭" ? "gray" : ""}`}>{d.status}</span></td>
+                <td className="tw"><span className={`tag ${d.status === "待补发" ? "warn" : ["待供应商审核", "待总部审核"].includes(d.status) ? "blue" : d.status === "审核不通过" ? "danger" : d.status === "已关闭" ? "gray" : ""}`}>{d.status}</span></td>
                 <td className="tw">{d.makeup
                   ? <span className="mono" style={{ color: "#25c7a5" }}>{d.makeup}<small style={{ display: "block", fontFamily: "inherit" }}>{makeupOf(d) ? `${makeupOf(d).status}${makeupOf(d).tracking ? " · 已发物流" : ""}` : "—"}</small></span>
                   : <span style={{ color: "#999" }}>—</span>}</td>
@@ -1246,17 +1246,10 @@ export function SupDiff() {
           doc={ship}
           onClose={() => setShip(null)}
           onDone={(p) => {
-            const sent = (ship.sent ?? 0) + p.qty;
-            patchDoc(ship.id, {
-              sent,
-              carrier: p.carrier || ship.carrier,
-              tracking: p.tracking || ship.tracking,
-              track: "已发货 " + new Date().toISOString().slice(0, 19).replace("T", " "),
-              status: sent >= ship.qty ? "已发货" : "待发货",
-            });
-            tip(`补发单 ${ship.id} 已发货 ${p.qty} 件`);
-            /* 补发发货 → 差异单推进：待补发 → 补发中（在途） */
-            if (sent >= ship.qty) diffStore.set((ds) => ds.map((x) => (x.makeup === ship.id && x.status === "待补发" ? { ...x, status: "补发中" } : x)));
+            /* 与租户侧同一套写入：按商品行记 sent、包裹进 packages（物流轨迹 / 收货页都读它） */
+            tip(applyShip(ship, p));
+            /* 补发发货 → 差异单推进：待补发 → 补发中（在途）；到货收货后由收货链路转「补发完成」 */
+            if ((ship.sent ?? 0) + p.qty >= ship.qty) diffStore.set((ds) => ds.map((x) => (x.makeup === ship.id && x.status === "待补发" ? { ...x, status: "补发中" } : x)));
             setShip(null);
           }}
         />

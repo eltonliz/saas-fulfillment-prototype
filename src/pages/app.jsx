@@ -141,7 +141,7 @@ export function StoreApp() {
 
         <div className="mnav">
           <button className="back" onClick={() => { setView("home"); setConfirm(false); }}>‹</button>
-          <span>{view === "home" ? "工作台" : view === "receipts" ? "收货管理" : view === "receive" ? "供货单详情" : view === "diffs" ? "配送差异" : view === "diffDetail" ? "差异单详情" : view === "returns" ? "退货返厂" : "举证信息"}</span>
+          <span>{view === "home" ? "工作台" : view === "receipts" ? "收货管理" : view === "receive" ? "供货单详情" : view === "diffs" ? "配送差异" : view === "diffDetail" ? "差异单详情" : view === "returns" ? "退货返厂" : "配送差异"}</span>
           {view !== "home" && <span style={{ marginLeft: "auto", color: "#666", fontSize: 18, letterSpacing: 1 }}>⋯</span>}
         </div>
 
@@ -157,10 +157,9 @@ export function StoreApp() {
               onGoDiffs={() => setView("diffs")}
             />
           )}
-          {view === "diffs" && <Diffs onDetail={(d) => { setDiffCard(d); setView("diffDetail"); }} onEvidence={(d) => { setDiffCard(d); setView("evidence"); }} />}
-          {view === "diffDetail" && <DiffDetail row={diffCard} onBack={() => setView("diffs")} onEvidence={() => { setDiffCard(diffCard); setView("evidence"); }} />}
-          {/* 举证提交直接写 diffStore，列表读的是同一份数据，不需要回调再改本地 state */}
-          {view === "evidence" && <Evidence card={diffCard} onBack={() => setView("diffs")} />}
+          {view === "diffs" && <Diffs onDetail={(d) => { setDiffCard(d); setView("diffDetail"); }} />}
+          {view === "diffDetail" && <DiffDetail row={diffCard} onBack={() => setView("diffs")} />}
+          {/* 差异单与凭证在确认收货时一次性写入 diffStore，列表读的是同一份数据，不需要回调再改本地 state */}
           {view === "returns" && <Returns />}
         </div>
 
@@ -569,9 +568,9 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
       {card.status === "收货异常" && (
         <div className="mcard">
           <div style={{ fontSize: 12.5, color: "#f5522e", lineHeight: 1.9 }}>
-            实收与应收存在差异，已自动生成配送差异单；请前往「配送差异」页完成举证，待总部审核后按链路补发。
+            实收与应收存在差异，差异单已自动生成，收货时填的差异原因与图片凭证已一并提交；可在「配送差异」页跟踪总部审核与补发进度。
           </div>
-          <button className="btn primary sm" style={{ marginTop: 10 }} onClick={onGoDiffs}>去配送差异举证</button>
+          <button className="btn primary sm" style={{ marginTop: 10 }} onClick={onGoDiffs}>去配送差异</button>
         </div>
       )}
 
@@ -597,9 +596,9 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
 }
 
 /* ---------------- 配送差异（照收货页风格 + Axure 差异页字段） ---------------- */
-/* 状态口径与后台一片：待举证（等门店）/ 待审核（等总部）/ 补发中·补发完成（通过后补发）/ 不通过 / 已关闭 */
-const DIFF_TONE = (s) => (s === "待举证" ? "#f5a623"
-  : ["待总部审核", "待供应商审核"].includes(s) ? "#2f80ed"
+/* 状态口径与后台一片：待审核（等总部）/ 补发中·补发完成（通过后补发）/ 不通过 / 已关闭
+   没有「待举证」：门店确认收货少收时，就在收货页当场填了原因 + 说明 + 图片，差异单一开出来就是「待总部审核」 */
+const DIFF_TONE = (s) => (["待总部审核", "待供应商审核"].includes(s) ? "#2f80ed"
     : ["待补发", "补发中", "补发完成"].includes(s) ? "#25c7a5"
       : s === "审核不通过" ? "#f5522e" : "#999");
 
@@ -614,7 +613,7 @@ const parseSummary = (s) => {
   return m ? { shouldQty: Number(m[1]), realQty: Number(m[2]) } : null;
 };
 
-function Diffs({ onDetail, onEvidence }) {
+function Diffs({ onDetail }) {
   const rows = diffStore.use().filter((d) => d.source === "门店上报");
   const docs = [...supplyStore.use(), ...supplierStore.use()];
   const [chip, setChip] = useState("全部");
@@ -642,10 +641,7 @@ function Diffs({ onDetail, onEvidence }) {
             {d.makeup && <div className="mrow"><span>补发供货单</span><b className="mono">{d.makeup}</b></div>}
             {d.rejectReason && <div className="mrow"><span>驳回原因</span><b style={{ fontWeight: 400, textAlign: "right", color: "#f5522e" }}>{d.rejectReason}</b></div>}
             <div className="macts">
-              {/* 待举证时还没内容可看，详情入口收起来，只留「去举证」 */}
-              {d.status === "待举证"
-                ? <button className="btn primary sm" onClick={() => onEvidence(d)}>去举证</button>
-                : <button className="btn sm" onClick={() => onDetail(d)}>查看详情</button>}
+              <button className="btn sm" onClick={() => onDetail(d)}>查看详情</button>
             </div>
           </div>
         ))}
@@ -655,7 +651,7 @@ function Diffs({ onDetail, onEvidence }) {
   );
 }
 
-/* 来源供货单：举证和查详情都要对着它看——店员手上是货和快递箱，得知道是哪一单、谁发的、单号多少 */
+/* 来源供货单：查详情时对着它看——店员手上是货和快递箱，得知道是哪一单、谁发的、单号多少 */
 function SrcDocBlock({ diff, docs }) {
   const src = srcDocOf(docs, diff.supplyNo);
   if (!src) return (
@@ -702,7 +698,7 @@ function DiffItemsBlock({ diff, docs }) {
 }
 
 /* ---------------- 差异单详情（查看详情落点） ---------------- */
-function DiffDetail({ row, onBack, onEvidence }) {
+function DiffDetail({ row, onBack }) {
   const docs = [...supplyStore.use(), ...supplierStore.use()];
   if (!row) return null;
   return (
@@ -722,90 +718,16 @@ function DiffDetail({ row, onBack, onEvidence }) {
       <SrcDocBlock diff={row} docs={docs} />
       <DiffItemsBlock diff={row} docs={docs} />
 
-      {row.status === "待举证" ? (
-        <div className="mcard" style={{ background: "#fff7e8", color: "#b7791f", fontSize: 12.5, lineHeight: 1.8 }}>
-          到货点验与发货单存在差异，请<b>尽快上传凭证</b>；提交后由总部（租户）审核，审核通过后按「谁发货谁补发」补发。
-        </div>
-      ) : (
-        <div className="mcard" style={{ background: "#f5f7f8", color: "#666", fontSize: 12.5, lineHeight: 1.8 }}>
-          {["待总部审核", "待供应商审核"].includes(row.status) ? "凭证已提交，等待总部（租户）审核。"
+      <div className="mcard" style={{ background: "#f5f7f8", color: "#666", fontSize: 12.5, lineHeight: 1.8 }}>
+        {["待总部审核", "待供应商审核"].includes(row.status) ? "收货时已提交凭证，等待总部（租户）审核。"
             : ["待补发", "补发中"].includes(row.status) ? `总部审核已通过，补发由${row.shipper}按链路执行${row.makeup ? `（补发单 ${row.makeup}）` : ""}。`
-              : row.status === "补发完成" ? "补发已完成，本差异单闭环。"
-                : row.status === "审核不通过" ? "总部审核不通过，本差异单不再补发，如有疑问请联系总部。"
-                  : "本差异单已关闭。"}
-        </div>
-      )}
+            : row.status === "补发完成" ? "补发已完成，本差异单闭环。"
+              : row.status === "审核不通过" ? "总部审核不通过，本差异单不再补发，如有疑问请联系总部。"
+                : "本差异单已关闭。"}
+      </div>
 
       <div style={{ display: "flex", gap: 10, paddingBottom: 16 }}>
         <button className="btn plain" style={{ flex: 1 }} onClick={onBack}>返回</button>
-        {row.status === "待举证" && <button className="btn primary" style={{ flex: 2 }} onClick={onEvidence}>去举证</button>}
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- 举证信息 ---------------- */
-function Evidence({ card, onBack, onSubmitted }) {
-  const docs = [...supplyStore.use(), ...supplierStore.use()];
-  const [reasons, setReasons] = useState(["少货"]);
-  const [note, setNote] = useState("");
-  const [photos, setPhotos] = useState(0);
-  const [done, setDone] = useState(false);
-  if (!card) return null;
-  return (
-    <div className="mpad">
-      <div className="mcard">
-        <div className="hd"><b>配货差异单 {card.id}</b><span style={{ color: done ? "#2f80ed" : "#f5a623", fontSize: 12.5 }}>{done ? "待审核" : "待举证"}</span></div>
-        <div className="mrow"><span>来源链路</span><b>{card.leg}</b></div>
-        <div className="mrow"><span>关联供货单</span><b className="mono">{card.supplyNo}</b></div>
-        <div className="mrow"><span>发货方</span><b>{card.shipper}（补发责任方）</b></div>
-      </div>
-
-      <SrcDocBlock diff={card} docs={docs} />
-      <DiffItemsBlock diff={card} docs={docs} />
-
-      <div className="mcard">
-        <div className="mfield">
-          <label><i>*</i>配货差异原因</label>
-          <div className="mchips">
-            {["少货", "商品破损", "错货", "其他"].map((r) => (
-              <label key={r}>
-                <input type="checkbox" checked={reasons.includes(r)}
-                  onChange={() => setReasons((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]))} />
-                {r}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="mfield">
-          <label>说明</label>
-          <textarea rows={3} placeholder="请输入说明，最多200字" maxLength={200}
-            value={note} onChange={(e) => setNote(e.target.value)} />
-          <div style={{ textAlign: "right", fontSize: 11.5, color: "#bbb" }}>{note.length}/200</div>
-        </div>
-
-        <div className="mfield" style={{ marginBottom: 0 }}>
-          <label><i>*</i>上传图片（最多上传5张）</label>
-          <div className="mupload">
-            <span className="ph" onClick={() => setPhotos((p) => Math.min(5, p + 1))}>＋</span>
-            {Array.from({ length: photos }, (_, i) => <span className="ph" key={i} style={{ background: "#e8ecef" }}>🧾</span>)}
-          </div>
-          <div style={{ fontSize: 11.5, color: "#999", marginTop: 6 }}>上传文件（单个不超5M）</div>
-        </div>
-      </div>
-
-      {done && <div className="mcard" style={{ background: "#eefbf8", color: "#25c7a5", textAlign: "center", fontSize: 12.5 }}>举证已提交，等待总部审核（租户后台差异单已转「待总部审核」）</div>}
-
-      <div style={{ display: "flex", gap: 10, paddingBottom: 16 }}>
-        <button className="btn plain" style={{ flex: 1 }} onClick={onBack}>取消</button>
-        <button className="btn primary" style={{ flex: 2 }} disabled={done || !reasons.length || photos < 1}
-          onClick={() => {
-            /* 举证写回 diffStore：两端同一份数据，租户后台该单即时转「待总部审核」 */
-            diffStore.set((ds) => ds.map((x) => (x.id === card.id ? { ...x, status: "待总部审核", evidence: `${reasons.join("、")} · 照片 ${photos} 张` } : x)));
-            setDone(true);
-            onSubmitted && onSubmitted();
-          }}>提交</button>
       </div>
     </div>
   );
@@ -990,7 +912,7 @@ function NewReturnSheet({ sources, onClose, onSubmit }) {
           <label><i>*</i>关联供货单</label>
           <select value={idx} onChange={(e) => setIdx(Number(e.target.value))} style={{ width: "100%", height: 38 }}>
             {sources.map((s, i) => (
-              <option key={s.supplyNo + s.orderNo} value={i}>{s.supplyNo} · {s.product}</option>
+              <option key={s.supplyNo + s.orderNo} value={i}>{s.supplyNo} · {s.product} · {s.orderNo} · {s.buyer}</option>
             ))}
           </select>
         </div>
@@ -1079,7 +1001,7 @@ function WarmTip({ onCancel, onOk }) {
       <div style={{ width: 300, background: "#fff", borderRadius: 8, padding: 20 }}>
         <b style={{ display: "block", textAlign: "center", fontSize: 15, marginBottom: 14 }}>温馨提示</b>
         <div style={{ fontSize: 12.5, lineHeight: 1.9, color: "#666" }}>
-          当前供货单确认收货数量和实际送货数量有差异，确认收货后会自动生成配送差异单，并需要完成举证。
+          当前供货单确认收货数量和实际送货数量有差异。下一步需填写差异原因、说明并上传图片凭证，确认收货后自动生成配送差异单。
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
           <button className="btn plain" style={{ flex: 1, height: 38 }} onClick={onCancel}>取消</button>

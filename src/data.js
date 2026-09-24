@@ -1516,10 +1516,10 @@ export const EXPRESS_TPL = [
 /* 配送差异单（双来源，谁被上报谁审核：总部上报 → 供应商审核；门店上报 → 总部审核） */
 export const DIFFS = [
   { id: "DIFF2609170003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609160093", shipper: "供应商003", summary: "什锦果蔬 应收4/实收3 差1", diffQty: 1, status: "待补发", evidence: "少货 · 照片 2 张", makeup: "FHD2609180099" },
-  { id: "DIFF2609170001", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609180100", shipper: "九天教育总仓", summary: "画板套装 应收2/实收0 差2", diffQty: 2, status: "待举证", evidence: "—" },
+  { id: "DIFF2609170001", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609180100", shipper: "九天教育总仓", summary: "画板套装 应收2/实收0 差2｜少货", diffQty: 2, status: "待总部审核", evidence: "少货 · 照片 2 张", note: "整箱少 2 件，外箱无破损" },
   { id: "DIFF2609170002", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609120090", shipper: "九天教育总仓", summary: "什锦果蔬 应收5/实收4 差1", diffQty: 1, status: "待总部审核", evidence: "少货 · 照片 1 张" },
   { id: "DIFF2609170004", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609180100", shipper: "九天教育总仓", summary: "儿童绘本套装 应收9/实收8 差1", diffQty: 1, status: "补发中", evidence: "少货 · 照片 3 张", makeup: "FHD2609180091" },
-  { id: "DIFF2609170005", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170093", shipper: "供应商002", summary: "相机 应收3/实收2 差1", diffQty: 1, status: "待举证", evidence: "—" },
+  { id: "DIFF2609170005", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170093", shipper: "供应商002", summary: "相机 应收3/实收2 差1｜少货", diffQty: 1, status: "待总部审核", evidence: "少货 · 照片 1 张", note: "少 1 台相机" },
   { id: "DIFF2609150004", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609150090", shipper: "JOJO供应商", summary: "华为手机 应收1/实收1 错货 1 件", diffQty: 1, status: "审核不通过", evidence: "错货 · 照片 2 张", rejectReason: "举证照片无法证明错货，线下核实商品无误" },
   { id: "DIFF2609190002", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180098", shipper: "JOJO供应商", summary: "奶粉(复制) 应收2/实收1 差1", diffQty: 1, status: "已关闭", evidence: "少货 · 照片 1 张" },
   /* 总部上报样例：总仓收货登记少收（举证随收货完成），待供应商审核 → 通过后供应商补发 */
