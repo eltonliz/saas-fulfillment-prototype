@@ -54,7 +54,7 @@ const canReceive = (d) => ["已发货", "部分收货"].includes(d.status);
 /* ============================================================================
    收货提交：数量定状态（决策 3）、异常定差异单（决策 1）、举证并入收货（决策 4）、补发闭环终态（决策 5）
    ============================================================================ */
-const STORE_ADDR = { "9071门店": "辽宁省铁岭市银州区工人街 28 号", "九天门店": "广东省广州市荔湾区宝华路 76 号" };
+const STORE_ADDR = { "9071门店": "辽宁省铁岭市银州区工人街 28 号", "九天门店": "广东省广州市荔湾区宝华路 76 号", "濮源直播间": "广州市越秀区东风中路 410 号时代地产中心" };
 /* 生成下一个 FHD 单号（跨两端去重） */
 export function newFhdId() {
   const used = new Set([...supplyStore.get(), ...supplierStore.get()].map((d) => d.id));
@@ -134,7 +134,7 @@ export function genTasksFrom(scope, pickedStores, cutoff, deps) {
   return made;
 }
 
-function applyReceive(doc, p) {
+export function applyReceive(doc, p) {
   /* 汇总单按**商品行**登记本次实收：items 是唯一源头，单据级 qty/sent/received 由它汇总 */
   const got = (p.lines || []).reduce((a, x) => a + x.got, 0);
   const items = itemsOf(doc).map((it) => {

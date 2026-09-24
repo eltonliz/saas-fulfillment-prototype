@@ -1005,6 +1005,159 @@ export const SUPPLY_DOCS = [
     qty: 15, sent: 15, received: 6,
     status: "部分收货",
   },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190001", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-19 09:20:00",
+    shipper: "供应商001", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", 
+    orderNos: [],
+    items: [
+      { product: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", qty: 132, sent: 0, received: 0, from: [] },
+    ],
+    qty: 132, sent: 0, received: 0,
+    status: "待发货",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190002", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-19 10:05:00",
+    shipper: "供应商002", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", 
+    orderNos: [],
+    items: [
+      { product: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", qty: 40, sent: 40, received: 0, from: [] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712004901", track: "已发货 2026-09-19 14:30:00" }],
+    qty: 40, sent: 40, received: 0,
+    status: "待收货",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190003", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-19 11:10:00",
+    shipper: "供应商002", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", 
+    orderNos: [],
+    items: [
+      { product: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", qty: 132, sent: 132, received: 100, from: [] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712004915", track: "已发货 2026-09-19 15:10:00" }],
+    qty: 132, sent: 132, received: 100,
+    status: "部分收货",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190004", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-19 08:45:00",
+    shipper: "供应商003", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", 
+    orderNos: [],
+    items: [
+      { product: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", qty: 40, sent: 40, received: 38, from: [] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT5598712301", track: "已发货 2026-09-19 12:40:00" }],
+    qty: 40, sent: 40, received: 38,
+    status: "收货异常",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190005", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 13:30:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "供应商供货", 
+    orderNos: [],
+    items: [
+      { product: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", qty: 20, sent: 0, received: 0, from: [] },
+    ],
+    qty: 20, sent: 0, received: 0,
+    status: "待发货",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190006", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 14:20:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "供应商供货", 
+    orderNos: [],
+    items: [
+      { product: "保温饭盒", spec: "304不锈钢 / 1.2L", emoji: "🍱", qty: 15, sent: 15, received: 0, from: [] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112601", track: "已发货 2026-09-19 18:00:00" }],
+    qty: 15, sent: 15, received: 0,
+    status: "待收货",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190007", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 09:48:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "供应商供货", 
+    orderNos: [],
+    items: [
+      { product: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", qty: 20, sent: 20, received: 12, from: [] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712007733", track: "已发货 2026-09-19 16:20:00" }],
+    qty: 20, sent: 20, received: 12,
+    status: "部分收货",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190008", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 17:12:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "供应商供货", 
+    orderNos: [],
+    items: [
+      { product: "保温饭盒", spec: "304不锈钢 / 1.2L", emoji: "🍱", qty: 15, sent: 15, received: 14, from: [] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT5500338942", track: "已发货 2026-09-20 09:00:00" }],
+    qty: 15, sent: 15, received: 14,
+    status: "收货异常",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190009", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 15:40:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "总部自有", 
+    orderNos: [],
+    items: [
+      { product: "山茶油", spec: "750ml / 瓶", emoji: "🫒", qty: 30, sent: 0, received: 0, from: [] },
+    ],
+    qty: 30, sent: 0, received: 0,
+    status: "待发货",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190010", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 16:05:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "总部自有", 
+    orderNos: [],
+    items: [
+      { product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 24, sent: 24, received: 0, from: [] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712007901", track: "已发货 2026-09-19 20:10:00" }, { carrier: "中通快递", tracking: "ZT8800112702", track: "已发货 2026-09-20 08:30:00" }],
+    qty: 24, sent: 24, received: 0,
+    status: "待收货",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190011", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-15 11:00:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "总部自有", 
+    orderNos: [],
+    items: [
+      { product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 18, sent: 18, received: 18, from: [] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT5500339012", track: "已签收 2026-09-16 10:30:00" }],
+    qty: 18, sent: 18, received: 18,
+    status: "已收货",
+  },
+  /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
+     否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609190012", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-18 10:15:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "总部自有", 
+    orderNos: [],
+    items: [
+      { product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 10, sent: 10, received: 8, from: [] },
+    ],
+    packages: [{ carrier: "韵达快递", tracking: "YD3300992044", track: "已发货 2026-09-18 16:40:00" }],
+    qty: 10, sent: 10, received: 8,
+    status: "收货异常",
+  },
 ];
 
 

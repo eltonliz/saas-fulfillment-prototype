@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { useReturns, setReturns, patchHop, diffStore, addDiff, supplyStore, supplierStore } from "../store.js";
-import { diffInTab, DIFF_TABS } from "./supply.jsx";
-import { afterAddrOf, fmtAddr } from "../data.js";
+import { useReturns, setReturns, patchHop, diffStore, addDiff, supplyStore, supplierStore, orderStore } from "../store.js";
+import { diffInTab, DIFF_TABS, applyReceive } from "./supply.jsx";
+import { afterAddrOf, fmtAddr, itemsOf, qtyOf, sentOf, receivedOf, packagesOf, ordersOf, itemsLabel } from "../data.js";
 import { FlowNode, FlowArrow } from "./buyer.jsx";
 import { useReqPage } from "./reqnotes.jsx";
 
@@ -10,27 +10,85 @@ import { useReqPage } from "./reqnotes.jsx";
    ============================================================================ */
 /* 门店APP 的收货方就是登录门店自己，详情页不再重复展示门店信息（原来的写死常量已删） */
 
-const RECEIPT_CARDS = [
-  { id: "c1", mode: "供应商直配", state: "待发货", qty: "132件", no: "DB20260420106", orderNo: "ORD260918000310", buyer: "王小美", buyerPhone: "13812345678", delivery: "上门自提", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", shipper: "供应商001", shippedAt: "", carrier: "", tracking: "" },
-  { id: "c2", mode: "供应商直配", state: "待收货", qty: "132件", no: "DB20260420108", orderNo: "ORD260918000310", buyer: "王小美", buyerPhone: "13812345678", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", shipper: "供应商001", shippedAt: "2026-04-20 14:30", carrier: "顺丰速运", tracking: "SF7712004901" },
-  { id: "c3", mode: "供应商直配", state: "已收货", qty: "132件", no: "DB20260420109", orderNo: "ORD260918000310", buyer: "王小美", buyerPhone: "13812345678", delivery: "上门自提", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", shipper: "供应商001", shippedAt: "2026-04-18 09:05", carrier: "顺丰速运", tracking: "SF7712004877" },
-  /* 总部仓直配（供应商供货）：货先到总仓，再由总仓发到门店 */
-  { id: "c4", mode: "总部仓直配", state: "待发货", qty: "40件", no: "FHD2609180005", orderNo: "ORD260918000311", buyer: "李建国", buyerPhone: "13900001111", delivery: "上门自提", acts: ["查看详情"], name: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", shipper: "九天教育总仓", shippedAt: "", carrier: "", tracking: "" },
-  { id: "c5", mode: "总部仓直配", state: "待收货", qty: "40件", no: "FHD2609180006", orderNo: "ORD260918000311", buyer: "李建国", buyerPhone: "13900001111", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", shipper: "九天教育总仓", shippedAt: "2026-09-19 09:20", carrier: "中通快递", tracking: "ZT8800112601" },
-  /* 总部仓直配 · 自有货：不经供应商，总部仓直发门店 */
-  { id: "c6", mode: "总部仓直配 · 自有货", state: "待收货", qty: "20件", no: "FHD2609180018", orderNo: "ORD260918000312", buyer: "陈小雨", buyerPhone: "13700002222", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", shipper: "九天教育总仓", shippedAt: "2026-09-19 10:05", carrier: "顺丰速运", tracking: "SF7712007702" },
-  { id: "c7", mode: "总部仓直配 · 自有货", state: "已收货", qty: "15件", no: "FHD2609180017", orderNo: "ORD260918000312", buyer: "陈小雨", buyerPhone: "13700002222", delivery: "上门自提", acts: ["查看详情"], name: "保温饭盒", spec: "304不锈钢 / 1.2L", emoji: "🍱", shipper: "九天教育总仓", shippedAt: "2026-09-17 15:40", carrier: "圆通速递", tracking: "YT5500338890" },
-  /* 分次收货（上次收部分、剩待补）与收货异常（实收≠应收 → 自动开差异单、门店到差异页举证）：三组各铺一张便于演示 */
-  { id: "c8", mode: "供应商直配", state: "待收货", qty: "132件", recv: 100, remain: 32, no: "DB20260420110", orderNo: "ORD260918000313", buyer: "赵一诺", buyerPhone: "13600003333", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", shipper: "供应商002", shippedAt: "2026-04-20 11:10", carrier: "顺丰速运", tracking: "SF7712004915" },
-  { id: "c9", mode: "供应商直配", state: "收货异常", qty: "132件", recv: 130, remain: 2, no: "DB20260420111", orderNo: "ORD260918000313", buyer: "赵一诺", buyerPhone: "13600003333", delivery: "上门自提", acts: ["查看详情"], name: "得佑婴幼儿手口湿巾 弱酸无残留", spec: "80抽×3包 / 箱", emoji: "🧴", shipper: "供应商002", shippedAt: "2026-04-19 08:45", carrier: "顺丰速运", tracking: "SF7712004862" },
-  { id: "c10", mode: "总部仓直配", state: "待收货", qty: "40件", recv: 30, remain: 10, no: "FHD2609180021", orderNo: "ORD260918000314", buyer: "孙丽", buyerPhone: "13500004444", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", shipper: "九天教育总仓", shippedAt: "2026-09-19 14:22", carrier: "中通快递", tracking: "ZT8800112644" },
-  { id: "c11", mode: "总部仓直配", state: "收货异常", qty: "40件", recv: 38, remain: 2, no: "FHD2609180020", orderNo: "ORD260918000314", buyer: "孙丽", buyerPhone: "13500004444", delivery: "上门自提", acts: ["查看详情"], name: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", shipper: "九天教育总仓", shippedAt: "2026-09-18 16:30", carrier: "中通快递", tracking: "ZT8800112588" },
-  { id: "c12", mode: "总部仓直配 · 自有货", state: "待收货", qty: "20件", recv: 12, remain: 8, no: "FHD2609180022", orderNo: "ORD260918000315", buyer: "周慧", buyerPhone: "13400005555", delivery: "上门自提", acts: ["查看详情", "查看物流", "确认收货"], name: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", shipper: "九天教育总仓", shippedAt: "2026-09-19 09:48", carrier: "顺丰速运", tracking: "SF7712007733" },
-  { id: "c13", mode: "总部仓直配 · 自有货", state: "收货异常", qty: "15件", recv: 14, remain: 1, no: "FHD2609180023", orderNo: "ORD260918000315", buyer: "周慧", buyerPhone: "13400005555", delivery: "上门自提", acts: ["查看详情"], name: "保温饭盒", spec: "304不锈钢 / 1.2L", emoji: "🍱", shipper: "九天教育总仓", shippedAt: "2026-09-18 17:12", carrier: "圆通速递", tracking: "YT5500338942" },
-  /* 补齐：总部仓直配组「已收货」、自有货组「待发货」→ 三组 × 五状态全有数据 */
-  { id: "c14", mode: "总部仓直配", state: "已收货", qty: "25件", no: "FHD2609180019", orderNo: "ORD260918000316", buyer: "吴强", buyerPhone: "13300006666", delivery: "上门自提", acts: ["查看详情"], name: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", emoji: "🥤", shipper: "九天教育总仓", shippedAt: "2026-09-17 10:15", carrier: "中通快递", tracking: "ZT8800112510" },
-  { id: "c15", mode: "总部仓直配 · 自有货", state: "待发货", qty: "30件", no: "FHD2609180024", orderNo: "ORD260918000317", buyer: "郑爽", buyerPhone: "13200007777", delivery: "上门自提", acts: ["查看详情"], name: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", shipper: "九天教育总仓", shippedAt: "", carrier: "", tracking: "" },
-];
+/* 门店 APP 的登录门店。收货卡片 = 发到本门店的供货单（一张单 = 一批货），
+   数据与租户后台的收货管理是同一份（supplyStore / supplierStore），门店确认收货即时回写 */
+export const STORE_SELF = "濮源直播间";
+const STORE_LEGS = ["supplier_inbound", "hq_store"];
+
+/* 发到本门店的单据；同一条链路两端各存一份，按 id 去重 */
+export const storeDocsOf = (supplyDocs, supplierDocs) => {
+  const seen = new Set();
+  return [...supplyDocs, ...supplierDocs].filter((d) => {
+    if (!STORE_LEGS.includes(d.leg) || d.receiver !== STORE_SELF || seen.has(d.id)) return false;
+    seen.add(d.id);
+    return true;
+  }).sort((a, b) => String(b.batchAt || "").localeCompare(String(a.batchAt || "")));
+};
+
+/* 门店看到的三档：供应商直配 / 总部仓直配 / 总部仓直配 · 自有货 —— 与后台的供货模式同口径 */
+const MODES = ["供应商直配", "总部仓直配", "总部仓直配 · 自有货"];
+const modeOf = (d) => (d.leg === "supplier_inbound" ? MODES[0] : d.goodsSource === "总部自有" ? MODES[2] : MODES[1]);
+const legTextOf = (d) => (d.leg === "supplier_inbound" ? "供应商 → 门店" : d.goodsSource === "总部自有" ? "总部自有 → 门店" : "总部仓 → 门店");
+/* 发货方的状态词换成收货方的：已发货 → 待收货；「部分收货」在收货方这边仍是「待收货」（加标记），
+   只有确认收货那一刻实收 ≠ 应收才判「收货异常」——与后台收货管理同一口径 */
+const stateOf = (d) => (["已发货", "部分收货"].includes(d.status) ? "待收货" : d.status);
+const isPartial = (d) => d.status === "部分收货";
+
+/* 移动端底部弹层的壳，物流 / 关联订单共用 */
+function MPop({ title, sub, onClose, children }) {
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.35)", display: "flex", alignItems: "flex-end" }} onClick={onClose}>
+      <div style={{ width: "100%", background: "#fff", borderRadius: "12px 12px 0 0", padding: "16px 16px 22px", maxHeight: "80%", overflow: "auto" }}
+        onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
+          <b style={{ fontSize: 15 }}>{title}</b>
+          <span onClick={onClose} style={{ marginLeft: "auto", color: "#999", fontSize: 20, lineHeight: 1, cursor: "pointer" }}>×</span>
+        </div>
+        {sub && <div style={{ fontSize: 12, color: "#999", marginBottom: 14 }}>{sub}</div>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* 页签条最多占 5 个位置：超出的收进「更多」下拉，且当前选中的那个一定看得见
+   —— 与后台「物流轨迹」同一套处理 */
+function PkgChips({ count, cur, onPick }) {
+  const [more, setMore] = useState(false);
+  const flat = count <= 5 ? count : 4;
+  const chip = (on) => ({
+    flex: "none", padding: "5px 12px", borderRadius: 14, fontSize: 12, cursor: "pointer",
+    background: on ? "#e6f7f2" : "#f5f7f8", color: on ? "#25c7a5" : "#666", fontWeight: on ? 600 : 400,
+  });
+  return (
+    <div style={{ display: "flex", gap: 8, paddingBottom: 12, position: "relative", flexWrap: "wrap" }}>
+      {Array.from({ length: flat }, (_, i) => (
+        <span key={i} style={chip(cur === i)} onClick={() => onPick(i)}>包裹 {i + 1}</span>
+      ))}
+      {count > 5 && (
+        <>
+          <span style={chip(cur >= flat)} onClick={() => setMore((v) => !v)}>
+            {cur >= flat ? `包裹 ${cur + 1}` : `更多 ${count - flat} 个`} ▾
+          </span>
+          {more && (
+            <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 5, background: "#fff", border: "1px solid #eee", borderRadius: 6, boxShadow: "0 6px 18px rgba(0,0,0,.10)", maxHeight: 220, overflowY: "auto", minWidth: 150 }}>
+              {Array.from({ length: count - flat }, (_, k) => {
+                const i = flat + k;
+                return (
+                  <div key={i} onClick={() => { onPick(i); setMore(false); }}
+                    style={{ padding: "9px 14px", fontSize: 12.5, cursor: "pointer", background: cur === i ? "#f2fbf9" : "#fff", color: cur === i ? "#25c7a5" : "#333" }}>
+                    包裹 {i + 1}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /* 状态色 / 图标（与后台收货管理口径一致） */
 const STATE_TONE = (s) => (s === "待发货" ? "#f5a623" : s === "待收货" ? "#2f80ed" : s === "收货异常" ? "#f5522e" : "#25c7a5");
 const STATE_ICON = (s) => (s === "已收货" ? "✓" : s === "待收货" ? "🚚" : s === "收货异常" ? "⚠️" : "⏳");
@@ -48,38 +106,27 @@ export function StoreApp() {
   const [confirm, setConfirm] = useState(false);
   const [mode, setMode] = useState("preview");
   const [diffCard, setDiffCard] = useState(null);   // 当前查看的配送差异单
-  const [cards, setCards] = useState(RECEIPT_CARDS); // 收货管理卡片（确认收货后状态流转）
+  /* 收货卡片直接由 store 派生：门店这边收货，后台收货管理立刻同步，不需要另存一份本地状态 */
+  const cards = storeDocsOf(supplyStore.use(), supplierStore.use());
   const [receiptCard, setReceiptCard] = useState(null); // 当前查看/收货的供货单
+  /* 收货管理的页签与状态筛选放在这里：进详情再返回不该跳回第一个页签 */
+  const [rcpMode, setRcpMode] = useState(MODES[0]);
+  const [rcpChip, setRcpChip] = useState("全部");
   const [pendingReceipt, setPendingReceipt] = useState(null); // 少收待温馨提示确认的收货结果
   useReqPage("app:" + view);
 
-  /* 少收 → 自动生成门店配送差异单（待举证）+ 差异页出现对应卡（幂等：同一供货单不重复生成） */
-  const genStoreDiff = (c, got = 0) => {
-    if (diffStore.get().some((d) => d.supplyNo === c.no && d.status === "待举证")) return;
-    const dt = new Date();
-    const ymd = String(dt.getFullYear()).slice(2) + String(dt.getMonth() + 1).padStart(2, "0") + String(dt.getDate()).padStart(2, "0");
-    const diffId = "DIFF" + ymd + String(diffStore.get().length + 1).padStart(4, "0");
-    const due = c.recv != null ? (c.remain ?? 0) : (parseInt(c.qty, 10) || 0);
-    const recvTotal = (c.recv ?? 0) + got;
-    /* 差异单只记事实（谁发的、差多少），发货方与商品明细由「来源供货单」承载，后台差异单同此口径 */
-    addDiff({
-      id: diffId, source: "门店上报", reporter: "门店",
-      leg: c.mode === "供应商直配" ? "供应商 → 门店" : "总仓 → 门店",
-      supplyNo: c.no, shipper: c.shipper,
-      summary: `${c.name} 应收${parseInt(c.qty, 10) || 0}/实收${recvTotal} 差${Math.max(0, due - got)}`,
-      diffQty: Math.max(0, due - got), status: "待举证", evidence: "—",
-    });
-  };
-
-  /* 确认收货：收满 →「已收货」；少收（温馨提示确认后）→「收货异常」+ 自动生成配送差异单 */
+  /* 确认收货：走的是后台「收货管理」同一个提交函数 —— 同一条链路两端必须一套口径：
+     按商品行登记实收、少收开差异单、并按「先下单先满足」分配自提提货码 */
   const commitReceipt = (res) => {
-    const c = receiptCard;
-    if (res?.shortage) {
-      genStoreDiff(c, res.got ?? 0);
-      setCards((cs) => cs.map((x) => (x.id === c.id ? { ...x, state: "收货异常", acts: ["查看详情"] } : x)));
-    } else {
-      setCards((cs) => cs.map((x) => (x.id === c.id ? { ...x, state: "已收货", acts: ["查看详情"], recv: undefined, remain: undefined } : x)));
-    }
+    const d = receiptCard;
+    if (!d) return;
+    applyReceive(d, {
+      lines: res.lines,
+      result: res.shortage ? "收货异常" : "正常收货",
+      reason: res.reason,
+      note: res.note,
+      photos: res.photos,
+    });
     setPendingReceipt(null);
     setConfirm(false);
     setView("receipts");
@@ -107,13 +154,14 @@ export function StoreApp() {
 
         <div className="mscreen">
           {view === "home" && <Home onGo={setView} />}
-          {view === "receipts" && <Receipts cards={cards} onOpen={(c) => { setReceiptCard(c); setView("receive"); }} />}
+          {view === "receipts" && <Receipts cards={cards} mode={rcpMode} setMode={setRcpMode} chip={rcpChip} setChip={setRcpChip}
+            onOpen={(c) => { setReceiptCard(c); setView("receive"); }} />}
           {view === "receive" && receiptCard && (
             <Receive
               card={receiptCard}
               onBack={() => setView("receipts")}
               onConfirm={(r) => (r.shortage ? (setPendingReceipt(r), setConfirm(true)) : commitReceipt(r))}
-              onGoDiffs={() => { genStoreDiff(receiptCard, 0); setView("diffs"); }}
+              onGoDiffs={() => setView("diffs")}
             />
           )}
           {view === "diffs" && <Diffs onDetail={(d) => { setDiffCard(d); setView("diffDetail"); }} onEvidence={(d) => { setDiffCard(d); setView("evidence"); }} />}
@@ -257,9 +305,7 @@ function Home({ onGo }) {
 }
 
 /* ---------------- 收货管理 ---------------- */
-function Receipts({ cards, onOpen }) {
-  const [mode, setMode] = useState("供应商直配");
-  const [chip, setChip] = useState("全部");
+function Receipts({ cards, onOpen, mode, setMode, chip, setChip }) {
   const [track, setTrack] = useState(null);
   const [order, setOrder] = useState(null);
   return (
@@ -284,122 +330,159 @@ function Receipts({ cards, onOpen }) {
       </div>
 
       <div className="mpad">
-        {cards.filter((c) => c.mode === mode).filter((c) => chip === "全部" || c.state === chip).map((c) => (
-          <div className="mcard" key={c.id}>
-            <div className="hd"><b>供货单信息</b>
-              {c.state === "待收货" && c.recv != null && <span style={{ marginLeft: "auto", marginRight: 6, fontSize: 10.5, color: "#f5a623", border: "1px solid #ffd8a8", background: "#fff7e8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>部分收货</span>}
-              <span style={{ color: STATE_TONE(c.state), fontSize: 12.5 }}>{c.state}</span></div>
-            <div className="mrow"><span>商品名称</span><b>{c.name}</b></div>
-            <div className="mrow"><span>规格</span><b>{c.spec}</b></div>
-            <div className="mrow"><span>发货数量</span><b>{c.qty}</b></div>
-            {/* 部分收货是「还差着补」，收货异常是「已经少了」——两种口径不能共用一句话 */}
-            {c.recv != null && (c.state === "收货异常"
-              ? <div className="mrow"><span>实收数量</span><b style={{ color: STATE_TONE(c.state) }}>实收 {c.recv}｜差 {c.remain} 件</b></div>
-              : <div className="mrow"><span>收货进度</span><b style={{ color: STATE_TONE(c.state) }}>已收 {c.recv}｜待补 {c.remain} 件</b></div>)}
-            <div className="mrow"><span>供货单号</span><b className="mono">{c.no}</b></div>
-            <div className="mrow"><span>发货主体</span><b>{c.shipper}</b></div>
-            <div className="mrow"><span>发货时间</span><b className="mono">{c.shippedAt || "未发货"}</b></div>
-            {c.tracking && <div className="mrow"><span>物流单号</span><b className="mono">{c.carrier} {c.tracking}</b></div>}
-            <div className="macts">
-              <button className="btn sm" onClick={() => setOrder(c)}>关联订单</button>
-              {/* 待收货时「确认收货」进的就是供货单详情，再挂一个「查看详情」是重复入口 */}
-              {c.state !== "待收货" && <button className="btn sm" onClick={() => onOpen(c)}>查看详情</button>}
-              {c.acts.includes("查看物流") && <button className="btn sm" onClick={() => setTrack(c)}>查看物流</button>}
-              {c.acts.includes("确认收货") && <button className="btn primary sm" onClick={() => onOpen(c)}>确认收货</button>}
+        {cards.filter((c) => modeOf(c) === mode).filter((c) => chip === "全部" || stateOf(c) === chip).map((d) => {
+          const st = stateOf(d);
+          const sent = sentOf(d);
+          const received = receivedOf(d);
+          const pk = packagesOf(d);
+          const l = itemsLabel(d);
+          const n = itemsOf(d).length;
+          return (
+            <div className="mcard" key={d.id}>
+              <div className="hd"><b>供货单信息</b>
+                {isPartial(d) && <span style={{ marginLeft: "auto", marginRight: 6, fontSize: 10.5, color: "#f5a623", border: "1px solid #ffd8a8", background: "#fff7e8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>部分收货</span>}
+                <span style={{ color: STATE_TONE(st) }}>{st}</span></div>
+              <div className="mrow"><span>供货单号</span><b className="mono">{d.id}</b></div>
+              <div className="mrow"><span>供货路径</span><b>{legTextOf(d)}</b></div>
+              <div className="mrow"><span>商品</span><b>{l.emoji} {l.more ? `${l.first} 等 ${n} 种` : l.first}</b></div>
+              {!l.more && <div className="mrow"><span>规格</span><b>{l.spec}</b></div>}
+              <div className="mrow"><span>{sent ? "发货数量" : "应发数量"}</span><b>{sent || qtyOf(d)} 件</b></div>
+              {/* 部分收货是「还差着补」，收货异常是「已经少了」——两种口径不能共用一句话 */}
+              {isPartial(d) && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {received}｜待补 {sent - received} 件</b></div>}
+              {d.status === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>实收 {received}｜差 {sent - received} 件</b></div>}
+              <div className="mrow"><span>发货主体</span><b>{d.shipper}</b></div>
+              <div className="mrow"><span>发货时间</span><b className="mono">{sent ? d.batchAt || "—" : "未发货"}</b></div>
+              {pk.length > 0 && (
+                <div className="mrow"><span>{pk.length > 1 ? "包裹" : "物流单号"}</span>
+                  {pk.length > 1
+                    ? <b onClick={() => setTrack(d)} style={{ color: "#25c7a5" }}>共 {pk.length} 个包裹</b>
+                    : <b className="mono">{pk[0].carrier} {pk[0].tracking}</b>}
+                </div>
+              )}
+              <div className="macts">
+                <button className="btn sm" onClick={() => setOrder(d)}>关联订单</button>
+                {/* 待收货时「确认收货」进的就是供货单详情，再挂一个「查看详情」是重复入口 */}
+                {st !== "待收货" && <button className="btn sm" onClick={() => onOpen(d)}>查看详情</button>}
+                {pk.length > 0 && <button className="btn sm" onClick={() => setTrack(d)}>查看物流</button>}
+                {st === "待收货" && <button className="btn primary sm" onClick={() => onOpen(d)}>确认收货</button>}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+        {!cards.filter((c) => modeOf(c) === mode).filter((c) => chip === "全部" || stateOf(c) === chip).length && (
+          <div className="mcard" style={{ textAlign: "center", color: "#999", fontSize: 12.5, padding: "26px 0" }}>该状态下暂无供货单</div>
+        )}
       </div>
 
       {track && <TrackSheet doc={track} onClose={() => setTrack(null)} />}
-      {order && <OrderSheet card={order} onClose={() => setOrder(null)} />}
+      {order && <OrderSheet doc={order} onClose={() => setOrder(null)} />}
     </div>
   );
 }
 
-/* ---------------- 物流轨迹 ---------------- */
-const TRACK_STEPS = [
-  { at: "2026-04-21 16:22", text: "快件已签收，签收人：门店前台", done: true },
-  { at: "2026-04-21 08:41", text: "派送中，配送员 王师傅 138****6621", done: true },
-  { at: "2026-04-20 22:10", text: "快件到达【广州荔湾分拨中心】", done: true },
-  { at: "2026-04-20 14:03", text: "快件已发出【东莞转运中心】", done: true },
-  { at: "2026-04-20 09:15", text: "顺丰速运 已揽收，运单号 SF1234567890123", done: true },
-];
-
-/* ---------------- 关联订单（卡片直达）----------------
-   自提单的货是给某个客户的，店员随时可能要查「这单给谁」——不用先进供货单详情 */
-function OrderSheet({ card, onClose }) {
-  const Row = ({ k, children, mono }) => (
-    <div className="mrow"><span>{k}</span><b className={mono ? "mono" : undefined} style={{ fontWeight: mono ? undefined : 400 }}>{children}</b></div>
-  );
-  return (
-    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.35)", display: "flex", alignItems: "flex-end" }} onClick={onClose}>
-      <div style={{ width: "100%", background: "#fff", borderRadius: "12px 12px 0 0", padding: "16px 16px 22px", maxHeight: "76%", overflow: "auto" }}
-        onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
-          <b style={{ fontSize: 15 }}>关联订单</b>
-          <span onClick={onClose} style={{ marginLeft: "auto", color: "#999", fontSize: 20, lineHeight: 1, cursor: "pointer" }}>×</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#999", marginBottom: 14 }}>供货单号 {card.no} · 客户到本店自提</div>
-        <div className="mcard" style={{ margin: 0 }}>
-          <Row k="销售订单号" mono>{card.orderNo}</Row>
-          <Row k="下单人">{card.buyer}</Row>
-          <Row k="联系电话" mono>{card.buyerPhone}</Row>
-          <Row k="配送方式">{card.delivery}</Row>
-          <Row k="商品">{card.emoji} {card.name} × {card.qty}</Row>
-        </div>
-      </div>
-    </div>
-  );
-}
+/* ---------------- 物流轨迹（一批可能拆多个包裹，逐个包裹一条运单 + 一条轨迹） ---------------- */
+const trackNodesOf = (doc, p) => {
+  const at = String(p?.track || "");
+  const sent = at.match(/已发货 (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+  const signed = at.match(/已签收 (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+  const nodes = [
+    { t: "已下单", d: "供货物流单已创建，等待承运商揽收", at: doc.batchAt || "—" },
+    { t: "已发货", d: `${p?.carrier || "—"} 已揽收，发往 ${STORE_SELF}`, at: sent ? sent[1] : "—" },
+  ];
+  if (signed) nodes.push({ t: "已签收", d: `已送达 ${doc.receiverAddr}`, at: signed[1] });
+  else nodes.push({ t: "派送中", d: "待收货方签收", at: "—" });
+  return nodes;
+};
 
 function TrackSheet({ doc, onClose }) {
+  const pk = packagesOf(doc);
+  const [cur, setCur] = useState(0);
+  const p = pk[cur];
+  const nodes = trackNodesOf(doc, p);
   return (
-    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.35)", display: "flex", alignItems: "flex-end" }} onClick={onClose}>
-      <div style={{ width: "100%", background: "#fff", borderRadius: "12px 12px 0 0", padding: "16px 16px 22px", maxHeight: "76%", overflow: "auto" }}
-        onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
-          <b style={{ fontSize: 15 }}>物流轨迹</b>
-          <span onClick={onClose} style={{ marginLeft: "auto", color: "#999", fontSize: 20, lineHeight: 1, cursor: "pointer" }}>×</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#999", marginBottom: 14 }}>
-          供货单号 {doc.no} · 顺丰速运 SF1234567890123
-        </div>
-        {TRACK_STEPS.map((s, i) => (
-          <div key={i} style={{ display: "flex", gap: 10, paddingBottom: i === TRACK_STEPS.length - 1 ? 0 : 16, position: "relative" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 12, flex: "none" }}>
-              <span style={{ width: 9, height: 9, borderRadius: "50%", background: i === 0 ? "#25c7a5" : "#d8dde1", marginTop: 4 }} />
-              {i !== TRACK_STEPS.length - 1 && <span style={{ flex: 1, width: 1, background: "#e8ecef", marginTop: 3 }} />}
-            </div>
-            <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-              <div style={{ color: i === 0 ? "#25c7a5" : "#333" }}>{s.text}</div>
-              <div style={{ color: "#aaa", fontSize: 11.5, marginTop: 2 }}>{s.at}</div>
-            </div>
+    <MPop title="物流轨迹" onClose={onClose} sub={`供货单号 ${doc.id}${pk.length > 1 ? ` · 共 ${pk.length} 个包裹` : ""}`}>
+      {!pk.length && <div className="note">尚未发货，暂无物流信息</div>}
+      {pk.length > 1 && <PkgChips count={pk.length} cur={cur} onPick={setCur} />}
+      {p && (
+        <>
+          <div className="mcard" style={{ margin: 0 }}>
+            <div className="mrow"><span>快递公司</span><b>{p.carrier || "—"}</b></div>
+            <div className="mrow"><span>物流单号</span><b className="mono">{p.tracking || "—"}</b></div>
           </div>
-        ))}
-      </div>
-    </div>
+          <div style={{ marginTop: 14 }}>
+            {nodes.map((n, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, paddingBottom: i === nodes.length - 1 ? 0 : 16 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 12, flex: "none" }}>
+                  <span style={{ width: 9, height: 9, borderRadius: "50%", background: i === 0 ? "#25c7a5" : "#d8dde1", marginTop: 4 }} />
+                  {i !== nodes.length - 1 && <span style={{ flex: 1, width: 1, background: "#e8ecef", marginTop: 3 }} />}
+                </div>
+                <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
+                  <div style={{ color: i === 0 ? "#25c7a5" : "#333" }}>{n.d}</div>
+                  <div style={{ color: "#aaa", fontSize: 11.5, marginTop: 2 }}>{n.at}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </MPop>
+  );
+}
+
+/* ---------------- 关联订单（卡片直达）----------------
+   一批货覆盖多笔自提订单，每张单是给一个客户的 —— 店员要挨个通知来取，
+   所以这里列的是这一批的**全部**订单，不是一笔 */
+function OrderSheet({ doc, onClose }) {
+  const orders = orderStore.use();
+  const rows = ordersOf(doc).map((no) => orders.find((o) => o.no === no)).filter(Boolean);
+  return (
+    <MPop title="关联订单" onClose={onClose}
+      sub={`供货单号 ${doc.id} · 共 ${ordersOf(doc).length} 笔 · 客户到本店自提`}>
+      {rows.map((o) => (
+        <div className="mcard" key={o.no} style={{ marginBottom: 10 }}>
+          <div className="mrow"><span>销售订单号</span><b className="mono">{o.no}</b></div>
+          <div className="mrow"><span>下单人</span><b>{o.buyer?.["昵称"] || "—"}</b></div>
+          <div className="mrow"><span>联系电话</span><b className="mono">{o.buyer?.["收件人电话"] || "—"}</b></div>
+          <div className="mrow"><span>配送方式</span><b>{o.delivery || "—"}</b></div>
+          <div className="mrow"><span>商品</span><b>{o.emoji} {o.product} × {o.qty}</b></div>
+        </div>
+      ))}
+      {!rows.length && <div className="note">这批的销售订单不在当前列表里（历史或已归档）</div>}
+      <div className="note">自提单货到后按联系电话通知买家来取，取货时按订单核对。</div>
+    </MPop>
   );
 }
 
 /* ---------------- 发货单详情 · 确认收货 ---------------- */
 function Receive({ card, onConfirm, onBack, onGoDiffs }) {
-  const qty = parseInt(card.qty, 10) || 0;
-  const st = card.state;
-  const part = card.recv != null; // 曾部分收货：仍在待收货，续收本次待补量
-  const due = part ? (card.remain ?? qty - (card.recv || 0)) : qty; // 本次应收（部分收货 = 待补数量）
-  const [items, setItems] = useState([{ name: card.name, qty: due, max: due }]);
+  const st = stateOf(card);
+  const items = itemsOf(card);
+  const sent = sentOf(card);
+  const received = receivedOf(card);
+  const due = Math.max(0, sent - received);     // 本次应收 = 还没收到的那部分
+  const receivable = st === "待收货" && due > 0;
+  /* 按商品逐行登记实收 —— 店员是照着货点数，不是按订单点 */
+  const [lines, setLines] = useState(items.map((it) => ({
+    product: it.product, spec: it.spec, emoji: it.emoji,
+    max: Math.max(0, (it.sent || 0) - (it.received || 0)),
+    got: Math.max(0, (it.sent || 0) - (it.received || 0)),
+  })));
+  const [reasons, setReasons] = useState([]);
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState(0);
   const [copied, setCopied] = useState(false);
   const copyNo = () => {
-    try { navigator.clipboard?.writeText(card.no).catch(() => {}); } catch { /* 非安全上下文下忽略 */ }
+    try { navigator.clipboard?.writeText(card.id).catch(() => {}); } catch { /* 非安全上下文下忽略 */ }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
-  const short = items.reduce((s, i) => s + i.max, 0) - items.reduce((s, i) => s + i.qty, 0);
+  const got = lines.reduce((a, x) => a + x.got, 0);
+  const short = due - got;
   const shortage = short > 0;
-  const receivable = st === "待收货";
+  const pk = packagesOf(card);
+  const label = itemsLabel(card);
+  const [track, setTrack] = useState(false);
+  const [order, setOrder] = useState(false);
   const tone = STATE_TONE(st);
 
   return (
@@ -407,93 +490,116 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
         <span style={{ color: tone, fontSize: 15 }}>{STATE_ICON(st)}</span>
         <b>{st}</b>
-        <span className="note" style={{ display: "inline", marginLeft: "auto", fontSize: 11.5 }}>供货单编号 {card.no}</span>
+        {isPartial(card) && <span style={{ fontSize: 10.5, color: "#f5a623", border: "1px solid #ffd8a8", background: "#fff7e8", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>部分收货</span>}
+        <span className="note" style={{ display: "inline", marginLeft: "auto", fontSize: 11.5 }}>供货单编号 {card.id}</span>
         <span onClick={copyNo} style={{ color: "#25c7a5", fontSize: 12, cursor: "pointer" }}>{copied ? "已复制" : "复制"}</span>
       </div>
 
       <div className="mcard">
         <div className="hd"><b>供货单信息</b><span style={{ color: tone, fontSize: 12.5 }}>{st}</span></div>
-        <div className="mrow"><span>供货单号</span><b className="mono">{card.no}</b></div>
-        <div className="mrow"><span>供货路径</span><b>{card.mode === "供应商直配" ? "供应商 → 门店" : card.mode.includes("自有货") ? "总部自有 → 门店" : "总部仓 → 门店"}</b></div>
+        <div className="mrow"><span>供货单号</span><b className="mono">{card.id}</b></div>
+        <div className="mrow"><span>供货路径</span><b>{legTextOf(card)}</b></div>
+        <div className="mrow"><span>商品</span><b>{label.emoji} {label.more ? `${label.first} 等 ${items.length} 种` : label.first}</b></div>
+        {!label.more && <div className="mrow"><span>规格</span><b>{label.spec}</b></div>}
+        <div className="mrow"><span>{sent ? "发货数量" : "应发数量"}</span><b>{sent || qtyOf(card)} 件</b></div>
         <div className="mrow"><span>发货主体</span><b>{card.shipper}</b></div>
-        <div className="mrow"><span>发货时间</span><b className="mono">{card.shippedAt || "未发货"}</b></div>
-        <div className="mrow"><span>快递公司</span><b>{card.carrier || "—"}</b></div>
-        <div className="mrow"><span>物流单号</span><b className="mono">{card.tracking || "—"}</b></div>
-        {part && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {card.recv ?? 0}｜待补 {due} 件</b></div>}
-        {st === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>{card.recv ?? 0}｜差 {card.remain ?? 0} 件</b></div>}
+        <div className="mrow"><span>发货时间</span><b className="mono">{sent ? card.batchAt || "—" : "未发货"}</b></div>
+        {/* 部分收货是「还差着补」，收货异常是「已经少了」—— 两种口径不共用一句话 */}
+        {isPartial(card) && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {received}｜待补 {sent - received} 件</b></div>}
+        {card.status === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>实收 {received}｜差 {sent - received} 件</b></div>}
+        {pk.length > 0 && (
+          <div className="mrow"><span>{pk.length > 1 ? "包裹" : "物流单号"}</span>
+            {pk.length > 1
+              ? <b onClick={() => setTrack(true)} style={{ color: "#25c7a5" }}>共 {pk.length} 个包裹</b>
+              : <b className="mono">{pk[0].carrier} {pk[0].tracking}</b>}
+          </div>
+        )}
       </div>
 
-      {/* 商品信息：四个状态常驻（原来只在「待收货」才出现） */}
+      {/* 商品信息：一批多商品，逐个列出（门店是按商品点数的） */}
       <div className="mcard">
-        <div className="hd"><b>商品信息</b></div>
-        <div style={{ display: "flex", gap: 10, padding: "6px 0" }}>
-          <span style={{ width: 44, height: 44, borderRadius: 5, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 20 }}>{card.emoji || "📦"}</span>
-          <div style={{ flex: 1, fontSize: 12.5 }}>
-            <div>{card.name}</div>
-            <div className="note" style={{ marginTop: 3 }}>规格 {card.spec}</div>
-            <div className="note" style={{ marginTop: 3 }}>
-              发货数量 {card.qty}{receivable ? `　本次应收 ${due} 件` : ""}
+        <div className="hd"><b>商品信息</b><span className="note" style={{ fontSize: 11.5 }}>共 {items.length} 种 · {sent || qtyOf(card)} 件</span></div>
+        {items.map((it) => (
+          <div key={it.product} style={{ display: "flex", gap: 10, padding: "8px 0", borderTop: "1px solid #f4f6f7" }}>
+            <span style={{ width: 40, height: 40, borderRadius: 5, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 18, flex: "none" }}>{it.emoji || "📦"}</span>
+            <div style={{ flex: 1, fontSize: 12.5 }}>
+              <div>{it.product}</div>
+              <div className="note" style={{ marginTop: 3 }}>规格 {it.spec}</div>
+              <div className="note" style={{ marginTop: 3 }}>
+                应发 {it.qty}　已发 {it.sent || 0}{it.received ? `　已收 ${it.received}` : ""}
+              </div>
             </div>
           </div>
-        </div>
+        ))}
       </div>
 
-      {/* 关联订单：这单是给谁的——自提单货到要通知客户来取，店员得知道对应哪张销售订单 */}
+      {/* 关联订单：一批覆盖多笔自提订单，货到了要挨个通知 —— 列的是全部，不是一笔 */}
       <div className="mcard">
-        <div className="hd"><b>关联订单</b><span className="note" style={{ fontSize: 11.5 }}>客户到本店自提</span></div>
-        <div className="mrow"><span>销售订单号</span><b className="mono">{card.orderNo}</b></div>
-        <div className="mrow"><span>下单人</span><b>{card.buyer}</b></div>
-        <div className="mrow"><span>联系电话</span><b className="mono">{card.buyerPhone}</b></div>
-        <div className="mrow"><span>配送方式</span><b>{card.delivery}</b></div>
+        <div className="hd"><b>关联订单</b>
+          <span onClick={() => setOrder(true)} style={{ marginLeft: "auto", color: "#25c7a5", fontSize: 12, cursor: "pointer" }}>
+            共 {ordersOf(card).length} 笔 · 查看
+          </span>
+        </div>
+        <div className="note">客户到本店自提，货到后按联系电话通知买家来取。</div>
       </div>
 
       {st === "待发货" && (
-        <div className="mcard"><div style={{ fontSize: 12.5, color: "#999", textAlign: "center", padding: "4px 0" }}>{card.mode.includes("总部") ? "总部仓" : "供应商"}尚未发货，发货后可查看物流并确认收货</div></div>
+        <div className="mcard"><div style={{ fontSize: 12.5, color: "#999", textAlign: "center", padding: "4px 0" }}>{card.shipper} 尚未发货，发货后可查看物流并确认收货</div></div>
       )}
 
       {receivable && (
         <>
-
           <div className="mcard">
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>收货信息(按商品核对,短缺请下调实收)</div>
-            <div className="mrow"><span>应收数量</span><b className="mono">{due}</b></div>
-            <div className="mrow"><span>少发数量</span><b className="mono" style={{ color: short ? "#f5522e" : "#333" }}>{short}</b></div>
-            {items.map((it, i) => (
-              <div key={it.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: "1px solid #f2f2f2" }}>
-                <span style={{ fontSize: 12.5 }}>{it.name}</span>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>收货信息（按商品核对，短缺请下调实收）</div>
+            <div className="mrow"><span>本次应收</span><b className="mono">{due}</b></div>
+            <div className="mrow"><span>少发数量</span><b className="mono" style={{ color: shortage ? "#f5522e" : "#333" }}>{short}</b></div>
+            {lines.map((it, i) => (
+              <div key={it.product} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: "1px solid #f2f2f2" }}>
+                <span style={{ fontSize: 12.5 }}>{it.emoji} {it.product}<span className="note" style={{ display: "block", fontSize: 11 }}>本次应收 {it.max}</span></span>
                 <span className="qty">
-                  <button className="btn plain sm" onClick={() => setItems((a) => a.map((x, j) => (j === i ? { ...x, qty: Math.max(0, x.qty - 1) } : x)))}>−</button>
-                  <input value={it.qty} readOnly style={{ width: 44, textAlign: "center", height: 28 }} />
-                  <button className="btn plain sm" disabled={it.qty >= it.max} onClick={() => setItems((a) => a.map((x, j) => (j === i ? { ...x, qty: Math.min(x.max, x.qty + 1) } : x)))}>＋</button>
+                  <button className="btn plain sm" onClick={() => setLines((a) => a.map((x, j) => (j === i ? { ...x, got: Math.max(0, x.got - 1) } : x)))}>−</button>
+                  <input value={it.got} readOnly style={{ width: 44, textAlign: "center", height: 28 }} />
+                  <button className="btn plain sm" disabled={it.got >= it.max} onClick={() => setLines((a) => a.map((x, j) => (j === i ? { ...x, got: Math.min(x.max, x.got + 1) } : x)))}>＋</button>
                 </span>
               </div>
             ))}
           </div>
 
+          {/* 实收 ≠ 应收：当场登记异常，字段与后台收货管理一致 */}
           {shortage && (
             <div className="mcard">
               <div className="mfield">
-                <label><i>*</i>备注</label>
+                <label><i>*</i>配货差异原因</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12.5 }}>
+                  {["少货", "商品破损", "错货", "其他"].map((r) => (
+                    <label key={r} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <input type="checkbox" checked={reasons.includes(r)}
+                        onChange={() => setReasons((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]))} />{r}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="mfield">
+                <label><i>*</i>说明</label>
                 <textarea rows={2} placeholder="例：XX商品 500ml 少发2瓶/破损1瓶" value={note} onChange={(e) => setNote(e.target.value)} />
               </div>
               <div className="mfield" style={{ marginBottom: 0 }}>
-                <label>图片凭证</label>
+                <label><i>*</i>图片凭证</label>
                 <div style={{ fontSize: 11.5, color: "#999", marginBottom: 8 }}>支持上传PNG、JPG、JPEG、GIF格式，最多只能上传5张</div>
                 <div className="mupload">
                   <span className="ph" onClick={() => setPhotos((p) => Math.min(5, p + 1))}>📷<br /><span style={{ fontSize: 11 }}>上传图片</span></span>
                   {Array.from({ length: photos }, (_, i) => <span className="ph" key={i} style={{ background: "#e8ecef" }}>🧾</span>)}
                 </div>
               </div>
+              {(!reasons.length || !note.trim() || !photos) && (
+                <div style={{ fontSize: 11.5, color: "#f5522e", marginTop: 8 }}>有少发，需选差异原因、填说明并至少传 1 张图片才能确认收货</div>
+              )}
             </div>
-          )}
-
-          {shortage && !note.trim() && (
-            <div style={{ fontSize: 11.5, color: "#f5522e", marginBottom: 8 }}>有少发，请填写备注后再确认收货</div>
           )}
         </>
       )}
 
-      {st === "收货异常" && (
+      {card.status === "收货异常" && (
         <div className="mcard">
           <div style={{ fontSize: 12.5, color: "#f5522e", lineHeight: 1.9 }}>
             实收与应收存在差异，已自动生成配送差异单；请前往「配送差异」页完成举证，待总部审核后按链路补发。
@@ -502,14 +608,23 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
         </div>
       )}
 
-      {st === "已收货" && (
+      {card.status === "已收货" && (
         <div className="mcard" style={{ textAlign: "center", padding: "16px 0", color: "#25c7a5", fontSize: 13 }}>✓ 该供货单已确认收货</div>
       )}
 
       <div style={{ display: "flex", gap: 10, paddingBottom: 16 }}>
         <button className="btn plain" style={{ flex: receivable ? 1 : 2 }} onClick={onBack}>返回</button>
-        {receivable && <button className="btn primary" style={{ flex: 2 }} disabled={shortage && !note.trim()} onClick={() => onConfirm({ shortage, got: items[0].qty })}>确认收货</button>}
+        {receivable && (
+          <button className="btn primary" style={{ flex: 2 }}
+            disabled={shortage && (!reasons.length || !note.trim() || !photos)}
+            onClick={() => onConfirm({ shortage, lines: lines.map((x) => ({ product: x.product, got: x.got })), reason: reasons.join("、"), note: note.trim(), photos })}>
+            确认收货
+          </button>
+        )}
       </div>
+
+      {track && <TrackSheet doc={card} onClose={() => setTrack(false)} />}
+      {order && <OrderSheet doc={card} onClose={() => setOrder(false)} />}
     </div>
   );
 }
@@ -730,19 +845,33 @@ function Evidence({ card, onBack, onSubmitted }) {
 }
 
 /* ---------------- 退货返厂（门店自提链路的消费者退货） ---------------- */
-const STORE_NAME = "濮源直播间";
+const STORE_NAME = STORE_SELF;
 const RETURN_REASONS = ["七天无理由退货", "商品质量问题", "商品与描述不符", "客户取消（未提货）"];
-/* 可发起返厂的来源（该门店已收货的供货单） */
-const RETURN_SOURCES = [
-  { supplyNo: "FHD2609180016", orderNo: "ORD260918000093", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", returnTo: "供应商003", viaHq: false, qty: 6 },
-  { supplyNo: "FHD2609150002", orderNo: "ORD260915000088", product: "华为手机", spec: "蓝色 / M", emoji: "📱", returnTo: "JOJO供应商", viaHq: false, qty: 1 },
-  { supplyNo: "FHD2609180014", orderNo: "ORD260918000101", product: "华为手机", spec: "黑色 / L", emoji: "📱", returnTo: "JOJO供应商", viaHq: true, qty: 1 },
-];
+/* 可发起返厂的来源 = 本门店**已收货**的供货单上的商品（不再写死演示卡：
+   返厂是从「手上这批货」发起的，必须能对上是哪张供货单的哪笔订单） */
+export const returnSourcesOf = (supplyDocs, supplierDocs, orders) => {
+  const rows = [];
+  for (const d of storeDocsOf(supplyDocs, supplierDocs)) {
+    if (d.status !== "已收货") continue;
+    /* 供应商直发的直接退供应商；经总部仓的走「门店 → 总仓 → 供应商」 */
+    const returnTo = d.leg === "supplier_inbound" ? d.shipper : "JOJO供应商";
+    for (const it of itemsOf(d)) for (const f of it.from || []) {
+      const o = orders.find((x) => x.no === f.orderNo);
+      rows.push({
+        supplyNo: d.id, orderNo: f.orderNo, product: it.product, spec: it.spec, emoji: it.emoji,
+        qty: f.qty, returnTo, viaHq: d.leg !== "supplier_inbound",
+        buyer: o?.buyer?.["昵称"] || "—",
+      });
+    }
+  }
+  return rows;
+};
 const RET_TONE = (s) => (s === "待返厂" ? "#f5a623" : s === "返厂中" ? "#2f80ed" : "#25c7a5");
 
 function Returns() {
   const all = useReturns();
   const rows = all.filter((r) => r.store === STORE_NAME);
+  const sources = returnSourcesOf(supplyStore.use(), supplierStore.use(), orderStore.use());
   const [chip, setChip] = useState("全部");
   const [detail, setDetail] = useState(null);
   const [sheet, setSheet] = useState(null);   // {k:"new"} | {k:"ship", r}
@@ -807,7 +936,7 @@ function Returns() {
       </div>
 
       {detail && <ReturnDetail row={detail} onClose={() => setDetail(null)} />}
-      {sheet?.k === "new" && <NewReturnSheet onClose={() => setSheet(null)} onSubmit={create} />}
+      {sheet?.k === "new" && sources.length > 0 && <NewReturnSheet sources={sources} onClose={() => setSheet(null)} onSubmit={create} />}
       {sheet?.k === "ship" && <ShipReturnSheet row={sheet.r} onClose={() => setSheet(null)} onSubmit={ship} />}
     </div>
   );
@@ -875,11 +1004,12 @@ function ReturnDetail({ row, onClose }) {
 }
 
 /* 发起返厂 */
-function NewReturnSheet({ onClose, onSubmit }) {
+function NewReturnSheet({ sources, onClose, onSubmit }) {
   const [idx, setIdx] = useState(0);
   const [qty, setQty] = useState(1);
   const [reason, setReason] = useState(RETURN_REASONS[0]);
-  const src = RETURN_SOURCES[idx];
+  const src = sources[idx];
+  if (!src) return null;
   return (
     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.35)", display: "flex", alignItems: "flex-end" }} onClick={onClose}>
       <div style={{ width: "100%", background: "#fff", borderRadius: "12px 12px 0 0", padding: "16px 16px 22px", maxHeight: "86%", overflow: "auto" }}
@@ -892,13 +1022,15 @@ function NewReturnSheet({ onClose, onSubmit }) {
         <div className="mfield">
           <label><i>*</i>关联供货单</label>
           <select value={idx} onChange={(e) => setIdx(Number(e.target.value))} style={{ width: "100%", height: 38 }}>
-            {RETURN_SOURCES.map((s, i) => (
-              <option key={s.supplyNo} value={i}>{s.supplyNo} · {s.product}</option>
+            {sources.map((s, i) => (
+              <option key={s.supplyNo + s.orderNo} value={i}>{s.supplyNo} · {s.product}</option>
             ))}
           </select>
         </div>
 
         <div className="mcard" style={{ margin: "0 0 12px" }}>
+          <div className="mrow"><span>销售订单</span><b className="mono">{src.orderNo}</b></div>
+          <div className="mrow"><span>买家</span><b>{src.buyer}</b></div>
           <div className="mrow"><span>商品</span><b>{src.emoji} {src.product}</b></div>
           <div className="mrow"><span>规格</span><b style={{ fontWeight: 400 }}>{src.spec}</b></div>
           <div className="mrow"><span>退回方</span><b>{src.returnTo}</b></div>
