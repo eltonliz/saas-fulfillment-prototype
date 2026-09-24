@@ -950,6 +950,11 @@ SUPPLIER_DOCS.find((d) => d.id === "FHD2609170018").received = 2; // 收货异�
 }
 
 
+/* 一件代发的判定口径（只写这一处）：供应商直配 + 快递发货 = 供应商直发消费者。
+   订单列表调它；售后列表不用它——afterSaleStore 装的就是代发售后单（与供应商侧同一份），
+   页面按「行在不在这个 store 里」打「代发」标，本地 ROWS 则是自营售后 */
+export const isDropship = (o) => o && o.supplyMode === "供应商直配" && o.delivery === "快递发货";
+
 /* 供应商地址簿（发货地址 / 售后地址），owner = 归属供应商主体。
    原型只有一个供应商登录态（JOJO），其余主体只保留退货地址——门店返厂要寄到它，发货地址没有页面用得上 */
 export const SUPPLIER_SELF = "JOJO供应商";

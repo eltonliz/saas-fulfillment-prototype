@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useToast, useRowSelect, BatchBar, Confirm, usePaged, Pager } from "../ui.jsx";
 import { orderStore, supplyStore } from "../store.js";
-import { pickupCodeOf, fmtPickupCode, supplyLabelOf } from "../data.js";
+import { pickupCodeOf, fmtPickupCode, supplyLabelOf, isDropship } from "../data.js";
 
 /* 自提单的最后一跳（总部仓 → 门店）是内部段，走发货管理（供货单）；
    订单管理的「发货」只发消费者那一跳（快递单） */
@@ -19,8 +19,8 @@ const canShipOrder = (o) => {
 };
 
 /* 一件代发（供应商直发消费者·快递）：租户后台只读——能看到、不能操作；
-   发货由供应商完成；售后由总部审核与退款（供应商只做签收验收）。两侧共享同一份数据 */
-const isDropship = (o) => o.supplyMode === "供应商直配" && o.delivery === "快递发货";
+   发货由供应商完成；售后由总部审核与退款（供应商只做签收验收）。两侧共享同一份数据。
+   判定口径 isDropship 已挪到 data.js，订单列表与售后列表共用一份 */
 
 const STEPS = ["买家下单", "买家付款", "商家发货", "买家签收", "交易完成"];
 /* 发货状态统一口径：有发货记录（部分/全部/物流单）才算已发货 */
@@ -134,7 +134,8 @@ export function OrderManagement({ onOpenSupply }) {
                   {o.payTime && <small>支付时间: {o.payTime}</small>}
                   {o.shippedQty > 0 && o.status === "待发货" && <small style={{ color: "#f5a623" }}>部分发货：已发 {o.shippedQty}/{o.qty} 件，可再发</small>}
                 </td>
-                <td className="tw">{o.orderType || "销售订单"}</td>
+                {/* 订单类型：代发单单独标出来——这条线发货在供应商、售后归总部，与自营不是一套操作 */}
+                <td className="tw">{isDropship(o) ? <span className="tag blue">代发</span> : (o.orderType || "销售订单")}</td>
                 <td className="tw">{o.buyerNote || "-"}</td>
                 <td className="col-new">
                   {/* 统一两段式：主字段（供货单号 / 自有货直发 / —）+ 模式副标签 */}
