@@ -181,14 +181,15 @@ export function GeneralSetting() {
 
 /* ============================================================================
    地址库 —— 照真实 SaaS「设置 › 地址库」复刻
-   三个页签：发货地址 / 售后地址 / 仓库地址；同类型下「默认」互斥
-   地址在主数据维护，使用方（供应商发货、总部同意退货）都只做「选」
+   租户三个页签：发货地址 / 售后地址 / 仓库地址；供应商只有前两个（供应商不持有仓，2026-09-24 elton 明确去掉）
+   同类型下「默认」互斥；地址在主数据维护，使用方（供应商发货、总部同意退货）都只做「选」
    ============================================================================ */
 const ADDR_TABS = [
-  { k: "ship", t: "发货地址", hint: "供应商发货时从地址库里选，随发货记入订单的配送信息" },
+  { k: "ship", t: "发货地址", hint: "发货时从地址库里选，随发货记入订单的配送信息" },
   { k: "after", t: "售后地址", hint: "总部在「售后管理」同意退货时从这里选，随同意发给买家当寄回地址" },
   { k: "warehouse", t: "仓库地址", hint: "总部仓 / 门店收货点，供内部单据参照" },
 ];
+const SUP_ADDR_TABS = ADDR_TABS.filter((t) => t.k !== "warehouse");
 
 /* 省 / 市 / 区 / 街道 四级联动的最小数据集（原型够用即可） */
 const REGION = {
@@ -284,14 +285,14 @@ function AddrModal({ store, type, editing, onClose, onSaved }) {
 }
 
 /* store 可传：租户用 addressBookStore，供应商用自己的 addrStore —— 一份地址、各自维护 */
-export function AddressBook({ store = addressBookStore, filter }) {
+export function AddressBook({ store = addressBookStore, filter, tabs = ADDR_TABS }) {
   const all = store.use().filter((a) => !filter || filter(a));
   const [tab, setTab] = useState("ship");
   const [modal, setModal] = useState(null);   // null | {} | 编辑的行
   const [toast, tip] = useToast();
   const list = all.filter((a) => a.type === tab);
   const pd = usePaged(list, 10);
-  const tabDef = ADDR_TABS.find((t) => t.k === tab);
+  const tabDef = tabs.find((t) => t.k === tab);
 
   const setDefault = (id) => {
     store.set((as) => as.map((a) => (a.type === tab ? { ...a, isDefault: a.id === id } : a)));
@@ -302,7 +303,7 @@ export function AddressBook({ store = addressBookStore, filter }) {
   return (
     <>
       <div className="tabs" style={{ display: "flex", gap: 28, borderBottom: "1px solid var(--line)", marginBottom: 16, paddingLeft: 8 }}>
-        {ADDR_TABS.map((t) => (
+        {tabs.map((t) => (
           <span key={t.k} onClick={() => { setTab(t.k); pd.setPage(1); }}
             style={{
               paddingBottom: 12, fontSize: 14, cursor: "pointer",
@@ -363,7 +364,7 @@ export function AddressBook({ store = addressBookStore, filter }) {
 /* 供应商后台的地址库：同一套表单，数据是自己的地址簿（发货弹窗从这里选发货地址） */
 export function SupplierAddressBook() {
   /* 地址簿按主体归属过滤：原型只有一个供应商登录态（JOJO），正式版一供应商一登录态、无需过滤 */
-  return <AddressBook store={addrStore} filter={(a) => a.owner === SUPPLIER_SELF} />;
+  return <AddressBook store={addrStore} filter={(a) => a.owner === SUPPLIER_SELF} tabs={SUP_ADDR_TABS} />;
 }
 
 export function ExpressTemplate() {

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { SUPPLY_DOCS } from "../data.js";
+import { SUPPLY_DOCS, itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, allocateByOrder, supplyLabelOf } from "../data.js";
 import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
-import { supplyStore, supplierStore, diffStore, orderStore, patchDoc, addDiff, ARRIVAL_TIMEOUT_DAYS } from "../store.js";
+import { supplyStore, supplierStore, diffStore, orderStore, addressBookStore, patchDoc, addDoc, addDiff, ARRIVAL_TIMEOUT_DAYS } from "../store.js";
 
 const LEG_LABEL = {
   sup_consumer: "供应商 → 消费者",
@@ -43,7 +43,7 @@ const isSelfShip = (d) => d.leg === "hq_store";
 /* F3/F4：总部仓直配（供应商供货）的下游段，必须等同一订单「供应商→总仓」那段确认收货后才可发货 */
 const upstreamReady = (d) => {
   if (d.leg !== "hq_store") return true;
-  const up = supplyStore.get().find((x) => x.leg === "supplier_to_hq" && x.orderNo === d.orderNo);
+  const up = supplyStore.get().find((x) => x.leg === "supplier_to_hq" && ordersOf(x).includes(d.no));
   return !up || up.status === "已收货";
 };
 const awaitHqReceive = (d) => isSelfShip(d) && ["待发货", "部分收货"].includes(d.status) && !upstreamReady(d);
@@ -66,18 +66,114 @@ export function newFhdId() {
   return id;
 }
 
+/* ============================================================================
+   发货任务：订单池 → 生成任务（一批 = 一个收货主体）
+   批次不是系统按时间自动切出来的，而是发货方**显式生成**的：选门店 + 选支付时间截止点。
+   所以发货侧分两个页签——日常按订单看（订单池），发货按任务看（汇总单）。
+   ============================================================================ */
+export const POOL_SCOPES = {
+  /* 租户后台 · 发货管理：总仓发给门店（自提单；供应商供货的还要上游已到总仓） */
+  hq_store: { leg: "hq_store", shipper: "九天教育总仓", match: (o) => o.delivery === "上门自提" && o.supplyMode === "总部仓直配" },
+  /* 供应商后台 · 发门店：供应商直配的自提单 */
+  sup_store: { leg: "supplier_inbound", shipper: "JOJO供应商", match: (o) => o.delivery === "上门自提" && o.supplyMode === "供应商直配" },
+  /* 供应商后台 · 发总仓：总部仓直配 · 供应商供货 的订单，货要先到总仓 */
+  sup_hq: { leg: "supplier_to_hq", shipper: "JOJO供应商", match: (o) => o.supplyMode === "总部仓直配" && o.goodsSource === "供应商供货" },
+};
+const POOL_DONE = ["已完成", "已取消", "已全额退款", "已关闭"];
+
+/* 订单池自动筛，不给人工勾：能发哪些单是业务规则定的，让人勾一定会把不该发的单生成任务。
+   已经进过某张任务的订单（o.batchNo）不再进池——否则会重复生成、重复发货 */
+export function poolOf(scope, orders, supplyDocs) {
+  const cfg = POOL_SCOPES[scope];
+  return orders.filter((o) => {
+    if (POOL_DONE.includes(o.status) || o.batchNo) return false;
+    if (!cfg.match(o)) return false;
+    if (scope === "hq_store" && o.goodsSource !== "总部自有") {
+      const up = supplyDocs.find((x) => x.leg === "supplier_to_hq" && ordersOf(x).includes(o.no));
+      if (!(up && up.status === "已收货")) return false;   // 上游没到总仓，发不了
+    }
+    return true;
+  });
+}
+
+/* 生成发货任务：按门店分组，一个门店一张；items 从订单商品汇总，from 保留订单来源可追溯 */
+export function genTasksFrom(scope, pickedStores, cutoff, deps, targetTask) {
+  const { orders, supplyDocs, setOrders } = deps;
+  const pool = poolOf(scope, orders, supplyDocs)
+    .filter((o) => pickedStores.includes(o.store) && (!cutoff || (o.payTime || o.createdAt || "") <= cutoff));
+  const groups = {};
+  for (const o of pool) (groups[o.store] = groups[o.store] || []).push(o);
+  const made = [];
+  for (const [store, os] of Object.entries(groups)) {
+    const items = [];
+    for (const o of os) {
+      const key = `${o.product || ""}|${o.spec || ""}`;
+      let it = items.find((x) => x.key === key);
+      if (!it) { it = { key, product: o.product, spec: o.spec, emoji: o.emoji, qty: 0, sent: 0, received: 0, from: [] }; items.push(it); }
+      it.qty += o.qty || 0;
+      it.from.push({ orderNo: o.no, qty: o.qty || 0 });
+    }
+    items.forEach((x) => delete x.key);
+    const addQty = items.reduce((a, i) => a + i.qty, 0);
+    if (targetTask) {
+      /* 追加订单：只往这张任务里并，不新建 */
+      const merged = [...itemsOf(targetTask)];
+      for (const it of items) {
+        const same = merged.find((x) => x.product === it.product && x.spec === it.spec);
+        if (same) { same.qty += it.qty; same.from = [...(same.from || []), ...it.from]; }
+        else merged.push(it);
+      }
+      patchDoc(targetTask.id, { items: merged, orderNos: [...ordersOf(targetTask), ...os.map((o) => o.no)], qty: merged.reduce((a, i) => a + i.qty, 0) });
+      made.push({ id: targetTask.id, store, count: os.length, appended: true });
+    } else {
+      const id = newFhdId();
+      /* 生成只产出「待发货」任务：物流在发货环节填，生成这一步不碰物流 */
+      addDoc({
+        id, leg: POOL_SCOPES[scope].leg, source: "发货任务生成",
+        batchAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+        shipper: POOL_SCOPES[scope].shipper, receiver: store, receiverAddr: STORE_ADDR[store] || "",
+        orderNos: os.map((o) => o.no), items, packages: [],
+        qty: addQty, sent: 0, received: 0, status: "待发货",
+      });
+      made.push({ id, store, count: os.length });
+    }
+    const ns = os.map((o) => o.no);
+    setOrders((all) => all.map((o) => (ns.includes(o.no) ? { ...o, batchNo: made[made.length - 1].id } : o)));
+  }
+  return made;
+}
+
 function applyReceive(doc, p) {
-  const recv = (doc.received ?? 0) + p.got;
+  /* 汇总单按**商品行**登记本次实收：items 是唯一源头，单据级 qty/sent/received 由它汇总 */
+  const got = (p.lines || []).reduce((a, x) => a + x.got, 0);
+  const items = itemsOf(doc).map((it) => {
+    const l = (p.lines || []).find((x) => x.product === it.product);
+    return l ? { ...it, received: (it.received || 0) + l.got } : it;
+  });
+  const recv = items.reduce((a, i) => a + (i.received || 0), 0);
+  const sent = items.reduce((a, i) => a + (i.sent || 0), 0);
   /* 收满基准 = 已发数量（供应商未发齐的部分属「未发」，不按少收判） */
-  const full = recv >= (doc.sent ?? doc.qty);
+  const full = recv >= sent;
   const status = p.result === "收货异常" ? "收货异常" : full ? "已收货" : "部分收货";
 
   patchDoc(doc.id, {
-    received: recv,
-    status,
+    items, received: recv, status,
     /* 决策 6：本期不落到可售库存，但预留字段与 payload，第二版接「存」时直接消费 */
-    stockWriteback: { qty: p.got, to: doc.receiver, written: false, note: "第二版接「存」后回写可售库存" },
+    stockWriteback: { qty: got, to: doc.receiver, written: false, note: "第二版接「存」后回写可售库存" },
   });
+
+  /* 提货码分配必须**先于**异常分支：少货也是「到货了一部分」，
+     先下单的那几笔如果货已齐，就该能提货，不能因为同批有别的商品短少而一起卡住 */
+  let extra = "";
+  const orders = orderStore.get();
+  if (["supplier_inbound", "hq_store"].includes(doc.leg)) {
+    const { ready, short } = allocateByOrder({ ...doc, items }, orders);
+    if (ready.length) {
+      orderStore.set((os) => os.map((o) => (ready.includes(o.no) && !["已完成", "已取消", "已全额退款"].includes(o.status) ? { ...o, pickupReady: true } : o)));
+      extra += `，${ready.length} 笔自提订单货已齐、提货码已激活`;
+    }
+    if (short.length) extra += `，${short.length} 笔订单货未齐、提货码暂不可用`;
+  }
 
   if (p.result === "收货异常") {
     /* 决策 5：补发单再出问题 → 只记异常标记，不再开新差异单，转线下 */
@@ -94,15 +190,16 @@ function applyReceive(doc, p) {
       id: "DIFF" + ymd + String(diffStore.get().length + 1).padStart(4, "0"),
       source: byHq ? "总部上报" : "门店上报", leg: legLabelOf(doc), reporter: byHq ? "总部" : "门店",
       supplyNo: doc.id, shipper: doc.shipper,
-      summary: `${doc.product} 应收${doc.qty}/实收${recv}｜${p.reason}`,
+      /* 差异摘要按商品逐条列：一批里可能只有某几个商品短少 */
+      summary: items.filter((i) => (i.received || 0) < (i.sent || 0))
+        .map((i) => `${i.product} 应收${i.sent}/实收${i.received} 差${i.sent - i.received}`).join("；") + `｜${p.reason}`,
+      diffQty: items.reduce((a, i) => a + Math.max(0, (i.sent || 0) - (i.received || 0)), 0),
       status: byHq ? "待供应商审核" : "待总部审核",
       evidence: `${p.reason} · 照片 ${p.photos} 张`,
       note: p.note,
     });
-    return `供货单 ${doc.id} 已记收货异常，差异单进入「${byHq ? "待供应商审核" : "待总部审核"}」（举证已在收货时完成）`;
+    return `供货单 ${doc.id} 已记收货异常，差异单进入「${byHq ? "待供应商审核" : "待总部审核"}」（举证已在收货时完成）${extra}`;
   }
-
-  let extra = "";
 
   /* 决策 5：补发单收满 → 原供货单同步结案 + 差异单转「补发完成」（不早退，继续走激活/生成） */
   if (doc.isMakeup && full && doc.reshipOf) {
@@ -113,33 +210,37 @@ function applyReceive(doc, p) {
     extra += `，原供货单 ${diff?.supplyNo || ""} 同步结案，差异单转「补发完成」`;
   }
 
-  /* R4/R5：收满且收货主体是门店 → 关联自提订单提货码激活；R6 守卫已完结订单 */
-  if (full && ["supplier_inbound", "hq_store"].includes(doc.leg)) {
-    orderStore.set((os) => os.map((o) => (
-      (o.supplyNo === doc.id || (doc.orderNo && o.no === doc.orderNo)) && !["已完成", "已取消", "已全额退款"].includes(o.status)
-        ? { ...o, pickupReady: true } : o
-    )));
-  }
-
-  /* F4③：总部仓直配（供应商供货）·自提订单，上游收满 → 自动生成「总部仓 → 门店」发货任务（发货管理） */
+  /* F4③：总部仓直配（供应商供货）·自提订单，上游收满 → 自动生成「总部仓 → 门店」发货任务。
+     汇总口径下按**门店**建批：同一门店的多个自提订单一并进这一批 */
   if (full && doc.leg === "supplier_to_hq") {
-    const order = orderStore.get().find((o) => o.no === doc.orderNo || o.supplyNo === doc.id);
-    if (order && order.delivery === "上门自提") {
-      const exists = supplyStore.get().some((d) => d.leg === "hq_store" && d.orderNo === doc.orderNo);
-      if (!exists) {
-        const id = newFhdId();
-        supplyStore.set((ds) => [{
-          id, leg: "hq_store", source: "上游收货自动生成", createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
-          orderNo: doc.orderNo, product: doc.product, spec: doc.spec, emoji: doc.emoji,
-          qty: doc.qty, sent: 0, supplyMode: order.supplyMode, goodsSource: order.goodsSource,
-          shipper: "九天教育总仓", receiver: order.store, receiverAddr: STORE_ADDR[order.store] || "",
-          carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
-        }, ...ds]);
-        extra += `，系统自动生成「总部仓 → ${order.store}」发货任务 ${id}`;
-      }
+    const mine = ordersOf(doc);
+    const pickups = orders.filter((o) => mine.includes(o.no) && o.delivery === "上门自提");
+    const byStore = {};
+    for (const o of pickups) {
+      const no = o.supplyNo;
+      const src = itemsOf(doc).find((it) => (it.from || []).some((f) => f.orderNo === o.no)) || itemsOf(doc)[0] || {};
+      (byStore[o.store] = byStore[o.store] || []).push({
+        product: o.product, spec: o.spec, emoji: o.emoji, qty: o.qty, sent: 0, received: 0,
+        from: [{ orderNo: o.no, qty: o.qty }],
+      });
+      void no; void src;
+    }
+    for (const [store, its] of Object.entries(byStore)) {
+      if (supplyStore.get().some((d) => d.leg === "hq_store" && d.receiver === store && d.status === "待发货")) continue;
+      const id = newFhdId();
+      supplyStore.set((ds) => [{
+        id, leg: "hq_store", source: "上游收货自动生成",
+        batchAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+        shipper: "九天教育总仓", receiver: store, receiverAddr: STORE_ADDR[store] || "",
+        orderNos: its.map((x) => x.from[0].orderNo),
+        items: its, packages: [],
+        qty: its.reduce((a, x) => a + x.qty, 0), sent: 0, received: 0, status: "待发货",
+      }, ...ds]);
+      extra += `，系统自动生成「总部仓 → ${store}」发货任务 ${id}（${its.length} 笔自提订单）`;
     }
   }
-  return full ? `供货单 ${doc.id} 已收货${extra}` : `供货单 ${doc.id} 部分收货，待补 ${doc.qty - recv} 件`;
+  const undone = items.reduce((a, i) => a + Math.max(0, (i.sent || 0) - (i.received || 0)), 0);
+  return full ? `供货单 ${doc.id} 已收货${extra}` : `供货单 ${doc.id} 部分收货，待补 ${undone} 件`;
 }
 
 /* 补发单标记（列表通用）：补发单 + 源差异单 + 原供货单，关联关系一眼可见 */
@@ -153,14 +254,22 @@ export function MakeupTag({ d }) {
   );
 }
 
-const Thumb = ({ d }) => (
-  <div className="prod-cell">
-    <span className="thumb" style={{ background: "#f4f7f6" }}>{d.emoji}</span>
-    <div><div>{d.product}</div><small>{d.spec}</small></div>
-  </div>
-);
+/* 商品列：一批可能含多个商品，列表只展示首个 + 「等 N 种」，明细进详情看 */
+const Thumb = ({ d }) => {
+  const { first, spec, emoji, more } = itemsLabel(d);
+  const n = itemsOf(d).length;
+  return (
+    <div className="prod-cell">
+      <span className="thumb" style={{ background: "#f4f7f6" }}>{emoji}</span>
+      <div>
+        <div>{first}{more > 0 && <span className="note"> 等 {n} 种</span>}</div>
+        <small>{spec}</small>
+      </div>
+    </div>
+  );
+};
 
-function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
+function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch, onAppend }) {
   /* 收货管理为收货方视角：单据「已发货」在收货侧显示为「待收货」（数据层状态不变） */
   const statusText = (d) => {
     if (mode === "receive" && ["已发货", "部分收货"].includes(d.status)) return "待收货"; // 收货方视角
@@ -202,20 +311,25 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
               <tr key={d.id}>
                 <td><input type="checkbox" checked={sel.has(d.id)} onChange={() => toggleOne(d.id)} /></td>
                 <td className="tw mono">{d.id}</td>
-                <td className="tw">{d.source || "订单支付自动生成"}<small className="mono">{d.createdAt}</small>
+                <td className="tw">{d.source || "订单汇总生成"}<small className="mono">{d.batchAt || d.createdAt}</small>
                   <MakeupTag d={d} /></td>
-                <td className="tw mono">{d.orderNo}</td>
+                <td className="tw mono">{ordersOf(d).length > 1
+                  ? <>{ordersOf(d)[0]}<small style={{ display: "block", color: "#999" }}>等 {ordersOf(d).length} 笔订单</small></>
+                  : <>{ordersOf(d)[0] || "-"}</>}</td>
                 <td><Thumb d={d} /></td>
                 <td className="tw">{legLabelOf(d)}</td>
                 <td className="tw">{d.shipper}</td>
                 <td>{d.receiver}<small>{d.receiverAddr}</small></td>
-                <td className="tw mono">{d.qty}/{d.sent}
-                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {d.received ?? 0}｜待补 {d.qty - (d.received ?? 0)} 件</small>}
-                  {d.status === "收货异常" && !d.makeupAnomaly && <small style={{ color: "#f5522e" }}>实收 {d.received ?? 0}｜差 {Math.max(0, d.qty - (d.received ?? 0))} 件</small>}
+                <td className="tw mono">{qtyOf(d)}/{sentOf(d)}
+                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {receivedOf(d)}｜待补 {qtyOf(d) - receivedOf(d)} 件</small>}
+                  {d.status === "收货异常" && !d.makeupAnomaly && <small style={{ color: "#f5522e" }}>实收 {receivedOf(d)}｜差 {Math.max(0, qtyOf(d) - receivedOf(d))} 件</small>}
                   {d.makeupAnomaly && <small style={{ color: "#f5522e" }}>补发仍有异常 · 转线下</small>}
                 </td>
-                <td className="tw mono">{d.tracking ? <>{d.carrier}<small>{d.tracking}</small></> : "-"}</td>
-                <td className="tw">{d.track ? <span onClick={() => onOpen("track", d)} style={{ color: "#25c7a5", cursor: "pointer" }}>查看物流轨迹</span> : "-"}</td>
+                <td className="tw mono">{packagesOf(d).length
+                  ? <>{packagesOf(d)[0].carrier}<small>{packagesOf(d)[0].tracking}</small>
+                    {packagesOf(d).length > 1 && <small style={{ display: "block", color: "#999" }}>共 {packagesOf(d).length} 个包裹</small>}</>
+                  : "-"}</td>
+                <td className="tw">{packagesOf(d).length ? <span onClick={() => onOpen("track", d)} style={{ color: "#25c7a5", cursor: "pointer" }}>{packagesOf(d).length > 1 ? `查看 ${packagesOf(d).length} 个包裹` : "查看物流轨迹"}</span> : "-"}</td>
                 <td className="tw">
                   <span className={`tag ${statusText(d) === "待发货" ? "warn" : statusText(d) === "待收货" ? "blue" : statusText(d) === "收货异常" ? "danger" : ""}`}>{statusText(d)}</span>
                   {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>部分收货</small>}
@@ -224,6 +338,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                 <td>
                   <div className="op-col">
                     {/* 收货方的待收货行：重点是「这单是给谁的」，详情让位给关联订单 */}
+                    {mode === "ship" && onAppend && d.status === "待发货" && !d.isMakeup && <button className="gray" onClick={() => onAppend(d)}>追加订单</button>}
                     {mode === "receive" && statusText(d) === "待收货"
                       ? <button onClick={() => onOpen("order", d)}>关联订单</button>
                       : <button className="gray" onClick={() => onOpen("detail", d)}>详情</button>}
@@ -247,8 +362,175 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
   );
 }
 
+/* ---------------- 待发货订单池（日常按订单看；发货是显式动作） ---------------- */
+export function OrderPool({ scope }) {
+  const orders = orderStore.use();
+  const docs = supplyStore.use();
+  const [gen, setGen] = useState(null);
+  const [toast, tip] = useToast();
+  const pool = poolOf(scope, orders, docs);
+  const oldest = pool.map((o) => o.payTime || o.createdAt || "").filter(Boolean).sort()[0];
+  const waitH = oldest ? Math.max(0, Math.round((Date.now() - new Date(oldest.replace(/-/g, "/")).getTime()) / 36e5)) : 0;
+
+  return (
+    <>
+      <div className="alert">
+        <span className="ic">i</span>
+        您有 <b style={{ margin: "0 4px" }}>{pool.length}</b> 笔订单待生成发货任务
+        {pool.length > 0 && <>，最早一笔已等待 <b style={{ margin: "0 4px" }}>{waitH}</b> 小时</>}
+        <button className="btn primary" style={{ marginLeft: "auto" }} disabled={!pool.length} onClick={() => setGen({ k: "new" })}>生成发货任务</button>
+      </div>
+
+      <div className="tbl-wrap">
+        <table className="tbl-tight">
+          <thead>
+            <tr><th>商品信息</th><th className="tw">数量</th><th>买家 / 收件人</th><th className="tw">发往门店</th>
+              <th className="tw">配送方式</th><th className="tw">支付时间</th><th className="tw">供货模式</th></tr>
+          </thead>
+          <tbody>
+            {pool.map((o) => (
+              <tr key={o.id}>
+                <td>
+                  <div className="prod-cell">
+                    <span className="thumb" style={{ background: "#f4f7f6" }}>{o.emoji}</span>
+                    <div>
+                      <div>订单号：<span className="mono" style={{ color: "#25c7a5" }}>{o.no}</span></div>
+                      <div>{o.product}</div><small>{o.spec}</small>
+                    </div>
+                  </div>
+                </td>
+                <td className="tw mono">{o.qty}</td>
+                <td>{Object.entries(o.buyer || {}).map(([k, v]) => (<div key={k} style={{ display: "flex", gap: 4 }}><span style={{ color: "#999", whiteSpace: "nowrap" }}>{k}:</span><span>{v}</span></div>))}</td>
+                <td className="tw">{o.store}</td>
+                <td className="tw">{o.delivery}</td>
+                <td className="tw mono">{o.payTime || o.createdAt}</td>
+                <td className="tw">{supplyLabelOf(o)}</td>
+              </tr>
+            ))}
+            {!pool.length && <tr><td colSpan={7} style={{ textAlign: "center", padding: 34, color: "#999" }}>暂无待发货订单——待发货的都已生成发货任务</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {gen && <GenTaskModal scope={scope} pool={pool} onClose={() => setGen(null)}
+        onDone={(made) => { setGen(null); tip(`已生成 ${made.length} 张发货任务：${made.map((m) => `${m.store} ${m.count} 笔`).join("；")}`); }} />}
+      {toast}
+    </>
+  );
+}
+
+/* 生成 / 追加发货任务：选门店（可多选）+ 选支付时间截止点，按门店各生成一张 */
+export function GenTaskModal({ scope, pool, task, onClose, onDone }) {
+  const stores = [...new Set(pool.map((o) => o.store))];
+  const [picked, setPicked] = useState(task ? [task.receiver] : stores);
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [time, setTime] = useState("17:00");
+  const cutoff = `${date} ${time}:59`;
+  const will = pool.filter((o) => picked.includes(o.store) && (o.payTime || o.createdAt || "") <= cutoff);
+  const byStore = {};
+  for (const o of will) (byStore[o.store] = byStore[o.store] || []).push(o);
+  const toggle = (x) => setPicked((a) => (a.includes(x) ? a.filter((y) => y !== x) : [...a, x]));
+  const n = Object.keys(byStore).length;
+  /* 订单明细可展开收起：单少时默认摊开（一眼核完），单多时默认收起（别把弹窗撑爆） */
+  const [openMap, setOpenMap] = useState({});
+  const isOpen = (x, cnt) => (x in openMap ? openMap[x] : cnt <= 3);
+  const toggleOpen = (x, cnt) => setOpenMap((a) => ({ ...a, [x]: !isOpen(x, cnt) }));
+
+  return (
+    <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="drawer" style={{ width: 760, height: "auto", maxHeight: "88vh", borderRadius: 4 }}>
+        <header>{task ? "追加订单到发货任务" : "生成发货任务"}<button className="x" onClick={onClose}>×</button></header>
+        <div className="body">
+          <div className="alert">
+            <span className="ic">i</span>把「发往同一门店、支付时间在截止点之前」的订单汇总成一张发货任务，每个门店各一张。
+            订单进入任务后不会再次出现在待发货订单池里，避免重复发货。
+          </div>
+
+          <div className="frow" style={{ marginTop: 14 }}>
+            <label><i className="req">*</i>发往门店</label>
+            <div className="fc">
+              {task ? (
+                <div><span className="tag blue">{task.receiver}</span><span className="note" style={{ marginLeft: 8 }}>追加模式：门店固定为这张任务的门店</span></div>
+              ) : (
+                <div className="radio-row" style={{ flexWrap: "wrap", gap: 16 }}>
+                  {stores.map((x) => (
+                    <label key={x}>
+                      <input type="checkbox" checked={picked.includes(x)} onChange={() => toggle(x)} />
+                      {x}<span className="note" style={{ marginLeft: 4 }}>（{pool.filter((o) => o.store === x).length} 笔）</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {!stores.length && <div className="note">当前没有可汇总的订单</div>}
+            </div>
+          </div>
+
+          <div className="frow">
+            <label><i className="req">*</i>支付时间</label>
+            <div className="fc">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input type="date" className="ctl" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: 170 }} />
+                <span>之前（含）</span>
+                <input type="time" className="ctl" value={time} onChange={(e) => setTime(e.target.value)} style={{ width: 120 }} />
+              </div>
+              <div className="note">只汇总截止到这个时间点之前支付的订单，之后支付的留在池子里等下一批。</div>
+            </div>
+          </div>
+
+          <h3 style={{ fontSize: 14, margin: "18px 0 8px" }}>这批将汇总以下订单</h3>
+          {Object.entries(byStore).map(([x, os]) => (
+            <div key={x} style={{ border: "1px solid var(--line)", borderRadius: 4, padding: "12px 14px", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 18, fontSize: 13 }}>
+                <b>{x}</b>
+                <span className="note" style={{ display: "inline" }}>
+                  {os.length} 笔订单 · {new Set(os.map((o) => o.product)).size} 种商品 · {os.reduce((a, o) => a + (o.qty || 0), 0)} 件
+                </span>
+                <span className="note" style={{ display: "inline", marginLeft: "auto" }}>生成后进入发货任务列表（待发货），物流在发货时填</span>
+              </div>
+              {/* 生成前要能核对「这批到底是谁的单」——只给汇总数，发货方没法确认 */}
+              <div style={{ marginTop: 8, display: "flex", alignItems: "center" }}>
+                <span className="note" style={{ display: "inline" }}>订单明细（{os.length} 笔）</span>
+                <button className="btn link" style={{ marginLeft: 8 }} onClick={() => toggleOpen(x, os.length)}>
+                  {isOpen(x, os.length) ? "收起" : "展开"}
+                </button>
+              </div>
+              {isOpen(x, os.length) && (
+                <table className="tbl-tight" style={{ marginTop: 6 }}>
+                  <thead><tr><th className="tw">销售订单</th><th>买家</th><th>商品</th><th className="tw">数量</th><th className="tw">支付时间</th></tr></thead>
+                  <tbody>
+                    {os.map((o) => (
+                      <tr key={o.no}>
+                        <td className="tw mono">{o.no}</td>
+                        <td>{o.buyer?.["收件人"] || o.buyer?.昵称 || "—"}</td>
+                        <td>{o.emoji} {o.product}　<small>{o.spec}</small></td>
+                        <td className="tw mono">{o.qty}</td>
+                        <td className="tw mono">{o.payTime || o.createdAt}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ))}
+          {!n && <div className="note" style={{ textAlign: "center", padding: 24 }}>当前条件下没有可汇总的订单</div>}
+        </div>
+        <div className="foot">
+          <button className="btn plain" onClick={onClose}>取消</button>
+          <button className="btn primary" disabled={!n}
+            onClick={() => onDone(genTasksFrom(scope, picked, cutoff, {
+              orders: orderStore.get(), supplyDocs: supplyStore.get(), setOrders: orderStore.set,
+            }, task))}>
+            {task ? "追加到这张任务" : `生成 ${n} 张发货任务`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ============================ 供货发货 ============================ */
 export function SupplyDispatch() {
+  const [view, setView] = useState("pool");     // pool 待发货订单 / tasks 发货任务
   const [tab, setTab] = useState("全部");
   const [modal, setModal] = useState(null);
   const [batch, setBatch] = useState(null);
@@ -258,9 +540,22 @@ export function SupplyDispatch() {
   const pending = rows.filter((d) => canShip(d) && !d.isMakeup).length;
   /* 补发单发货收口在配送差异页：批量 / 导入 / 模板不含补发单 */
   const canShipRows = rows.filter((d) => canShip(d) && !d.isMakeup);
+  const [append, setAppend] = useState(null);   // 追加订单到某张任务
 
   return (
     <>
+      {/* 日常按订单看（订单池），发货按任务看（汇总单）——批次是发货方显式生成的，不是系统按时间切的 */}
+      <div className="tabs" style={{ display: "flex", gap: 28, borderBottom: "1px solid var(--line)", marginBottom: 16, paddingLeft: 8 }}>
+        {[["pool", "待发货订单"], ["tasks", "发货任务"]].map(([k, t]) => (
+          <span key={k} onClick={() => setView(k)}
+            style={{ paddingBottom: 12, fontSize: 14, cursor: "pointer",
+              color: view === k ? "var(--brand)" : "var(--text-2)",
+              borderBottom: view === k ? "2px solid var(--brand)" : "2px solid transparent",
+              fontWeight: view === k ? 600 : 400 }}>{t}</span>
+        ))}
+      </div>
+
+      {view === "pool" ? <OrderPool scope="hq_store" /> : (<>
       <div className="filters">
         <div className="row">
           <div className="field"><label>供货路径</label>
@@ -275,7 +570,7 @@ export function SupplyDispatch() {
         <span className="ic">i</span>您有 <b style={{ margin: "0 4px" }}>{pending}</b> 笔待发货供货单
       </div>
 
-      <DocTable rows={rows} tab={tab} setTab={setTab} tabs={["全部", "待发货", "已发货", "收货异常", "已收货"]} mode="ship" onOpen={(k, d) => setModal({ k, d })} onBatch={setBatch} />
+      <DocTable rows={rows} tab={tab} setTab={setTab} tabs={["全部", "待发货", "已发货", "收货异常", "已收货"]} mode="ship" onOpen={(k, d) => setModal({ k, d })} onBatch={setBatch} onAppend={setAppend} />
 
       {modal?.k === "ship" && <ShipDrawer doc={modal.d} onClose={() => setModal(null)} onDone={(p) => { tip(applyShip(modal.d, p)); setModal(null); }} />}
       {modal?.k === "receive" && <ReceiveDrawer doc={modal.d} onClose={() => setModal(null)} onDone={(p) => { tip(applyReceive(modal.d, p)); setModal(null); }} />}
@@ -285,6 +580,10 @@ export function SupplyDispatch() {
       {batch === "template" && <TemplateDrawer rows={canShipRows} onClose={() => setBatch(null)} />}
       {batch === "import" && <ImportDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => tip(`已导入发货 ${applyShipBatch(items)} 单`)} />}
       {batch === "batch" && <BatchShipDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => tip(`已批量发货 ${applyShipBatch(items)} 单`)} />}
+      {append && <GenTaskModal scope="hq_store" pool={poolOf("hq_store", orderStore.get(), supplyStore.get())} task={append}
+        onClose={() => setAppend(null)}
+        onDone={(made) => { setAppend(null); tip(`已向 ${made[0].id} 追加 ${made[0].count} 笔订单`); }} />}
+      </>)}
     </>
   );
 }
@@ -396,7 +695,7 @@ export function SupplyDiff() {
                   <td className="tw">{d.makeup
                     ? <span className="mono" style={{ color: "#25c7a5" }}>
                         {d.makeup}
-                        <small style={{ display: "block", fontFamily: "inherit" }}>{mk ? `${mk.status}${mk.tracking ? " · 已发物流" : ""}` : "—"}</small>
+                        <small style={{ display: "block", fontFamily: "inherit" }}>{mk ? `${mk.status}${packagesOf(mk).length ? " · 已发物流" : ""}` : "—"}</small>
                       </span>
                     : <span style={{ color: "#999" }}>—</span>}</td>
                   <td className="tw">
@@ -439,12 +738,19 @@ export function SupplyDiff() {
             const all = [...supplyStore.get(), ...supplierStore.get()];
             const orig = all.find((d) => d.id === pass.supplyNo);
             const reshipId = newFhdId();
+            /* 补发只补**少的那几个商品**，不复制整批 */
+            const miss = itemsOf(orig).map((it) => {
+              const need = (it.sent || 0) - (it.received || 0);
+              return need > 0 ? { ...it, qty: need, sent: 0, received: 0 } : null;
+            }).filter(Boolean);
+            const its = miss.length ? miss : [{ product: "补发商品", spec: "", emoji: "📦", qty: pass.diffQty ?? 1, sent: 0, received: 0, from: [] }];
             const doc = {
-              id: reshipId, leg: orig?.leg || "hq_store", source: "配送差异补发", createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
-              orderNo: orig?.orderNo || "—", product: orig?.product || "补发商品", spec: orig?.spec || "",
-              emoji: orig?.emoji || "📦", qty: pass.diffQty ?? 1, sent: 0, supplyMode: orig?.supplyMode, goodsSource: orig?.goodsSource,
+              id: reshipId, leg: orig?.leg || "hq_store", source: "配送差异补发",
+              batchAt: new Date().toISOString().slice(0, 19).replace("T", " "),
               shipper: pass.shipper, receiver: orig?.receiver || "—", receiverAddr: orig?.receiverAddr || "",
-              carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
+              orderNos: ordersOf(orig), items: its, packages: [],
+              qty: its.reduce((a, x) => a + x.qty, 0), sent: 0, received: 0, status: "待发货",
+              supplyMode: orig?.supplyMode, goodsSource: orig?.goodsSource,
               isMakeup: true, reshipOf: pass.id,
             };
             /* 谁发货谁补发：供应商发起的链路推送供应商后台，总部仓链路留在发货管理 */
@@ -543,8 +849,8 @@ function DiffDetailDrawer({ row, onClose }) {
               {row.makeup && <div className="frow"><label>补发供货单</label><div className="fc"><input className="mono" value={row.makeup} readOnly /></div></div>}
               {row.makeup && (
                 <div className="frow"><label>补发物流</label><div className="fc">
-                  {makeupDoc && makeupDoc.tracking
-                    ? <span>{makeupDoc.carrier}　<b className="mono">{makeupDoc.tracking}</b>　{makeupDoc.track}</span>
+                  {makeupDoc && packagesOf(makeupDoc).length
+                    ? <span>{packagesOf(makeupDoc).map((p) => `${p.carrier} ${p.tracking}`).join("；")}　{packagesOf(makeupDoc)[0].track}</span>
                     : <span className="note">补发供货单 {row.makeup} 尚未发货（{makeupDoc?.leg === "hq_store" ? "在配送差异列表点「发货」提交物流" : "由供应商在其配送差异页发货"}）</span>}
                 </div></div>
               )}
@@ -567,18 +873,67 @@ function DiffDetailDrawer({ row, onClose }) {
   );
 }
 
+/* 订单关联：这张供货单上的某件商品，是哪些销售订单要的 —— 订单号 + 购买者。
+   自提单要靠它知道「货到了通知谁」，所以联系方式一并给出。 */
+export function OrderRefsPop({ item, orders, onClose, mask }) {
+  /* 供应商侧的买家信息脱敏（供应商只管把货发到门店，不该拿到消费者联系方式） */
+  const hide = (t) => (mask && t && t.length > 1 ? t[0] + "*".repeat(t.length - 1) : t);
+  const hidePhone = (t) => (mask && t ? t.slice(0, 3) + "****" + t.slice(-4) : t);
+  const rows = (item.from || []).map((f) => ({ ...f, order: orders.find((o) => o.no === f.orderNo) }));
+  return (
+    <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="drawer" style={{ width: 660, height: "auto", maxHeight: "82vh", borderRadius: 4 }}>
+        <header>订单关联<button className="x" onClick={onClose}>×</button></header>
+        <div className="body">
+          <div className="note" style={{ marginTop: 0 }}>{item.product}　{item.spec}　共 {rows.length} 笔订单，合计 {item.qty} 件</div>
+          <div className="note" style={{ marginTop: 2 }}>{mask ? "买家联系方式对供应商脱敏，发货到店后由门店 / 总部通知买家" : "自提单货到后按联系电话通知买家来取"}</div>
+          <table className="tbl-tight" style={{ marginTop: 10 }}>
+            <thead>
+              <tr><th>订单号</th><th className="tw">购买数量</th><th>购买者</th><th>联系电话</th><th className="tw">配送方式</th><th className="tw">下单时间</th></tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const o = r.order;
+                const nick = o?.buyer?.["昵称"] || "-";
+                const rcpt = o?.buyer?.["收件人"];
+                return (
+                  <tr key={r.orderNo}>
+                    <td className="mono">{r.orderNo}</td>
+                    <td className="tw mono">{r.qty}</td>
+                    <td>
+                      <div>{hide(nick)}</div>
+                      {rcpt && rcpt !== nick && <small>收件人：{hide(rcpt)}</small>}
+                    </td>
+                    <td className="mono">{o?.buyer?.["收件人电话"] ? hidePhone(o.buyer["收件人电话"]) : "—"}</td>
+                    <td className="tw">{o?.delivery || "—"}</td>
+                    <td className="mono">{o?.createdAt || "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ============================ 发货弹窗（版式与真实 SaaS「发货」弹窗一致） ============================ */
 function ShipDrawer({ doc, onClose, onDone }) {
-  /* 决策 2：部分收货后由原发货方补齐，可发数量 = 未收满的差额，而不是「未发数量」 */
-  const remain = doc.status === "部分收货" ? doc.qty - (doc.received ?? 0) : doc.qty - doc.sent;
-  const [qty, setQty] = useState(Math.max(1, remain));
-  const [tracking, setTracking] = useState("");
-  const [carrier, setCarrier] = useState("");
-  const [addr, setAddr] = useState(0);
-  const addresses = [
-    { name: "九天教育总仓", phone: "13300000000", addr: "广州市天河区科韵路 16 号" },
-    { name: "九天门店", phone: "18100000003", addr: "广东省广州市荔湾区宝华路 76 号" },
-  ];
+  /* 汇总批次是**整批发**：这批货就是要一次发往这个门店，不再问「每个商品发几件」 */
+  const lines = itemsOf(doc).map((it) => {
+    const remain = doc.status === "部分收货" ? it.qty - (it.received || 0) : it.qty - (it.sent || 0);
+    return { product: it.product, spec: it.spec, emoji: it.emoji, qty: it.qty, out: Math.max(0, remain), from: it.from || [] };
+  });
+  /* 包裹可以多个：一批装不下就拆包，每个包裹一条运单号 */
+  const [pk, setPk] = useState([{ carrier: "", tracking: "" }]);
+  const setPkAt = (i, k, v) => setPk((a) => a.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
+  const totalOut = lines.reduce((a, x) => a + x.out, 0);
+  const parcels = pk.filter((x) => x.carrier && x.tracking.trim());
+  /* 发货地址只从「设置 › 地址库 › 发货地址」里选，默认地址唯一（isDefault），弹窗打开即选中它 */
+  const addresses = addressBookStore.use().filter((a) => a.type === "ship");
+  const [addr, setAddr] = useState(() => Math.max(0, addresses.findIndex((a) => a.isDefault)));
+  const [rel, setRel] = useState(null);      // 订单关联弹层
 
   return (
     <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -589,28 +944,30 @@ function ShipDrawer({ doc, onClose, onDone }) {
             <thead>
               <tr>
                 <th style={{ width: 40 }}><input type="checkbox" /></th>
-                <th>商品信息</th><th className="tw">单价(元)</th><th className="tw">数量/单位</th>
-                <th className="tw">未发货数量</th><th className="tw">发货数量</th><th className="tw">发货状态</th><th className="tw">运单号</th>
+                <th>商品信息</th><th className="tw">订单关联</th><th className="tw">单价(元)</th><th className="tw">数量/单位</th>
+                <th className="tw">未发货数量</th><th className="tw">本次发货</th><th className="tw">发货状态</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><input type="checkbox" /></td>
-                <td><Thumb d={doc} /></td>
-                <td className="tw">￥0.01</td>
-                <td className="tw">{doc.qty}</td>
-                <td className="tw mono">{remain}</td>
-                <td className="tw">
-                  <span style={{ display: "inline-flex", alignItems: "center", border: "1px solid #e5e5e5", borderRadius: 3, height: 30 }}>
-                    <span style={{ padding: "0 8px", color: "#999", fontSize: 12.5, borderRight: "1px solid #e5e5e5", lineHeight: "28px" }}>发货数</span>
-                    <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
-                    <input value={qty} onChange={(e) => setQty(Math.min(remain, Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 0)))} style={{ width: 44, height: 28, border: 0, textAlign: "center", padding: 0 }} />
-                    <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.min(remain, q + 1))}>＋</button>
-                  </span>
-                </td>
-                <td className="tw">{doc.status}</td>
-                <td className="tw"><input placeholder="请输入" style={{ height: 30 }} /></td>
-              </tr>
+              {lines.map((l) => (
+                <tr key={l.product}>
+                  <td><input type="checkbox" checked readOnly /></td>
+                  <td>
+                    <div className="prod-cell">
+                      <span className="thumb" style={{ background: "#f4f7f6" }}>{l.emoji}</span>
+                      <div><div>{l.product}</div><small>{l.spec}</small></div>
+                    </div>
+                  </td>
+                  <td className="tw">
+                    <span onClick={() => setRel(l)} style={{ color: "#25c7a5", cursor: "pointer" }}>{l.from.length} 笔订单</span>
+                  </td>
+                  <td className="tw">￥0.01</td>
+                  <td className="tw">{l.qty}</td>
+                  <td className="tw mono">{l.out}</td>
+                  <td className="tw"><span style={{ color: "#25c7a5" }}>本次发 {l.out}</span></td>
+                  <td className="tw">{doc.status}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
 
@@ -626,76 +983,106 @@ function ShipDrawer({ doc, onClose, onDone }) {
 
           <div style={{ display: "flex", alignItems: "center", margin: "18px 0 8px" }}>
             <h3 style={{ fontSize: 14, margin: 0 }}>选择发货地址</h3>
-            <button className="btn link" style={{ marginLeft: "auto" }}>+ 添加地址</button>
+            <span className="note" style={{ marginLeft: "auto" }}>地址在「设置 › 地址库」维护，这里只做选择</span>
           </div>
           <table className="tbl-tight">
             <thead><tr><th style={{ width: 36 }}></th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
             <tbody>
               {addresses.map((a, i) => (
-                <tr key={i}>
+                <tr key={a.id}>
                   <td><input type="radio" checked={addr === i} onChange={() => setAddr(i)} /></td>
-                  <td className="tw">{a.name} <span className="tag gray">默认</span></td>
+                  <td className="tw">{a.name} {a.isDefault && <span className="tag gray">默认</span>}</td>
                   <td className="tw mono">{a.phone}</td>
-                  <td>{a.addr}</td>
+                  <td>{a.region.replace(/\//g, "")} {a.detail}</td>
+                </tr>
+              ))}
+              {!addresses.length && <tr><td colSpan={4} className="note" style={{ padding: 16 }}>地址库里还没有发货地址，请先到「设置 › 地址库」添加</td></tr>}
+            </tbody>
+          </table>
+
+          <div style={{ display: "flex", alignItems: "center", margin: "18px 0 8px" }}>
+            <h3 style={{ fontSize: 14, margin: 0 }}>包裹与物流</h3>
+            <button className="btn link" style={{ marginLeft: "auto" }} onClick={() => setPk((a) => [...a, { carrier: "", tracking: "" }])}>+ 添加包裹</button>
+          </div>
+          <table className="tbl-tight">
+            <thead><tr><th className="tw" style={{ width: 80 }}>包裹</th><th className="tw">快递公司</th><th className="tw">快递单号</th><th style={{ width: 60 }}></th></tr></thead>
+            <tbody>
+              {pk.map((p, i) => (
+                <tr key={i}>
+                  <td className="tw">第 {i + 1} 个</td>
+                  <td className="tw">
+                    <select className="ctl" value={p.carrier} onChange={(e) => setPkAt(i, "carrier", e.target.value)} style={{ width: 180, height: 30 }}>
+                      <option value="">请选择或搜索快递公司</option>
+                      {["顺丰速运", "圆通速递", "中通快递", "京东物流", "韵达快递", "极兔速递"].map((c) => <option key={c}>{c}</option>)}
+                    </select>
+                  </td>
+                  <td className="tw"><input className="ctl" style={{ height: 30 }} placeholder="请输入快递单号" value={p.tracking} onChange={(e) => setPkAt(i, "tracking", e.target.value)} /></td>
+                  <td>{pk.length > 1 && <button className="btn link" onClick={() => setPk((a) => a.filter((_, j) => j !== i))}>删除</button>}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-
-          <div style={{ display: "flex", gap: 40, marginTop: 22, alignItems: "center", fontSize: 13, color: "#666" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span>快递公司信息：<i className="req">*</i></span>
-              <select className="ctl" value={carrier} onChange={(e) => setCarrier(e.target.value)} style={{ width: 220, height: 32 }}><option value="">请选择或搜索快递公司</option>
-                {["顺丰速运", "圆通速递", "中通快递", "京东物流", "韵达快递", "极兔速递"].map((c) => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span>快递单号：<i className="req">*</i></span>
-              <input className="ctl" style={{ width: 200, height: 32 }} placeholder="请输入快递单号" value={tracking} onChange={(e) => setTracking(e.target.value)} />
-            </div>
-          </div>
+          <div className="note">这一批（{lines.length} 种商品、{totalOut} 件）整批发往 {doc.receiver}；装不下时可以拆成多个包裹，每个包裹一条运单号。</div>
 
         </div>
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={qty < 1 || !carrier || !tracking.trim()} onClick={() => onDone({ qty, carrier, tracking: tracking.trim() })}>确定</button>
+          <button className="btn primary" disabled={totalOut < 1 || !parcels.length}
+            onClick={() => onDone({ lines: lines.filter((x) => x.out > 0).map((x) => ({ product: x.product, qty: x.out })), packages: parcels })}>确认发货</button>
         </div>
       </div>
+      {rel && <OrderRefsPop item={rel} orders={orderStore.get()} onClose={() => setRel(null)} />}
     </div>
   );
 }
 
 /* 发货提交：写回 sent / 物流，部分发货保持可再发（F6） */
-function applyShip(doc, p) {
-  const sent = (doc.sent ?? 0) + p.qty;
-  patchDoc(doc.id, {
-    sent,
-    carrier: p.carrier || doc.carrier,
-    tracking: p.tracking || doc.tracking,
-    track: "已发货 " + new Date().toISOString().slice(0, 19).replace("T", " "),
-    /* 部分发货：未发满保持「待发货」便于继续发；发满转「已发货」 */
-    status: sent >= doc.qty ? "已发货" : "待发货",
+export function applyShip(doc, p) {
+  /* 汇总单按商品行发货；包裹可以多个（一批装不下就拆包），每个包裹一条运单号 */
+  const items = itemsOf(doc).map((it) => {
+    const l = (p.lines || []).find((x) => x.product === it.product);
+    return l && l.qty ? { ...it, sent: (it.sent || 0) + l.qty } : it;
   });
-  return `供货单 ${doc.id} 已发货 ${p.qty} 件` + (sent < doc.qty ? `，剩余 ${doc.qty - sent} 件可再发` : "");
+  const sent = items.reduce((a, i) => a + (i.sent || 0), 0);
+  const qty = items.reduce((a, i) => a + (i.qty || 0), 0);
+  const at = "已发货 " + new Date().toISOString().slice(0, 19).replace("T", " ");
+  const pk = [...packagesOf(doc), ...(p.packages || []).filter((x) => x.tracking && x.tracking.trim()).map((x) => ({ carrier: x.carrier, tracking: x.tracking.trim(), track: at }))];
+  patchDoc(doc.id, {
+    items, sent, packages: pk,
+    /* 部分发货：未发满保持「待发货」便于继续发；发满转「已发货」 */
+    status: sent >= qty ? "已发货" : "待发货",
+  });
+  const n = (p.lines || []).reduce((a, x) => a + x.qty, 0);
+  return `供货单 ${doc.id} 已发货 ${n} 件${p.packages?.length ? `，${p.packages.length} 个包裹` : ""}` + (sent < qty ? `，剩余 ${qty - sent} 件可再发` : "");
 }
 
 /* 批量 / 导入发货共用：逐单写入。数量口径与单笔发货一致（F6 / 决策2：部分收货按未收满的差额） */
-export function applyShipBatch(items) {
-  items.forEach(({ doc, carrier, tracking }) => {
-    const remain = doc.status === "部分收货" ? doc.qty - (doc.received ?? 0) : doc.qty - (doc.sent ?? 0);
-    applyShip(doc, { qty: Math.max(0, remain), carrier, tracking });
+export function applyShipBatch(rows) {
+  /* 批量 / 导入是「整批发货」：把该批未发完的商品一次发完，物流按一个包裹登记 */
+  rows.forEach(({ doc, carrier, tracking }) => {
+    const lines = itemsOf(doc).map((it) => {
+      const remain = doc.status === "部分收货" ? it.qty - (it.received || 0) : it.qty - (it.sent || 0);
+      return { product: it.product, qty: Math.max(0, remain) };
+    }).filter((x) => x.qty > 0);
+    if (lines.length) applyShip(doc, { lines, packages: [{ carrier, tracking }] });
   });
-  return items.length;
+  return rows.length;
 }
 
 /* ============================ 收货抽屉（累计实收 F9 / R2 / R3） ============================ */
 function ReceiveDrawer({ doc, onClose, onDone }) {
-  const recv = doc.received ?? 0;
-  const remain = Math.max(0, (doc.sent ?? doc.qty) - recv);
-  const [got, setGot] = useState(remain);
+  const recv = receivedOf(doc);
+  /* 一批多商品：逐行登记本次实收（店员是按商品点数的，不是按订单） */
+  const [lines, setLines] = useState(itemsOf(doc).map((it) => {
+    const remain = Math.max(0, (it.sent || 0) - (it.received || 0));
+    return { product: it.product, spec: it.spec, emoji: it.emoji, should: it.sent || 0, done: it.received || 0, got: remain };
+  }));
   const [reasons, setReasons] = useState([]);   // 与门店APP「配货差异原因」同字段（多选）
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState(0);
+  const setGot = (i, v) => setLines((a) => a.map((x, j) => (j === i ? { ...x, got: Math.max(0, Math.min(x.should - x.done, v)) } : x)));
+  const remain = lines.reduce((a, x) => a + Math.max(0, x.should - x.done), 0);
+  const got = lines.reduce((a, x) => a + x.got, 0);
 
   /* 收满剩余应收 → 纯正常收货；实收 ≠ 剩余应收 → 按门店APP配送差异同口径当场举证：原因必选 + 照片至少 1 张 */
   const shortage = got < remain;
@@ -720,20 +1107,27 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
           </div>
 
           <table>
-            <thead><tr><th>商品</th><th className="tw">应收</th><th className="tw">已累计收</th><th className="tw">本次实收</th></tr></thead>
+            <thead><tr><th>商品</th><th className="tw">应发</th><th className="tw">已累计收</th><th className="tw">本次实收</th></tr></thead>
             <tbody>
-              <tr>
-                <td><Thumb d={doc} /></td>
-                <td className="tw mono">{doc.qty}</td>
-                <td className="tw mono">{recv}</td>
-                <td>
-                  <div className="qty">
-                    <button className="btn plain sm" onClick={() => setGot((g) => Math.max(0, g - 1))}>−</button>
-                    <input value={got} onChange={(e) => setGot(Math.min(remain, Number(e.target.value.replace(/\D/g, "")) || 0))} style={{ width: 64, textAlign: "center" }} />
-                    <button className="btn plain sm" onClick={() => setGot((g) => Math.min(remain, g + 1))}>＋</button>
-                  </div>
-                </td>
-              </tr>
+              {lines.map((l, i) => (
+                <tr key={l.product}>
+                  <td>
+                    <div className="prod-cell">
+                      <span className="thumb" style={{ background: "#f4f7f6" }}>{l.emoji}</span>
+                      <div><div>{l.product}</div><small>{l.spec}</small></div>
+                    </div>
+                  </td>
+                  <td className="tw mono">{l.should}</td>
+                  <td className="tw mono">{l.done}</td>
+                  <td>
+                    <div className="qty">
+                      <button className="btn plain sm" onClick={() => setGot(i, l.got - 1)}>−</button>
+                      <input value={l.got} onChange={(e) => setGot(i, Number(e.target.value.replace(/\D/g, "")) || 0)} style={{ width: 64, textAlign: "center" }} />
+                      <button className="btn plain sm" onClick={() => setGot(i, l.got + 1)}>＋</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
 
@@ -764,7 +1158,7 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
                       </label>
                     ))}
                   </div>
-                  <div className="note">本次实收 {got} 件 ≠ 剩余应收 {remain} 件：按门店APP配送差异同口径登记，提交后自动生成配送差异单（审核通过后按「谁发货谁补发」）</div>
+                  <div className="note">本次实收 {got} 件 ≠ 剩余应发 {remain} 件：按商品逐行核对，短少的商品会被记入配送差异单（审核通过后按「谁发货谁补发」）</div>
                 </div>
               </div>
               <div className="frow">
@@ -795,7 +1189,7 @@ function ReceiveDrawer({ doc, onClose, onDone }) {
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
           <button className="btn primary" disabled={!canSubmit}
-            onClick={() => onDone({ got, result, reason: reasons.join("、"), note: note.trim(), photos })}>确认收货</button>
+            onClick={() => onDone({ result, lines: lines.map((x) => ({ product: x.product, got: x.got })), reason: reasons.join("、"), note: note.trim(), photos })}>确认收货</button>
         </div>
       </div>
     </div>
@@ -811,7 +1205,7 @@ const TPL_COLS = [
   { k: "receiver", t: "收货主体", locked: true },
   { k: "receiverAddr", t: "收货地址", locked: true },
   { k: "product", t: "商品", locked: true },
-  { k: "qty", t: "应发数量", locked: true },
+  { k: "qty", t: "未发数量", locked: true },
   { k: "carrier", t: "快递公司", locked: false },
   { k: "tracking", t: "物流单号", locked: false },
 ];
@@ -828,7 +1222,13 @@ function downloadCsv(rows) {
 }
 
 export function TemplateDrawer({ rows: rowsProp, onClose }) {
-  const rows = rowsProp || SUPPLY_DOCS.filter(isTenantLeg).filter(canShip);
+  /* 模板一行 = 一张供货单（一批），商品列展示汇总后的商品数，数量列是这批还没发的件数 */
+  const raw = rowsProp || SUPPLY_DOCS.filter(isTenantLeg).filter(canShip);
+  const rows = raw.map((d) => {
+    const l = itemsLabel(d);
+    return { id: d.id, shipper: d.shipper, receiver: d.receiver, receiverAddr: d.receiverAddr,
+      product: l.more ? `${l.first} 等 ${itemsOf(d).length} 种` : l.first, qty: Math.max(0, qtyOf(d) - sentOf(d)) };
+  });
   const [downloaded, setDownloaded] = useState(false);
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -1037,7 +1437,8 @@ export function BatchShipDrawer({ rows, onClose, onDone }) {
                   <td><input type="checkbox" checked={!!sel[d.id]} onChange={(e) => setSel((s) => ({ ...s, [d.id]: e.target.checked }))} /></td>
                   <td className="tw mono">{d.id}</td><td className="tw">{d.shipper}</td>
                   <td>{d.receiver}<small>{d.receiverAddr}</small></td>
-                  <td className="tw">{d.emoji} {d.product}</td><td className="tw mono">{d.qty}</td>
+                  <td className="tw">{itemsLabel(d).emoji} {itemsLabel(d).more ? `${itemsLabel(d).first} 等 ${itemsOf(d).length} 种` : itemsLabel(d).first}</td>
+                  <td className="tw mono">{Math.max(0, qtyOf(d) - sentOf(d))}</td>
                   <td className="tw"><input value={tracking[d.id] ?? ""} onChange={(e) => setTracking((s) => ({ ...s, [d.id]: e.target.value }))} style={{ height: 28, width: 150 }} /></td>
                 </tr>
               ))}
@@ -1070,7 +1471,7 @@ export function ReceiveAbnormal({ doc, ro }) {
             <div>关联差异单：<span className="mono">{diff.id}</span>　<span className="tag danger">{diff.status}</span>{diff.makeup && <>　补发单 <span className="mono">{diff.makeup}</span></>}</div>
           </>
         ) : (
-          <div>异常情况：<b>补发单收货异常（实收 {doc.received ?? 0} / 应发 {doc.qty} 件）</b>{doc.reshipOf && <>　源差异单 <span className="mono">{doc.reshipOf}</span></>}</div>
+          <div>异常情况：<b>补发单收货异常（实收 {receivedOf(doc)} / 应发 {qtyOf(doc)} 件）</b>{doc.reshipOf && <>　源差异单 <span className="mono">{doc.reshipOf}</span></>}</div>
         )}
         <div>处理流程：{diff ? "差异审核由总部执行；" : "按规则补发单不再新开差异单，转线下处理；"}{ro ? "供应商只读知情，" : ""}审核通过后生成补发任务，由原发货方补发。</div>
       </div>
@@ -1082,49 +1483,78 @@ export function ReceiveAbnormal({ doc, ro }) {
    关联订单 —— 收货方在「待收货」行点开：这张供货单对应的销售订单是给谁的
    ============================================================================ */
 function RelatedOrderDrawer({ doc, onClose }) {
-  const order = orderStore.use().find((o) => o.no === doc.orderNo);
-  const buyer = order?.buyer || {};
+  const orders = orderStore.use();
+  const mine = ordersOf(doc).map((no) => orders.find((o) => o.no === no)).filter(Boolean);
+  const missing = ordersOf(doc).length - mine.length;
   const Row = ({ k, children }) => (
     <tr><td className="tw" style={{ width: 110, color: "var(--text-2)" }}>{k}</td><td>{children}</td></tr>
   );
+  /* 这一批是按商品汇总出来的，一张供货单覆盖多笔销售订单 —— 逐笔列，不再假设只有一单 */
+  const orderRows = itemsOf(doc).flatMap((it) => (it.from || []).map((f) => ({ it, ...f })));
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="drawer" style={{ width: 640 }}>
+      <div className="drawer" style={{ width: 780 }}>
         <header>关联销售订单<button className="x" onClick={onClose}>×</button></header>
         <div className="body">
-          {!order && (
-            <div className="alert"><span className="ic">i</span>销售订单 <b className="mono">{doc.orderNo}</b> 不在当前租户的订单列表里（历史或已归档），下面只显示供货单上的快照。</div>
+          {missing > 0 && (
+            <div className="alert"><span className="ic">i</span>有 {missing} 笔销售订单不在当前租户的订单列表里（历史或已归档），下面只显示供货单上的快照。</div>
           )}
 
           <table className="tbl-tight" style={{ marginBottom: 16 }}>
             <tbody>
-              <Row k="销售订单号"><span className="mono">{doc.orderNo}</span></Row>
-              <Row k="订单状态">{order ? <span className="tag">{order.status}</span> : "—"}</Row>
-              <Row k="下单时间"><span className="mono">{order?.createdAt || "—"}</span></Row>
-              <Row k="供货模式">{order?.supplyMode ? `${order.supplyMode}${order.goodsSource ? ` · ${order.goodsSource}` : ""}` : "—"}</Row>
-              <Row k="配送方式">{order?.delivery ? `${order.delivery}${order.store ? ` · ${order.store}` : ""}` : "—"}</Row>
+              <Row k="供货单号"><span className="mono">{doc.id}</span></Row>
+              <Row k="本批订单">{ordersOf(doc).length} 笔 · {itemsOf(doc).length} 种商品 · {qtyOf(doc)} 件</Row>
+              <Row k="收货方">{doc.receiver}</Row>
             </tbody>
           </table>
 
-          <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 8 }}>收货人</div>
-          <table className="tbl-tight" style={{ marginBottom: 16 }}>
-            <tbody>
-              <Row k="收件人">{buyer["收件人"] || buyer["昵称"] || "—"}</Row>
-              <Row k="收件人电话">{buyer["收件人电话"] || "—"}</Row>
-              <Row k="收件人地址">{buyer["收件人地址"] || "—"}</Row>
-            </tbody>
-          </table>
-
-          <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 8 }}>商品</div>
+          <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 8 }}>这批货是给谁的（{ordersOf(doc).length} 笔订单）</div>
           <table className="tbl-tight">
-            <thead><tr><th>商品</th><th className="tw">规格</th><th className="tw">订单数量</th><th className="tw">本单应发</th></tr></thead>
-            <tbody>
+            <thead>
               <tr>
-                <td><div className="prod-cell"><span className="thumb" style={{ background: "#f4f7f6" }}>{doc.emoji}</span><div><div>{doc.product}</div><small>{doc.spec}</small></div></div></td>
-                <td className="tw">{doc.spec}</td>
-                <td className="tw mono">{order?.qty ?? "—"}</td>
-                <td className="tw mono">{doc.qty}</td>
+                <th className="tw">销售订单</th><th>购买者</th><th>联系电话</th>
+                <th className="tw">配送方式</th><th className="tw">下单时间</th><th className="tw">订单状态</th>
               </tr>
+            </thead>
+            <tbody>
+              {ordersOf(doc).map((no) => {
+                const o = orders.find((x) => x.no === no);
+                const b = o?.buyer || {};
+                return (
+                  <tr key={no}>
+                    <td className="tw mono">{no}</td>
+                    <td>{b["收件人"] || b["昵称"] || "—"}</td>
+                    <td className="mono">{b["收件人电话"] || "—"}</td>
+                    <td className="tw">{o?.delivery ? `${o.delivery}${o.store ? ` · ${o.store}` : ""}` : "—"}</td>
+                    <td className="tw mono">{o?.createdAt || "—"}</td>
+                    <td className="tw">{o ? <span className="tag">{o.status}</span> : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="note">自提单货到后按联系电话通知买家来取，取货时按订单核对。</div>
+
+          <div style={{ fontWeight: 600, fontSize: 13.5, margin: "18px 0 8px" }}>商品与订单的对应关系</div>
+          <table className="tbl-tight">
+            <thead><tr><th className="tw">销售订单</th><th>商品</th><th className="tw">规格</th><th className="tw">本批应发</th></tr></thead>
+            <tbody>
+              {orderRows.map((r) => {
+                const o = orders.find((x) => x.no === r.orderNo);
+                return (
+                  <tr key={r.orderNo + r.it.product}>
+                    <td className="tw mono">{r.orderNo}</td>
+                    <td>
+                      <div className="prod-cell">
+                        <span className="thumb" style={{ background: "#f4f7f6" }}>{r.it.emoji}</span>
+                        <div><div>{r.it.product}</div><small>{o ? (o.buyer?.["收件人"] || o.buyer?.昵称 || "") : "订单不在列表里"}</small></div>
+                      </div>
+                    </td>
+                    <td className="tw">{r.it.spec}</td>
+                    <td className="tw mono">{r.qty}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
@@ -1167,17 +1597,30 @@ function DocDetailDrawer({ doc, onClose, mode }) {
           <h3 style={{ fontSize: 14, margin: "0 0 10px", borderLeft: "3px solid #25c7a5", paddingLeft: 9 }}>供货商品明细</h3>
           <table>
             <thead><tr><th>商品</th><th className="tw">应发数量</th><th className="tw">已发数量</th><th className="tw">累计实收</th></tr></thead>
-            <tbody><tr><td><Thumb d={doc} /></td><td className="tw mono">{doc.qty}</td><td className="tw mono">{doc.sent}</td><td className="tw mono">{doc.received ?? 0}</td></tr></tbody>
+            <tbody>
+              {itemsOf(doc).map((it) => (
+                <tr key={it.product}>
+                  <td><div className="prod-cell"><span className="thumb" style={{ background: "#f4f7f6" }}>{it.emoji}</span><div><div>{it.product}</div><small>{it.spec}</small></div></div></td>
+                  <td className="tw mono">{it.qty}</td>
+                  <td className="tw mono">{it.sent || 0}</td>
+                  <td className="tw mono">{it.received || 0}</td>
+                </tr>
+              ))}
+            </tbody>
           </table>
 
           <h3 style={{ fontSize: 14, margin: "18px 0 10px", borderLeft: "3px solid #25c7a5", paddingLeft: 9 }}>供货物流</h3>
-          {doc.tracking ? (
+          {packagesOf(doc).length ? (
             <div className="filters">
-              <div className="row" style={{ gap: 30 }}>
-                <div className="field"><label>快递公司</label><b>{doc.carrier}</b></div>
-                <div className="field"><label>物流单号</label><b className="mono">{doc.tracking}</b></div>
-              </div>
-              <div className="row"><div className="field"><label>最新物流状态</label><span>{doc.track}</span></div></div>
+              {packagesOf(doc).map((p, i) => (
+                <div key={i} style={{ borderTop: i ? "1px solid var(--line)" : "none", paddingTop: i ? 8 : 0, marginTop: i ? 8 : 0 }}>
+                  <div className="row" style={{ gap: 30 }}>
+                    <div className="field"><label>包裹 {i + 1} · 快递公司</label><b>{p.carrier}</b></div>
+                    <div className="field"><label>物流单号</label><b className="mono">{p.tracking}</b></div>
+                  </div>
+                  <div className="row"><div className="field"><label>最新物流状态</label><span>{p.track}</span></div></div>
+                </div>
+              ))}
             </div>
           ) : <div className="note">尚未发货，暂无物流信息</div>}
 

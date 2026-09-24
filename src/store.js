@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SUPPLY_DOCS, SUPPLIER_DOCS, DIFFS, RETURNS, ORDERS, PRODUCTS, SUP_ADDRESSES, AFTER_SALES, ADDRESS_BOOK, EXPRESS_TPL } from "./data.js";
+import { SUPPLY_DOCS, SUPPLIER_DOCS, DIFFS, RETURNS, ORDERS_READY, PRODUCTS, SUP_ADDRESSES, AFTER_SALES, ADDRESS_BOOK, EXPRESS_TPL } from "./data.js";
 
 /* 极简共享 store —— 原型内替代后端：让三端与各页面读写同一份数据。
    否则每个组件各自 useState(种子数据)，A 页面的改动 B 页面看不到（"后台同步"就是假的）。 */
@@ -27,7 +27,7 @@ export const supplyStore = createStore(SUPPLY_DOCS);         // 供货单（租�
 export const supplierStore = createStore(SUPPLIER_DOCS);     // 供货单（供应商侧可见范围）
 export const diffStore = createStore(DIFFS);                 // 配送差异单
 export const returnStore = createStore(RETURNS);             // 退货返厂单
-export const orderStore = createStore(ORDERS);               // 销售订单
+export const orderStore = createStore(ORDERS_READY);         // 销售订单（已生成任务的订单带 batchNo）
 export const productStore = createStore(PRODUCTS);           // 商品（租户后台）
 export const addrStore = createStore(SUP_ADDRESSES);         // 供应商地址簿（发货地址 / 售后地址）
 export const afterSaleStore = createStore(AFTER_SALES);      // 售后单（代发：总部审核退款、供应商只做货源，两侧同一份）
@@ -106,6 +106,16 @@ export const patchDoc = (id, patch) => {
   const apply = (ds) => ds.map((d) => (d.id === id ? { ...d, ...patch } : d));
   supplyStore.set(apply);
   supplierStore.set(apply);
+};
+
+/* 新增一张供货单并落到**该看到它的那一端**：
+   共享链路（供应商→总仓 / 供应商→门店）两端都是同一张物理单据，必须双写；
+   供应商→消费者只有供应商看得到，总部仓→门店只有租户看得到 */
+export const addDoc = (doc) => {
+  const SHARED = ["supplier_to_hq", "supplier_inbound"];
+  if (SHARED.includes(doc.leg)) { supplyStore.set((ds) => [doc, ...ds]); supplierStore.set((ds) => [doc, ...ds]); }
+  else if (doc.leg === "sup_consumer") supplierStore.set((ds) => [doc, ...ds]);
+  else supplyStore.set((ds) => [doc, ...ds]);
 };
 
 /* 新增一张配送差异单（收货异常时产生） */

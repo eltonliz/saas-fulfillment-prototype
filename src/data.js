@@ -70,40 +70,40 @@ export const ORDERS = [
     buyer: { 昵称: "王悦", 收件人: "王悦", 收件人电话: "13566667777", 收件人地址: "北京市朝阳区建国路 88 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-18 09:31:20", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-18 09:31:22", ops: ["发货", "备注", "修改地址", "分配门店"],
-    supplyNo: "FHD2609180009", supplyMode: "总部仓直配", goodsSource: "供应商供货",
+    supplyNo: "FHD2609180098", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
   {
     id: "o2", no: "ORD260917000164", product: "什锦果蔬", spec: "规格: 黑色/", qty: 1, unitPrice: "¥3", emoji: "🧺",
     afterSale: "售后完成", afterSaleLink: "查看",
     amounts: { 商品金额: "3", 邮费: "-", 优惠金额: "2", 积分抵现: "-", 应收金额: "1", 实收金额: "1" },
-    buyer: { 昵称: "九九" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码",
+    buyer: { 昵称: "九九", 收件人电话: "13810000000" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码",
     createdAt: "2026-09-17 17:09:44", status: "已全额退款", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609170002", supplyMode: "供应商直配",
+    supplyNo: "FHD2609170091", supplyMode: "供应商直配",
   },
   {
     id: "o3", no: "ORD260917000159", product: "什锦果蔬", spec: "规格: 蓝色/", qty: 1, unitPrice: "¥1", emoji: "🧺",
     afterSale: "售后完成", afterSaleLink: "查看",
     amounts: { 商品金额: "1", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "1", 实收金额: "1" },
-    buyer: { 昵称: "九九" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码",
+    buyer: { 昵称: "九九", 收件人电话: "13810000000" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码",
     createdAt: "2026-09-17 17:09:10", status: "已全额退款", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609170001", supplyMode: "供应商直配",
+    supplyNo: "FHD2609170090", supplyMode: "供应商直配",
   },
   {
     id: "o4", no: "ORD260917000153", product: "华为手机", spec: "规格: 默认", qty: 1, unitPrice: "¥0.01", emoji: "📱",
     afterSale: "暂无售后",
     amounts: { 商品金额: "0.01", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "0.01", 实收金额: "0.01" },
-    buyer: { 昵称: "九九" }, store: "9071门店", delivery: "上门自提",
+    buyer: { 昵称: "九九", 收件人电话: "13810000000" }, store: "9071门店", delivery: "上门自提",
     createdAt: "2026-09-17 16:52:03", status: "待发货", ops: ["发货", "备注", "分配门店"],
-    supplyNo: "FHD2609170004", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
+    supplyNo: "FHD2609180093", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
   },
   /* G2② 配套订单：自提单，货已到店但门店未确认 → 提货码待激活 */
   {
     id: "o6", no: "ORD260915000077", product: "苹果", spec: "红富士 / 5 斤装", qty: 2, unitPrice: "¥0.01", emoji: "🍎",
     afterSale: "暂无售后",
     amounts: { 商品金额: "0.02", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "0.02", 实收金额: "0.02" },
-    buyer: { 昵称: "九九" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    buyer: { 昵称: "九九", 收件人电话: "13810000000" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-15 09:58:00", status: "已发货", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609150001", supplyMode: "供应商直配",
+    supplyNo: "FHD2609180092", supplyMode: "供应商直配",
   },
   /* F3 两段链路配套订单：总部仓直配（供应商供货），须等总仓收到上游货后才可发货 */
   {
@@ -113,7 +113,7 @@ export const ORDERS = [
     buyer: { 昵称: "小绘本", 收件人: "陈女士", 收件人电话: "13800001234", 收件人地址: "广东省广州市天河区体育西路 100 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-18 10:12:00", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-18 10:12:05", ops: ["发货", "备注", "修改地址", "分配门店"],
-    supplyNo: "FHD2609180006", supplyMode: "总部仓直配", goodsSource: "供应商供货",
+    supplyNo: "FHD2609180093", supplyMode: "总部仓直配", goodsSource: "供应商供货",
     shipBlock: "待总部仓收货",
   },
   /* 一件代发·已发货：供应商已直发消费者（发货+售后均归供应商，租户后台只读可见） */
@@ -132,27 +132,27 @@ export const ORDERS = [
     id: "o9", no: "ORD260918000202", product: "沐浴露", spec: "持久留香 / 500ml", qty: 1, unitPrice: "¥199.00", emoji: "🧴",
     afterSale: "暂无售后", buyerNote: "麻烦早点发货",
     amounts: { 商品金额: "199.00", 邮费: "0", 优惠金额: "-9.00", 积分抵现: "-", 应收金额: "190.00", 实收金额: "190.00" },
-    buyer: { 昵称: "林小满" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true,
+    buyer: { 昵称: "林小满", 收件人电话: "13917654321" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true,
     createdAt: "2026-09-17 11:20:00", status: "已发货",
     payMethod: "微信支付", payTime: "2026-09-17 11:20:02", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609170019", supplyMode: "供应商直配",
+    supplyNo: "FHD2609170091", supplyMode: "供应商直配",
   },
   /* 进销存新增：待收货自提订单 —— 供应商已发门店、在途（货未到店，提货码未开放） */
   {
     id: "o10", no: "ORD260918000088", product: "儿童保温杯", spec: "500ml / 蓝", qty: 2, unitPrice: "¥89.00", emoji: "🥤",
     afterSale: "暂无售后",
     amounts: { 商品金额: "178.00", 邮费: "0", 优惠金额: "-10.00", 积分抵现: "-", 应收金额: "168.00", 实收金额: "168.00" },
-    buyer: { 昵称: "徐一诺" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    buyer: { 昵称: "徐一诺", 收件人电话: "13725308642" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-18 15:30:00", status: "已发货",
     payMethod: "微信支付", payTime: "2026-09-18 15:30:02", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609180012", supplyMode: "供应商直配",
+    supplyNo: "FHD2609180092", supplyMode: "供应商直配",
   },
   /* 状态补齐：待付款自提订单（未支付 → 不生成发货任务，提货码不可用） */
   {
     id: "o11", no: "ORD260919000066", product: "山茶油", spec: "500ml / 瓶", qty: 1, unitPrice: "¥128.00", emoji: "🫙",
     afterSale: "暂无售后",
     amounts: { 商品金额: "128.00", 邮费: "0", 优惠金额: "-8.00", 积分抵现: "-", 应收金额: "120.00", 实收金额: "-" },
-    buyer: { 昵称: "苏晚" }, store: "九天门店", delivery: "上门自提",
+    buyer: { 昵称: "苏晚", 收件人电话: "13632962963" }, store: "九天门店", delivery: "上门自提",
     createdAt: "2026-09-19 20:15:08", status: "待付款", ops: ["详情", "备注", "分配门店"],
     supplyNo: "", supplyMode: "",
   },
@@ -165,24 +165,24 @@ export const ORDERS = [
     store: "9071门店", delivery: "快递发货", createdAt: "2026-09-17 17:44:22", status: "售后中",
     payMethod: "微信支付", payTime: "2026-09-17 17:44:24", ops: ["详情", "备注", "分配门店"],
     carrier: "顺丰速运", tracking: "SF7712003621", track: "已签收 2026-09-17 20:10:00",
-    supplyNo: "FHD2609170021", supplyMode: "总部仓直配", goodsSource: "供应商供货",
+    supplyNo: "FHD2609180098", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
   /* 状态补齐：已完成自提订单（提货码已核销 → 买家端「已使用」、订单管理「已完成」） */
   {
     id: "o13", no: "ORD260913000055", product: "大米", spec: "5kg / 袋", qty: 1, unitPrice: "¥69.00", emoji: "🌾",
     afterSale: "暂无售后",
     amounts: { 商品金额: "69.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "69.00", 实收金额: "69.00" },
-    buyer: { 昵称: "陆知行" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true, pickupUsed: true,
+    buyer: { 昵称: "陆知行", 收件人电话: "13540617284" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true, pickupUsed: true,
     createdAt: "2026-09-13 15:02:41", status: "已完成",
     payMethod: "微信支付", payTime: "2026-09-13 15:02:43", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609130019", supplyMode: "供应商直配",
+    supplyNo: "FHD2609130090", supplyMode: "供应商直配",
   },
   /* 状态补齐：售后中自提订单（买家端「售后中」＋售后进度卡；挂起不发货） */
   {
     id: "o14", no: "ORD260918000231", product: "儿童保温杯", spec: "500ml / 蓝", qty: 1, unitPrice: "¥89.00", emoji: "🥤",
     afterSale: "售后处理中", afterSaleLink: "查看", buyerNote: "麻烦早点发货", afterSaleTip: "售后中 请等待商家处理 ›",
     amounts: { 商品金额: "89.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "89.00", 实收金额: "89.00" },
-    buyer: { 昵称: "徐一诺" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    buyer: { 昵称: "徐一诺", 收件人电话: "13725308642" }, store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-18 16:10:22", status: "售后中",
     payMethod: "微信支付", payTime: "2026-09-18 16:10:25", ops: ["详情", "备注", "分配门店"],
     supplyNo: "", supplyMode: "供应商直配",
@@ -192,7 +192,7 @@ export const ORDERS = [
     id: "o15", no: "ORD260918000232", product: "沐浴露", spec: "持久留香 / 500ml", qty: 1, unitPrice: "¥199.00", emoji: "🧴",
     afterSale: "暂无售后", buyerNote: "麻烦早点发货", cancelReason: "超时未支付",
     amounts: { 商品金额: "199.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "199.00", 实收金额: "0" },
-    buyer: { 昵称: "苏晚" }, store: "九天门店", delivery: "上门自提",
+    buyer: { 昵称: "苏晚", 收件人电话: "13632962963" }, store: "九天门店", delivery: "上门自提",
     createdAt: "2026-09-18 20:33:56", status: "已取消", ops: ["详情", "备注", "分配门店"],
     supplyNo: "", supplyMode: "",
   },
@@ -230,20 +230,20 @@ export const ORDERS = [
     id: "o19", no: "ORD260920000110", product: "儿童书包", spec: "蓝色 / 大号", qty: 1, unitPrice: "¥129.00", emoji: "🎒",
     afterSale: "暂无售后",
     amounts: { 商品金额: "129.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "129.00", 实收金额: "129.00" },
-    buyer: { 昵称: "苏晚" }, store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    buyer: { 昵称: "苏晚", 收件人电话: "13632962963" }, store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-18 11:20:00", status: "已发货",
     payMethod: "微信支付", payTime: "2026-09-18 11:20:05", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609180018", supplyMode: "总部仓直配", goodsSource: "总部自有",
+    supplyNo: "FHD2609180090", supplyMode: "总部仓直配", goodsSource: "总部自有",
   },
   /* 自提样本（F4 链路）：供应商 → 总仓（FHD2609180008）→ 总仓 → 门店（FHD2609180004），门店收货后提货码激活 */
   {
     id: "o20", no: "ORD260918000012", product: "奶粉(复制)", spec: "800g / 罐", qty: 2, unitPrice: "¥268.00", emoji: "🥛",
     afterSale: "暂无售后",
     amounts: { 商品金额: "536.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "536.00", 实收金额: "536.00" },
-    buyer: { 昵称: "王悦" }, store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    buyer: { 昵称: "王悦", 收件人电话: "13348271605" }, store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-18 09:31:20", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-18 09:31:22", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609180008", supplyMode: "总部仓直配", goodsSource: "供应商供货",
+    supplyNo: "FHD2609180094", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
   /* ---- 一件代发：供应商直发消费者（快递发货）—— 发货与售后均归供应商，租户后台只读可见 ---- */
   /* 待付款：买家下单未支付，尚未生成供货任务（支付后才生成） */
@@ -323,61 +323,61 @@ export const ORDERS = [
     id: "o28", no: "ORD260920000201", product: "山茶油", spec: "750ml / 瓶", qty: 6, unitPrice: "¥128.00", emoji: "🫒",
     afterSale: "暂无售后",
     amounts: { 商品金额: "768.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "768.00", 实收金额: "768.00" },
-    buyer: { 昵称: "林一诺" },
+    buyer: { 昵称: "林一诺", 收件人电话: "18955925926" },
     store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-20 09:12:30", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-20 09:12:33", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609200061", supplyMode: "总部仓直配", goodsSource: "供应商供货",
+    supplyNo: "FHD2609200090", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
   {
     id: "o29", no: "ORD260920000202", product: "大米", spec: "5kg / 袋", qty: 4, unitPrice: "¥68.00", emoji: "🌾",
     afterSale: "暂无售后",
     amounts: { 商品金额: "272.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "272.00", 实收金额: "272.00" },
-    buyer: { 昵称: "周婶" },
+    buyer: { 昵称: "周婶", 收件人电话: "18663580247" },
     store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-20 10:05:11", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-20 10:05:14", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609200062", supplyMode: "总部仓直配", goodsSource: "供应商供货",
+    supplyNo: "FHD2609200091", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
   {
     id: "o30", no: "ORD260920000203", product: "画板套装", spec: "12 色 / 含画架", qty: 2, unitPrice: "¥156.00", emoji: "🎨",
     afterSale: "暂无售后", buyerNote: "自提时请帮忙验货",
     amounts: { 商品金额: "312.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "312.00", 实收金额: "312.00" },
-    buyer: { 昵称: "小画廊" },
+    buyer: { 昵称: "小画廊", 收件人电话: "15971234568" },
     store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-20 11:40:08", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-20 11:40:10", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609200063", supplyMode: "总部仓直配", goodsSource: "供应商供货",
+    supplyNo: "FHD2609200092", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
   {
     id: "o31", no: "ORD260920000204", product: "什锦果蔬", spec: "礼盒装 / 6 盒", qty: 5, unitPrice: "¥199.00", emoji: "🧺",
     afterSale: "暂无售后",
     amounts: { 商品金额: "995.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "995.00", 实收金额: "995.00" },
-    buyer: { 昵称: "果园老张" },
+    buyer: { 昵称: "果园老张", 收件人电话: "15878888889" },
     store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-20 13:26:45", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-20 13:26:48", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609200064", supplyMode: "供应商直配",
+    supplyNo: "FHD2609200095", supplyMode: "供应商直配",
   },
   {
     id: "o32", no: "ORD260920000205", product: "苹果", spec: "红富士 / 5 斤装", qty: 8, unitPrice: "¥49.90", emoji: "🍎",
     afterSale: "暂无售后",
     amounts: { 商品金额: "399.20", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "399.20", 实收金额: "399.20" },
-    buyer: { 昵称: "橙子汽水" },
+    buyer: { 昵称: "橙子汽水", 收件人电话: "15286543210" },
     store: "濮源直播间", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-20 14:52:19", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-20 14:52:22", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609200065", supplyMode: "供应商直配",
+    supplyNo: "FHD2609200097", supplyMode: "供应商直配",
   },
   {
     id: "o33", no: "ORD260920000206", product: "奶粉", spec: "800g / 罐", qty: 3, unitPrice: "¥268.00", emoji: "🥛",
     afterSale: "暂无售后",
     amounts: { 商品金额: "804.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "804.00", 实收金额: "804.00" },
-    buyer: { 昵称: "团购小分队" },
+    buyer: { 昵称: "团购小分队", 收件人电话: "13194197531" },
     store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-20 16:08:03", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-20 16:08:06", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609200066", supplyMode: "供应商直配",
+    supplyNo: "FHD2609200096", supplyMode: "供应商直配",
   },
   {
     id: "o34", no: "ORD260920000207", product: "儿童绘本套装", spec: "全 8 册", qty: 3, unitPrice: "¥128.00", emoji: "📚",
@@ -386,7 +386,7 @@ export const ORDERS = [
     buyer: { 昵称: "绘本妈妈", 收件人: "许女士", 收件人电话: "13611112222", 收件人地址: "浙江省杭州市西湖区文三路 90 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-20 17:20:44", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-20 17:20:47", ops: ["发货", "备注", "修改地址", "分配门店"],
-    supplyNo: "FHD2609200070", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
+    supplyNo: "FHD2609200098", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
   },
   {
     id: "o35", no: "ORD260920000208", product: "相机", spec: "银色 / 标准版", qty: 2, unitPrice: "¥1899.00", emoji: "📷",
@@ -395,7 +395,7 @@ export const ORDERS = [
     buyer: { 昵称: "阿泰", 收件人: "郑先生", 收件人电话: "13933334444", 收件人地址: "四川省成都市武侯区天府大道 588 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-20 18:02:14", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-20 18:02:17", ops: ["发货", "备注", "修改地址", "分配门店"],
-    supplyNo: "FHD2609200071", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
+    supplyNo: "FHD2609200099", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
   },
   {
     id: "o36", no: "ORD260920000209", product: "华为手机", spec: "规格: 默认", qty: 1, unitPrice: "¥4999.00", emoji: "📱",
@@ -404,7 +404,7 @@ export const ORDERS = [
     buyer: { 昵称: "老陈头", 收件人: "陈先生", 收件人电话: "13566667777", 收件人地址: "江苏省南京市鼓楼区中山北路 200 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-20 18:46:08", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-20 18:46:11", ops: ["发货", "备注", "修改地址", "分配门店"],
-    supplyNo: "FHD2609200072", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
+    supplyNo: "FHD2609200100", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
   },
   /* 补齐「收货管理」在途供货单引用的销售订单（原来只有供货单、订单缺号，关联订单会查不到） */
   {
@@ -414,17 +414,17 @@ export const ORDERS = [
     buyer: { 昵称: "果园老张", 收件人: "张先生", 收件人电话: "13822223333", 收件人地址: "广东省广州市天河区体育西路 100 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-16 11:05:20", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-16 11:05:23", ops: ["发货", "备注", "修改地址", "分配门店"],
-    supplyNo: "FHD2609160008", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
+    supplyNo: "FHD2609170095", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
   },
   {
     id: "o38", no: "ORD260914000058", product: "儿童绘本套装", spec: "全 8 册", qty: 9, unitPrice: "¥128.00", emoji: "📚",
     afterSale: "暂无售后",
     amounts: { 商品金额: "1152.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "1152.00", 实收金额: "1152.00" },
-    buyer: { 昵称: "绘本妈妈" },
+    buyer: { 昵称: "绘本妈妈", 收件人电话: "17711851853" },
     store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-14 10:20:41", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-14 10:20:44", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609140003", supplyMode: "总部仓直配", goodsSource: "供应商供货",
+    supplyNo: "FHD2609180100", supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
   {
     id: "o39", no: "ORD260917000136", product: "相机", spec: "银色 / 标准版", qty: 8, unitPrice: "¥1899.00", emoji: "📷",
@@ -433,7 +433,7 @@ export const ORDERS = [
     buyer: { 昵称: "影像工作室", 收件人: "许先生", 收件人电话: "13655556666", 收件人地址: "广东省广州市越秀区中山五路 33 号" },
     store: "九天门店", delivery: "快递发货", createdAt: "2026-09-17 09:40:12", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-17 09:40:15", ops: ["发货", "备注", "修改地址", "分配门店"],
-    supplyNo: "FHD2609170014", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
+    supplyNo: "FHD2609180093", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
   },
   {
     id: "o40", no: "ORD260917000130", product: "苹果", spec: "红富士 / 5 斤装", qty: 9, unitPrice: "¥49.90", emoji: "🍎",
@@ -442,17 +442,108 @@ export const ORDERS = [
     buyer: { 昵称: "果果妈", 收件人: "李女士", 收件人电话: "13577778888", 收件人地址: "辽宁省铁岭市银州区工人街 30 号" },
     store: "9071门店", delivery: "快递发货", createdAt: "2026-09-17 13:15:02", status: "待发货",
     payMethod: "微信支付", payTime: "2026-09-17 13:15:05", ops: ["发货", "备注", "修改地址", "分配门店"],
-    supplyNo: "FHD2609170015", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
+    supplyNo: "FHD2609170095", supplyMode: "总部仓直配", goodsSource: "供应商供货", shipBlock: "待总部仓收货",
   },
   {
     id: "o41", no: "ORD260917000139", product: "苹果", spec: "红富士 / 5 斤装", qty: 6, unitPrice: "¥49.90", emoji: "🍎",
     afterSale: "暂无售后",
     amounts: { 商品金额: "299.40", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "299.40", 实收金额: "299.40" },
-    buyer: { 昵称: "店员小陈" },
+    buyer: { 昵称: "店员小陈", 收件人电话: "13219506174" },
     store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
     createdAt: "2026-09-17 14:02:33", status: "已发货",
     payMethod: "微信支付", payTime: "2026-09-17 14:02:36", ops: ["详情", "备注", "分配门店"],
-    supplyNo: "FHD2609170017", supplyMode: "供应商直配",
+    supplyNo: "FHD2609170094", supplyMode: "供应商直配",
+  },
+  /* 待发货订单池演示：这些订单还没生成供货任务，用来演示「生成发货任务」 */
+  {
+    id: "o42", no: "ORD260924000301", product: "儿童保温杯 316不锈钢", spec: "500ml / 蓝", qty: 3, unitPrice: "¥89.00", emoji: "🥤",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "267.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "267.00", 实收金额: "267.00" },
+    buyer: { 昵称: "自提客户", 收件人: "自提客户", 收件人电话: "13800000000", 收件人地址: "九天门店" },
+    store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-24 09:12:20", status: "待发货", payMethod: "微信支付", payTime: "2026-09-24 09:12:20",
+    ops: ["详情", "备注", "分配门店"], supplyMode: "总部仓直配", goodsSource: "总部自有",
+  },
+  {
+    id: "o43", no: "ORD260924000302", product: "儿童书包", spec: "蓝色 / 大号", qty: 2, unitPrice: "¥129.00", emoji: "🎒",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "258.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "258.00", 实收金额: "258.00" },
+    buyer: { 昵称: "自提客户", 收件人: "自提客户", 收件人电话: "13800000000", 收件人地址: "九天门店" },
+    store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-24 10:05:41", status: "待发货", payMethod: "微信支付", payTime: "2026-09-24 10:05:41",
+    ops: ["详情", "备注", "分配门店"], supplyMode: "总部仓直配", goodsSource: "总部自有",
+  },
+  {
+    id: "o44", no: "ORD260924000303", product: "保温饭盒", spec: "304不锈钢 / 1.2L", qty: 4, unitPrice: "¥69.00", emoji: "🍱",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "276.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "276.00", 实收金额: "276.00" },
+    buyer: { 昵称: "自提客户", 收件人: "自提客户", 收件人电话: "13800000000", 收件人地址: "9071门店" },
+    store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-24 11:20:08", status: "待发货", payMethod: "微信支付", payTime: "2026-09-24 11:20:08",
+    ops: ["详情", "备注", "分配门店"], supplyMode: "总部仓直配", goodsSource: "总部自有",
+  },
+  {
+    id: "o45", no: "ORD260924000304", product: "儿童绘本套装", spec: "全 8 册", qty: 2, unitPrice: "¥158.00", emoji: "📚",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "316.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "316.00", 实收金额: "316.00" },
+    buyer: { 昵称: "自提客户", 收件人: "自提客户", 收件人电话: "13800000000", 收件人地址: "濮源直播间" },
+    store: "濮源直播间", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-24 13:41:55", status: "待发货", payMethod: "微信支付", payTime: "2026-09-24 13:41:55",
+    ops: ["详情", "备注", "分配门店"], supplyMode: "总部仓直配", goodsSource: "总部自有",
+  },
+  {
+    id: "o46", no: "ORD260924000305", product: "苹果", spec: "红富士 / 5 斤装", qty: 6, unitPrice: "¥19.90", emoji: "🍎",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "119.40", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "119.40", 实收金额: "119.40" },
+    buyer: { 昵称: "自提客户", 收件人: "自提客户", 收件人电话: "13800000000", 收件人地址: "9071门店" },
+    store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-24 09:40:11", status: "待发货", payMethod: "微信支付", payTime: "2026-09-24 09:40:11",
+    ops: ["详情", "备注", "分配门店"], supplyMode: "供应商直配", goodsSource: "供应商供货",
+  },
+  {
+    id: "o47", no: "ORD260924000306", product: "湿巾 弱酸无残留", spec: "80抽×3包 / 箱", qty: 8, unitPrice: "¥39.00", emoji: "🧴",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "312.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "312.00", 实收金额: "312.00" },
+    buyer: { 昵称: "自提客户", 收件人: "自提客户", 收件人电话: "13800000000", 收件人地址: "濮源直播间" },
+    store: "濮源直播间", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-24 12:18:33", status: "待发货", payMethod: "微信支付", payTime: "2026-09-24 12:18:33",
+    ops: ["详情", "备注", "分配门店"], supplyMode: "供应商直配", goodsSource: "供应商供货",
+  },
+  {
+    id: "o48", no: "ORD260924000307", product: "相机", spec: "银色 / 标准版", qty: 2, unitPrice: "¥1899.00", emoji: "📷",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "3798.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "3798.00", 实收金额: "3798.00" },
+    buyer: { 昵称: "自提客户", 收件人: "自提客户", 收件人电话: "13800000000", 收件人地址: "九天门店" },
+    store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-24 14:02:47", status: "待发货", payMethod: "微信支付", payTime: "2026-09-24 14:02:47",
+    ops: ["详情", "备注", "分配门店"], supplyMode: "供应商直配", goodsSource: "供应商供货",
+  },
+  {
+    id: "o49", no: "ORD260924000308", product: "奶粉", spec: "800g / 罐", qty: 10, unitPrice: "¥268.00", emoji: "🥛",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "2680.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "2680.00", 实收金额: "2680.00" },
+    buyer: { 昵称: "自提客户", 收件人: "自提客户", 收件人电话: "13800000000", 收件人地址: "九天门店" },
+    store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-24 08:55:02", status: "待发货", payMethod: "微信支付", payTime: "2026-09-24 08:55:02",
+    ops: ["详情", "备注", "分配门店"], supplyMode: "总部仓直配", goodsSource: "供应商供货",
+  },
+  {
+    id: "o50", no: "ORD260924000309", product: "山茶油", spec: "750ml / 瓶", qty: 6, unitPrice: "¥128.00", emoji: "🫒",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "768.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "768.00", 实收金额: "768.00" },
+    buyer: { 昵称: "自提客户", 收件人: "自提客户", 收件人电话: "13800000000", 收件人地址: "9071门店" },
+    store: "9071门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-24 10:33:19", status: "待发货", payMethod: "微信支付", payTime: "2026-09-24 10:33:19",
+    ops: ["详情", "备注", "分配门店"], supplyMode: "总部仓直配", goodsSource: "供应商供货",
+  },
+  {
+    id: "o51", no: "ORD260924000310", product: "大米", spec: "5kg / 袋", qty: 12, unitPrice: "¥58.00", emoji: "🌾",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "696.00", 邮费: "0", 优惠金额: "-", 积分抵现: "-", 应收金额: "696.00", 实收金额: "696.00" },
+    buyer: { 昵称: "自提客户", 收件人: "自提客户", 收件人电话: "13800000000", 收件人地址: "九天门店" },
+    store: "九天门店", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: false,
+    createdAt: "2026-09-24 15:07:44", status: "待发货", payMethod: "微信支付", payTime: "2026-09-24 15:07:44",
+    ops: ["详情", "备注", "分配门店"], supplyMode: "总部仓直配", goodsSource: "供应商供货",
   },
 ];
 
@@ -500,441 +591,514 @@ export const SUPPLIER_MENU = [
 // （「总部仓 → 消费者」不建供货单：消费者那一跳由订单管理的「发货」完成）
 export const SUPPLY_DOCS = [
   {
-    id: "FHD2609170002", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 17:09:44",
-    orderNo: "ORD260917000164", product: "什锦果蔬", spec: "规格: 黑色/", emoji: "🧺", qty: 1, sent: 1,
+    id: "FHD2609180090", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-18 11:20:30",
+    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
+    orderNos: ["ORD260920000110"],
+    items: [
+      { product: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", qty: 1, sent: 1, received: 0, from: [{ orderNo: "ORD260920000110", qty: 1 }] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712007701", track: "已发货 2026-09-18 16:40:00" }],
+    qty: 1, sent: 1, received: 0,
+    status: "已发货", supplyMode: "总部仓直配", goodsSource: "总部自有",
+  },
+  {
+    id: "FHD2609180091", leg: "hq_store", source: "配送差异补发", batchAt: "2026-09-18 10:30:00",
+    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
+    orderNos: ["ORD260914000058"],
+    items: [
+      { product: "儿童绘本套装", spec: "全 8 册", emoji: "📚", qty: 1, sent: 1, received: 0, from: [{ orderNo: "ORD260914000058", qty: 1 }] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112488", track: "已发货 2026-09-18 16:00:00" }],
+    qty: 1, sent: 1, received: 0,
+    status: "已发货", isMakeup: true, reshipOf: "DIFF2609170004",
+  },
+  {
+    id: "FHD2609170090", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-17 17:09:10",
     shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "中通快递", tracking: "ZT8800112233", track: "已签收 2026-09-17 17:12:44", status: "已收货", ops: ["详情"],
+    orderNos: ["ORD260917000159"],
+    items: [
+      { product: "什锦果蔬", spec: "规格: 蓝色/", emoji: "🧺", qty: 1, sent: 1, received: 0, from: [{ orderNo: "ORD260917000159", qty: 1 }] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT5598712099", track: "已发货 2026-09-17 17:12:44" }],
+    qty: 1, sent: 1, received: 0,
+    status: "已发货",
   },
   {
-    id: "FHD2609170001", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 17:09:10",
-    orderNo: "ORD260917000159", product: "什锦果蔬", spec: "规格: 蓝色/", emoji: "🧺", qty: 1, sent: 1,
-    shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "圆通速递", tracking: "YT5598712099", track: "已发货 2026-09-17 17:12:44", status: "已发货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609170003", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 10:22:05",
-    orderNo: "ORD260917000151", product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 10, sent: 10,
-    shipper: "供应商001", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "顺丰速运", tracking: "SF9900112200", track: "已签收 2026-09-17 15:20:00", status: "已收货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609160008", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-16 09:10:00",
-    orderNo: "ORD260916000142", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 6, sent: 6,
-    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "圆通速递", tracking: "YT9900887766", track: "已发货 2026-09-17 09:20:00", status: "部分收货", ops: ["详情", "收货"],
-  },
-  {
-    id: "FHD2609160009", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-16 11:03:00",
-    orderNo: "ORD260916000145", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺", qty: 4, sent: 4,
-    shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "韵达快递", tracking: "YD1122334455", track: "已签收 2026-09-17 08:10:00", status: "收货异常", ops: ["详情"],
-  },
-  {
-    id: "FHD2609180004", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-18 09:31:20",
-    orderNo: "ORD260918000012", product: "奶粉(复制)", spec: "800g / 罐", emoji: "🥛", qty: 2, sent: 0,
-    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
-  },
-  /* 以下两张是差异单 DIFF2609170002 / DIFF2609170004 的来源供货单——原数据缺这两张，
-     导致「补发单收货 → 原单同步结案」（决策 5）静默失效，补齐 */
-  {
-    id: "FHD2609120002", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-12 09:20:00",
-    orderNo: "ORD260912000031", product: "什锦果蔬", spec: "礼盒装 / 12 盒", emoji: "🧺", qty: 5, sent: 5,
-    shipper: "九天教育总仓", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "中通快递", tracking: "ZT8800112301", track: "已签收 2026-09-12 18:00:00", status: "收货异常", ops: ["详情"],
-  },
-  {
-    id: "FHD2609140003", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-14 10:05:00",
-    orderNo: "ORD260914000058", product: "儿童绘本套装", spec: "全 8 册", emoji: "📚", qty: 9, sent: 9,
-    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "韵达快递", tracking: "YD1122334401", track: "已签收 2026-09-14 17:30:00", status: "收货异常", ops: ["详情"],
-  },
-  /* G2② 演示样本：货已到门店、门店迟迟不点「确认到货」→ 超过 3 天由系统自动确认并激活提货码 */
-  {
-    /* 超时自动确认样本：签收已满 3 天，打开原型即触发（系统自动确认 + 提货码激活） */
-    id: "FHD2609150001", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-15 10:00:00",
-    orderNo: "ORD260915000077", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, sent: 2,
+    id: "FHD2609180092", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-18 15:31:00",
     shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "圆通速递", tracking: "YT5598712401", track: "已签收 2026-09-15 16:30:00", status: "已发货", ops: ["详情", "收货"],
+    orderNos: ["ORD260915000077", "ORD260918000088"],
+    items: [
+      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, sent: 2, received: 0, from: [{ orderNo: "ORD260915000077", qty: 2 }] },
+      { product: "儿童保温杯", spec: "500ml / 蓝", emoji: "🥤", qty: 2, sent: 2, received: 0, from: [{ orderNo: "ORD260918000088", qty: 2 }] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT5598712401", track: "已签收 2026-09-15 16:30:00" }, { carrier: "中通快递", tracking: "ZT8800112455", track: "已发货 2026-09-18 18:00:00" }],
+    qty: 4, sent: 4, received: 0,
+    status: "已发货",
   },
-  /* F3 演示样本（上游段）：同一订单 ORD260918000033 的「供应商→总仓」单。
-     总仓确认收货后，订单管理里该订单才出现「发货」—— 发消费者那一跳属于销售订单，不建供货单。 */
   {
-    id: "FHD2609180006", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-18 10:12:05",
-    orderNo: "ORD260918000033", product: "儿童绘本套装", spec: "全 8 册", emoji: "📚", qty: 9, sent: 9,
+    id: "FHD2609180093", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-18 10:12:05",
     shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "圆通速递", tracking: "YT9900887799", track: "已发货 2026-09-18 15:00:00", status: "已发货", ops: ["详情", "收货"],
+    orderNos: ["ORD260917000136", "ORD260917000153", "ORD260918000033"],
+    items: [
+      { product: "儿童绘本套装", spec: "全 8 册", emoji: "📚", qty: 9, sent: 9, received: 0, from: [{ orderNo: "ORD260918000033", qty: 9 }] },
+      { product: "华为手机", spec: "规格: 默认", emoji: "📱", qty: 1, sent: 1, received: 0, from: [{ orderNo: "ORD260917000153", qty: 1 }] },
+      { product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 8, sent: 8, received: 0, from: [{ orderNo: "ORD260917000136", qty: 8 }] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT9900887799", track: "已发货 2026-09-18 15:00:00" }, { carrier: "顺丰速运", tracking: "SF7712003510", track: "已发货 2026-09-17 19:30:00" }, { carrier: "京东物流", tracking: "JD5566778811", track: "已发货 2026-09-18 08:30:00" }],
+    qty: 18, sent: 18, received: 0,
+    status: "已发货",
   },
-  /* F3 演示样本（解锁态）：同一订单 ORD260918000021 的「供应商→总仓」单，已收货 ——
-     故订单管理里 o5 打开即可发货，与上面 o7 那张「待收货」构成一对状态。 */
   {
-    id: "FHD2609180009", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-18 09:31:20",
-    orderNo: "ORD260918000021", product: "奶粉(复制)", spec: "800g / 罐", emoji: "🥛", qty: 2, sent: 2,
+    id: "FHD2609180094", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-18 09:31:15",
     shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "顺丰速运", tracking: "SF7712003390", track: "已签收 2026-09-18 15:40:00", status: "已收货", ops: ["详情"],
-  },
-  /* 自有货 · 自提：总部直发门店（总部自有 → 门店），门店在收货管理确认收货后提货码激活 */
-  {
-    id: "FHD2609180018", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-18 11:20:30",
-    orderNo: "ORD260920000110", product: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", qty: 1, sent: 1,
-    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "顺丰速运", tracking: "SF7712007701", track: "已发货 2026-09-18 16:40:00", status: "已发货", supplyMode: "总部仓直配", goodsSource: "总部自有", ops: ["详情", "收货"],
-  },
-  /* G2② 演示样本：总仓收货登记少收 → 配送差异单 DIFF2609190001（总部上报 · 待供应商审核）的来源单 */
-  {
-    id: "FHD2609180017", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-18 11:20:00",
-    orderNo: "ORD260918000066", product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 6, sent: 6,
-    shipper: "供应商001", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "顺丰速运", tracking: "SF7712003501", track: "已签收 2026-09-18 16:05:00", status: "收货异常", ops: ["详情"],
-  },
-  /* 进销存新增：待收货自提订单（o10）的「供应商→门店」单，在途 —— 门店确认到货后提货码方开放 */
-  {
-    id: "FHD2609180012", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-18 15:31:00",
-    orderNo: "ORD260918000088", product: "儿童保温杯", spec: "500ml / 蓝", emoji: "🥤", qty: 2, sent: 2,
-    shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "中通快递", tracking: "ZT8800112455", track: "已发货 2026-09-18 18:00:00", status: "已发货", ops: ["详情", "收货"],
-  },
-  /* F4 两段链路演示样本：同一订单 ORD260918000012
-     FHD2609180008 = 上游「供应商→总仓」（在途，未收货）
-     FHD2609180004 = 下游「总部仓→门店」（被锁，总仓收货后才可发货） */
-  {
-    id: "FHD2609180008", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-18 09:31:15",
-    orderNo: "ORD260918000012", product: "奶粉(复制)", spec: "800g / 罐", emoji: "🥛", qty: 2, sent: 2,
-    shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "中通快递", tracking: "ZT8800112402", track: "已发货 2026-09-18 14:00:00", status: "已发货", ops: ["详情", "收货"],
-  },
-  /* 差异单 DIFF2609170001 的来源单（画板套装 · 门店上报） */
-  {
-    id: "FHD2609180007", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-18 08:20:00",
-    orderNo: "ORD260918000021", product: "画板套装", spec: "基础版", emoji: "🎨", qty: 2, sent: 2,
-    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "中通快递", tracking: "ZT8800112500", track: "已签收 2026-09-18 12:40:00", status: "收货异常", ops: ["详情"],
-  },
-  /* 差异单 DIFF2609170004 的补发单（总部仓 → 门店，在途） */
-  {
-    id: "FHD2609170907", leg: "hq_store", source: "配送差异补发", createdAt: "2026-09-18 10:30:00",
-    orderNo: "ORD260914000058", product: "儿童绘本套装", spec: "全 8 册", emoji: "📚", qty: 1, sent: 1,
-    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "中通快递", tracking: "ZT8800112488", track: "已发货 2026-09-18 16:00:00", status: "已发货", isMakeup: true, reshipOf: "DIFF2609170004", ops: ["详情", "收货"],
-  },
-  /* 退货返厂单关联的门店已收货供货单（RTV 来源） */
-  {
-    id: "FHD2609160003", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-16 09:40:00",
-    orderNo: "ORD260916000121", product: "什锦果蔬", spec: "礼盒装 / 12 盒", emoji: "🧺", qty: 3, sent: 3,
-    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "中通快递", tracking: "ZT8800112466", track: "已签收 2026-09-16 18:20:00", status: "已收货", ops: ["详情"],
+    orderNos: ["ORD260918000012"],
+    items: [
+      { product: "奶粉(复制)", spec: "800g / 罐", emoji: "🥛", qty: 2, sent: 2, received: 0, from: [{ orderNo: "ORD260918000012", qty: 2 }] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112402", track: "已发货 2026-09-18 14:00:00" }],
+    qty: 2, sent: 2, received: 0,
+    status: "已发货",
   },
   {
-    id: "FHD2609150002", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-15 11:02:00",
-    orderNo: "ORD260915000088", product: "华为手机", spec: "蓝色 / M", emoji: "📱", qty: 1, sent: 1,
-    shipper: "JOJO供应商", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
-    carrier: "圆通速递", tracking: "YT5598712300", track: "已签收 2026-09-15 19:30:00", status: "已收货", ops: ["详情"],
+    id: "FHD2609180095", leg: "supplier_to_hq", source: "配送差异补发", batchAt: "2026-09-18 14:00:00",
+    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260917000136"],
+    items: [
+      { product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 1, sent: 1, received: 0, from: [{ orderNo: "ORD260917000136", qty: 1 }] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712007788", track: "已发货 2026-09-18 18:10:00" }],
+    qty: 1, sent: 1, received: 0,
+    status: "已发货", isMakeup: true, reshipOf: "DIFF2609170010",
   },
   {
-    id: "FHD2609160005", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-16 13:15:00",
-    orderNo: "ORD260916000144", product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 2, sent: 2,
+    id: "FHD2609160090", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-16 13:15:00",
     shipper: "九天教育总仓", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "中通快递", tracking: "ZT8800112477", track: "已签收 2026-09-16 20:05:00", status: "已收货", ops: ["详情"],
+    orderNos: ["ORD260916000144"],
+    items: [
+      { product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 2, sent: 2, received: 2, from: [{ orderNo: "ORD260916000144", qty: 2 }] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112477", track: "已签收 2026-09-16 20:05:00" }],
+    qty: 2, sent: 2, received: 2,
+    status: "已收货",
   },
   {
-    id: "FHD2609180014", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-18 15:10:00",
-    orderNo: "ORD260918000101", product: "华为手机", spec: "黑色 / L", emoji: "📱", qty: 1, sent: 1,
+    id: "FHD2609160091", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-16 09:40:00",
+    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
+    orderNos: ["ORD260916000121"],
+    items: [
+      { product: "什锦果蔬", spec: "礼盒装 / 12 盒", emoji: "🧺", qty: 3, sent: 3, received: 3, from: [{ orderNo: "ORD260916000121", qty: 3 }] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112466", track: "已签收 2026-09-16 18:20:00" }],
+    qty: 3, sent: 3, received: 3,
+    status: "已收货",
+  },
+  {
+    id: "FHD2609180096", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-18 15:10:00",
     shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
-    carrier: "韵达快递", tracking: "YD1122334501", track: "已签收 2026-09-18 19:40:00", status: "已收货", ops: ["详情"],
+    orderNos: ["ORD260918000101"],
+    items: [
+      { product: "华为手机", spec: "黑色 / L", emoji: "📱", qty: 1, sent: 1, received: 1, from: [{ orderNo: "ORD260918000101", qty: 1 }] },
+    ],
+    packages: [{ carrier: "韵达快递", tracking: "YD1122334501", track: "已签收 2026-09-18 19:40:00" }],
+    qty: 1, sent: 1, received: 1,
+    status: "已收货",
   },
   {
-    id: "FHD2609180016", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-18 10:12:00",
-    orderNo: "ORD260918000093", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 6, sent: 6,
-    shipper: "供应商003", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
-    carrier: "中通快递", tracking: "ZT8800112499", track: "已签收 2026-09-18 17:25:00", status: "已收货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609170004", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 16:55:00",
-    orderNo: "ORD260917000153", product: "华为手机", spec: "规格: 默认", emoji: "📱", qty: 1, sent: 1,
-    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "顺丰速运", tracking: "SF7712003510", track: "已发货 2026-09-17 19:30:00", status: "已发货", ops: ["详情", "收货"],
-  },
-  {
-    id: "FHD2609170019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 11:25:00",
-    orderNo: "ORD260918000202", product: "沐浴露", spec: "持久留香 / 500ml", emoji: "🧴", qty: 1, sent: 1,
+    id: "FHD2609170091", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-17 17:09:44",
     shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "中通快递", tracking: "ZT8800112244", track: "已签收 2026-09-18 09:10:00", status: "已收货", ops: ["详情"],
+    orderNos: ["ORD260917000164", "ORD260918000202"],
+    items: [
+      { product: "什锦果蔬", spec: "规格: 黑色/", emoji: "🧺", qty: 1, sent: 1, received: 1, from: [{ orderNo: "ORD260917000164", qty: 1 }] },
+      { product: "沐浴露", spec: "持久留香 / 500ml", emoji: "🧴", qty: 1, sent: 1, received: 1, from: [{ orderNo: "ORD260918000202", qty: 1 }] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112233", track: "已签收 2026-09-17 17:12:44" }, { carrier: "中通快递", tracking: "ZT8800112244", track: "已签收 2026-09-18 09:10:00" }],
+    qty: 2, sent: 2, received: 2,
+    status: "已收货",
   },
   {
-    id: "FHD2609130019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-13 15:05:00",
-    orderNo: "ORD260913000055", product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 1, sent: 1,
+    id: "FHD2609130090", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-13 15:05:00",
     shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "圆通速递", tracking: "YT5500338811", track: "已签收 2026-09-14 10:20:00", status: "已收货", ops: ["详情"],
-  },
-  /* 待发货补充：三处「导入发货」入口都有成批样本（发总部仓 / 发门店 / 租户发货管理） */
-  {
-    id: "FHD2609200061", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-20 09:12:33",
-    orderNo: "ORD260920000201", product: "山茶油", spec: "750ml / 瓶", emoji: "🫒", qty: 6, sent: 6,
-    shipper: "供应商001", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "顺丰速运", tracking: "SF7712003821", track: "已签收 2026-09-21 10:30:00", status: "已收货", ops: ["详情"], received: 6,
-  },
-  {
-    id: "FHD2609200062", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-20 10:05:14",
-    orderNo: "ORD260920000202", product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 4, sent: 4,
-    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "圆通速递", tracking: "YT5500338877", track: "已签收 2026-09-21 11:15:00", status: "已收货", ops: ["详情"], received: 4,
+    orderNos: ["ORD260913000055"],
+    items: [
+      { product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 1, sent: 1, received: 1, from: [{ orderNo: "ORD260913000055", qty: 1 }] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT5500338811", track: "已签收 2026-09-14 10:20:00" }],
+    qty: 1, sent: 1, received: 1,
+    status: "已收货",
   },
   {
-    id: "FHD2609200063", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-20 11:40:10",
-    orderNo: "ORD260920000203", product: "画板套装", spec: "12 色 / 含画架", emoji: "🎨", qty: 2, sent: 2,
-    shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "中通快递", tracking: "ZT8800112511", track: "已签收 2026-09-21 14:05:00", status: "已收货", ops: ["详情"], received: 2,
-  },
-  {
-    id: "FHD2609200064", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-20 13:26:48",
-    orderNo: "ORD260920000204", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 5, sent: 0,
-    shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"], received: 0,
-  },
-  {
-    id: "FHD2609200065", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-20 14:52:22",
-    orderNo: "ORD260920000205", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 8, sent: 0,
-    shipper: "供应商002", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"], received: 0,
-  },
-  {
-    id: "FHD2609200066", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-20 16:08:06",
-    orderNo: "ORD260920000206", product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 3, sent: 0,
-    shipper: "供应商001", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"], received: 0,
-  },
-  /* 上游段已确认收货 → 总部仓这一段才可发货（upstreamReady 门禁） */
-  {
-    id: "FHD2609200067", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-20 09:12:33",
-    orderNo: "ORD260920000201", product: "山茶油", spec: "750ml / 瓶", emoji: "🫒", qty: 6, sent: 0,
-    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"], received: 0,
-  },
-  {
-    id: "FHD2609200068", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-20 10:05:14",
-    orderNo: "ORD260920000202", product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 4, sent: 0,
-    shipper: "九天教育总仓", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"], received: 0,
-  },
-  {
-    id: "FHD2609200069", leg: "hq_store", source: "订单支付自动生成", createdAt: "2026-09-20 11:40:10",
-    orderNo: "ORD260920000203", product: "画板套装", spec: "12 色 / 含画架", emoji: "🎨", qty: 2, sent: 0,
-    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"], received: 0,
-  },
-  {
-    id: "FHD2609200070", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-20 17:20:41",
-    orderNo: "ORD260920000207", product: "儿童绘本套装", spec: "全 8 册", emoji: "📚", qty: 3, sent: 0,
-    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"], received: 0,
-  },
-  {
-    id: "FHD2609200071", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-20 18:02:11",
-    orderNo: "ORD260920000208", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 2, sent: 0,
-    shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"], received: 0,
-  },
-  {
-    id: "FHD2609200072", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-20 18:46:05",
-    orderNo: "ORD260920000209", product: "华为手机", spec: "规格: 默认", emoji: "📱", qty: 1, sent: 0,
-    shipper: "供应商001", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"], received: 0,
-  },
-];
-
-// 累计实收（只增不减）：默认已收货=收齐，部分收货/收货异常单独标
-SUPPLY_DOCS.forEach((d) => { if (d.received === undefined) d.received = d.status === "已收货" ? d.qty : 0; });
-SUPPLY_DOCS.find((d) => d.id === "FHD2609160008").received = 4; // 部分收货
-SUPPLY_DOCS.find((d) => d.id === "FHD2609160009").received = 3; // 收货异常
-SUPPLY_DOCS.find((d) => d.id === "FHD2609120002").received = 4; // 收货异常（差异单来源）
-SUPPLY_DOCS.find((d) => d.id === "FHD2609140003").received = 8; // 收货异常（差异单来源）
-SUPPLY_DOCS.find((d) => d.id === "FHD2609180017").received = 5; // 收货异常（差异单 DIFF2609190001 来源）
-
-/* 供应商后台的供货任务（含补发单） */
-export const SUPPLIER_DOCS = [
-  {
-    id: "FHD2609180011", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-18 14:47:36",
-    orderNo: "ORD260918000018", product: "西瓜", spec: "规格: S", emoji: "🍉", qty: 1, sent: 0,
-    shipper: "JOJO供应商", receiver: "火火（消费者）", receiverAddr: "江苏省南通市海门市海门高新区测试",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
-  },
-  {
-    id: "FHD2609170002", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 17:09:44",
-    orderNo: "ORD260917000164", product: "什锦果蔬", spec: "规格: 黑色/", emoji: "🧺", qty: 1, sent: 1,
-    shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "中通快递", tracking: "ZT8800112233", track: "已签收 2026-09-17 17:12:44", status: "已收货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609170001", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 17:09:10",
-    orderNo: "ORD260917000159", product: "什锦果蔬", spec: "规格: 蓝色/", emoji: "🧺", qty: 1, sent: 1,
-    shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "圆通速递", tracking: "YT5598712099", track: "已发货 2026-09-17 17:12:44", status: "已发货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609170003", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 10:22:05",
-    orderNo: "ORD260917000151", product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 10, sent: 10,
-    shipper: "供应商001", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "顺丰速运", tracking: "SF9900112200", track: "已签收 2026-09-17 15:20:00", status: "已收货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609160009", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-16 11:03:00",
-    orderNo: "ORD260916000145", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺", qty: 4, sent: 4,
-    shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "韵达快递", tracking: "YD1122334455", track: "已签收 2026-09-17 08:10:00", status: "收货异常", ops: ["详情"],
-  },
-  {
-    id: "FHD2609180013", leg: "supplier_to_hq", source: "配送差异补发", createdAt: "2026-09-18 10:00:00",
-    orderNo: "ORD260916000145", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺", qty: 1, sent: 0,
-    shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "", tracking: "", track: "", status: "待发货", isMakeup: true, reshipOf: "DIFF2609170003", ops: ["详情", "发货"],
-  },
-  /* 补发单（对应差异种子）：一张在途「补发中」、一张已收货「补发完成」 */
-  {
-    id: "FHD2609180030", leg: "supplier_to_hq", source: "配送差异补发", createdAt: "2026-09-18 14:00:00",
-    orderNo: "ORD260917000136", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 1, sent: 1,
-    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "顺丰速运", tracking: "SF7712007788", track: "已发货 2026-09-18 18:10:00", status: "已发货", isMakeup: true, reshipOf: "DIFF2609170010", ops: ["详情", "收货"],
-  },
-  {
-    id: "FHD2609160010", leg: "supplier_to_hq", source: "配送差异补发", createdAt: "2026-09-16 15:00:00",
-    orderNo: "ORD260918000012", product: "奶粉(复制)", spec: "800g / 罐", emoji: "🥛", qty: 1, sent: 1,
-    shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "中通快递", tracking: "ZT8800112560", track: "已签收 2026-09-17 11:20:00", status: "已收货", isMakeup: true, reshipOf: "DIFF2609160001", ops: ["详情"],
-  },
-  // —— 以下用于补齐各 Tab 的状态覆盖 ——
-  {
-    id: "FHD2609180010", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-18 11:20:03",
-    orderNo: "ORD260918000009", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, sent: 2,
-    shipper: "供应商002", receiver: "周然（消费者）", receiverAddr: "广东省广州市越秀区中山五路 33 号",
-    carrier: "顺丰速运", tracking: "SF7712003388", track: "已发货 2026-09-18 15:20:00", status: "已发货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609170009", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-17 16:40:00",
-    orderNo: "ORD260917000140", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 1, sent: 1,
-    shipper: "供应商002", receiver: "吴桐（消费者）", receiverAddr: "上海市浦东新区世纪大道 100 号",
-    carrier: "中通快递", tracking: "ZT8800112299", track: "已签收 2026-09-18 09:10:00", status: "已签收", ops: ["详情"],
-  },
-  /* 代发单状态补齐：已完成 / 已关闭 / 已发货 */
-  {
-    id: "FHD2609150021", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-15 10:08:21",
-    orderNo: "ORD260915000123", product: "沐浴露", spec: "持久留香 / 500ml", emoji: "🧴", qty: 1, sent: 1,
-    shipper: "JOJO供应商", receiver: "沈知夏（消费者）", receiverAddr: "四川省成都市武侯区天府大道 199 号",
-    carrier: "圆通速递", tracking: "YT5598712266", track: "已签收 2026-09-16 14:30:00", status: "已签收", ops: ["详情"],
-  },
-  {
-    id: "FHD2609160033", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-16 09:15:44",
-    orderNo: "ORD260916000188", product: "智能手环", spec: "黑色 / 标准版", emoji: "⌚", qty: 1, sent: 0,
-    shipper: "JOJO供应商", receiver: "赵一鸣（消费者）", receiverAddr: "江苏省南京市鼓楼区中山北路 8 号",
-    carrier: "", tracking: "", track: "", status: "已取消", ops: ["详情"],
-  },
-  {
-    id: "FHD2609180044", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-18 16:22:10",
-    orderNo: "ORD260918000466", product: "电饭煲", spec: "4L / 智能款", emoji: "🍚", qty: 1, sent: 1,
-    shipper: "JOJO供应商", receiver: "孙小满（消费者）", receiverAddr: "湖北省武汉市洪山区珞喻路 129 号",
-    carrier: "韵达快递", tracking: "YD1122336801", track: "已发货 2026-09-19 09:30:00", status: "已发货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609180051", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-18 18:05:12",
-    orderNo: "ORD260918000512", product: "篮球", spec: "7号 / 标准", emoji: "🏀", qty: 2, sent: 0,
-    shipper: "JOJO供应商", receiver: "方小北（消费者）", receiverAddr: "福建省厦门市思明区软件园二期 33 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
-  },
-  /* 补齐引用：订单 ORD260917000147（总部仓直配·供应商供货）的上游段供货单 */
-  {
-    id: "FHD2609170021", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 17:44:22",
-    orderNo: "ORD260917000147", product: "华为手机", spec: "蓝色/M", emoji: "📱", qty: 1, sent: 1,
-    shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "顺丰速运", tracking: "SF9900112288", track: "已签收 2026-09-17 09:20:00",
-    status: "已收货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609190052", leg: "sup_consumer", source: "订单支付自动生成", createdAt: "2026-09-19 09:14:40",
-    orderNo: "ORD260919000088", product: "台灯", spec: "护眼 / 白色", emoji: "💡", qty: 1, sent: 0,
-    shipper: "JOJO供应商", receiver: "唐小满（消费者）", receiverAddr: "陕西省西安市雁塔区高新路 25 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
-  },
-  {
-    id: "FHD2609170012", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 14:05:00",
-    orderNo: "ORD260917000148", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 5, sent: 0,
-    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
-  },
-  {
-    id: "FHD2609170014", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 09:40:00",
-    orderNo: "ORD260917000136", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 8, sent: 8,
-    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "京东物流", tracking: "JD5566778811", track: "已发货 2026-09-18 08:30:00", status: "已发货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609170015", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 08:15:00",
-    orderNo: "ORD260917000130", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 9, sent: 9,
-    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "圆通速递", tracking: "YT9900887711", track: "已发货 2026-09-18 07:20:00", status: "部分收货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609170016", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 13:22:00",
-    orderNo: "ORD260917000144", product: "什锦果蔬", spec: "礼盒装", emoji: "🧺", qty: 5, sent: 0,
-    shipper: "供应商003", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
-  },
-  {
-    id: "FHD2609170017", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 11:08:00",
-    orderNo: "ORD260917000139", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 6, sent: 6,
-    shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "韵达快递", tracking: "YD1122334477", track: "已发货 2026-09-18 10:00:00", status: "部分收货", ops: ["详情"],
-  },
-  {
-    id: "FHD2609170018", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 16:02:00",
-    orderNo: "ORD260917000152", product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 3, sent: 3,
-    shipper: "供应商002", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
-    carrier: "顺丰速运", tracking: "SF7712003399", track: "已签收 2026-09-18 09:40:00", status: "收货异常", ops: ["详情"],
-  },
-  /* 进销存新增：待收货自提订单（o10）的「供应商→门店」任务（在途） */
-  {
-    id: "FHD2609180012", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-18 15:31:00",
-    orderNo: "ORD260918000088", product: "儿童保温杯", spec: "500ml / 蓝", emoji: "🥤", qty: 2, sent: 2,
-    shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "中通快递", tracking: "ZT8800112455", track: "已发货 2026-09-18 18:00:00", status: "已发货", ops: ["详情", "收货"],
-  },
-  /* 与租户侧同步的门店已收货单（退货返厂单 RTV 的来源） */
-  {
-    id: "FHD2609150002", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-15 11:02:00",
-    orderNo: "ORD260915000088", product: "华为手机", spec: "蓝色 / M", emoji: "📱", qty: 1, sent: 1,
+    id: "FHD2609150090", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-15 11:02:00",
     shipper: "JOJO供应商", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
-    carrier: "圆通速递", tracking: "YT5598712300", track: "已签收 2026-09-15 19:30:00", status: "已收货", ops: ["详情"],
+    orderNos: ["ORD260915000088"],
+    items: [
+      { product: "华为手机", spec: "蓝色 / M", emoji: "📱", qty: 1, sent: 1, received: 1, from: [{ orderNo: "ORD260915000088", qty: 1 }] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT5598712300", track: "已签收 2026-09-15 19:30:00" }],
+    qty: 1, sent: 1, received: 1,
+    status: "已收货",
   },
   {
-    id: "FHD2609180016", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-18 10:12:00",
-    orderNo: "ORD260918000093", product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 6, sent: 6,
+    id: "FHD2609180097", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-18 10:12:00",
     shipper: "供应商003", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
-    carrier: "中通快递", tracking: "ZT8800112499", track: "已签收 2026-09-18 17:25:00", status: "已收货", ops: ["详情"],
+    orderNos: ["ORD260918000093"],
+    items: [
+      { product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 6, sent: 6, received: 6, from: [{ orderNo: "ORD260918000093", qty: 6 }] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112499", track: "已签收 2026-09-18 17:25:00" }],
+    qty: 6, sent: 6, received: 6,
+    status: "已收货",
   },
   {
-    id: "FHD2609170004", leg: "supplier_to_hq", source: "订单支付自动生成", createdAt: "2026-09-17 16:55:00",
-    orderNo: "ORD260917000153", product: "华为手机", spec: "规格: 默认", emoji: "📱", qty: 1, sent: 1,
+    id: "FHD2609200090", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-20 09:12:33",
+    shipper: "供应商001", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260917000151", "ORD260920000201"],
+    items: [
+      { product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 10, sent: 10, received: 10, from: [{ orderNo: "ORD260917000151", qty: 10 }] },
+      { product: "山茶油", spec: "750ml / 瓶", emoji: "🫒", qty: 6, sent: 6, received: 6, from: [{ orderNo: "ORD260920000201", qty: 6 }] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF9900112200", track: "已签收 2026-09-17 15:20:00" }, { carrier: "顺丰速运", tracking: "SF7712003821", track: "已签收 2026-09-21 10:30:00" }],
+    qty: 16, sent: 16, received: 16,
+    status: "已收货",
+  },
+  {
+    id: "FHD2609180098", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-18 09:31:20",
+    shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260917000147", "ORD260918000021"],
+    items: [
+      { product: "奶粉(复制)", spec: "800g / 罐", emoji: "🥛", qty: 2, sent: 2, received: 2, from: [{ orderNo: "ORD260918000021", qty: 2 }] },
+      { product: "华为手机", spec: "蓝色/M", emoji: "📱", qty: 1, sent: 1, received: 1, from: [{ orderNo: "ORD260917000147", qty: 1 }] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712003390", track: "已签收 2026-09-18 15:40:00" }, { carrier: "顺丰速运", tracking: "SF9900112288", track: "已签收 2026-09-17 09:20:00" }],
+    qty: 3, sent: 3, received: 3,
+    status: "已收货",
+  },
+  {
+    id: "FHD2609200091", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-20 10:05:14",
     shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
-    carrier: "顺丰速运", tracking: "SF7712003510", track: "已发货 2026-09-17 19:30:00", status: "已发货", ops: ["详情", "收货"],
+    orderNos: ["ORD260920000202"],
+    items: [
+      { product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 4, sent: 4, received: 4, from: [{ orderNo: "ORD260920000202", qty: 4 }] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT5500338877", track: "已签收 2026-09-21 11:15:00" }],
+    qty: 4, sent: 4, received: 4,
+    status: "已收货",
   },
   {
-    id: "FHD2609170019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-17 11:25:00",
-    orderNo: "ORD260918000202", product: "沐浴露", spec: "持久留香 / 500ml", emoji: "🧴", qty: 1, sent: 1,
+    id: "FHD2609200092", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-20 11:40:10",
+    shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260920000203"],
+    items: [
+      { product: "画板套装", spec: "12 色 / 含画架", emoji: "🎨", qty: 2, sent: 2, received: 2, from: [{ orderNo: "ORD260920000203", qty: 2 }] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112511", track: "已签收 2026-09-21 14:05:00" }],
+    qty: 2, sent: 2, received: 2,
+    status: "已收货",
+  },
+  {
+    id: "FHD2609160092", leg: "supplier_to_hq", source: "配送差异补发", batchAt: "2026-09-16 15:00:00",
+    shipper: "JOJO供应商", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260918000012"],
+    items: [
+      { product: "奶粉(复制)", spec: "800g / 罐", emoji: "🥛", qty: 1, sent: 1, received: 1, from: [{ orderNo: "ORD260918000012", qty: 1 }] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112560", track: "已签收 2026-09-17 11:20:00" }],
+    qty: 1, sent: 1, received: 1,
+    status: "已收货", isMakeup: true, reshipOf: "DIFF2609160001",
+  },
+  {
+    id: "FHD2609200093", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-20 10:05:14",
+    shipper: "九天教育总仓", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
+    orderNos: ["ORD260920000202"],
+    items: [
+      { product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 4, sent: 0, received: 0, from: [{ orderNo: "ORD260920000202", qty: 4 }] },
+    ],
+    packages: [],
+    qty: 4, sent: 0, received: 0,
+    status: "待发货",
+  },
+  {
+    id: "FHD2609200094", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-20 11:40:10",
+    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
+    orderNos: ["ORD260918000012", "ORD260920000201", "ORD260920000203"],
+    items: [
+      { product: "奶粉(复制)", spec: "800g / 罐", emoji: "🥛", qty: 2, sent: 0, received: 0, from: [{ orderNo: "ORD260918000012", qty: 2 }] },
+      { product: "山茶油", spec: "750ml / 瓶", emoji: "🫒", qty: 6, sent: 0, received: 0, from: [{ orderNo: "ORD260920000201", qty: 6 }] },
+      { product: "画板套装", spec: "12 色 / 含画架", emoji: "🎨", qty: 2, sent: 0, received: 0, from: [{ orderNo: "ORD260920000203", qty: 2 }] },
+    ],
+    packages: [],
+    qty: 10, sent: 0, received: 0,
+    status: "待发货",
+  },
+  {
+    id: "FHD2609200095", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-20 13:26:48",
     shipper: "供应商003", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "中通快递", tracking: "ZT8800112244", track: "已签收 2026-09-18 09:10:00", status: "已收货", ops: ["详情"],
+    orderNos: ["ORD260920000204"],
+    items: [
+      { product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 5, sent: 0, received: 0, from: [{ orderNo: "ORD260920000204", qty: 5 }] },
+    ],
+    packages: [],
+    qty: 5, sent: 0, received: 0,
+    status: "待发货",
   },
   {
-    id: "FHD2609130019", leg: "supplier_inbound", source: "订单支付自动生成", createdAt: "2026-09-13 15:05:00",
-    orderNo: "ORD260913000055", product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 1, sent: 1,
+    id: "FHD2609200096", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-20 16:08:06",
+    shipper: "供应商001", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
+    orderNos: ["ORD260920000206"],
+    items: [
+      { product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 3, sent: 0, received: 0, from: [{ orderNo: "ORD260920000206", qty: 3 }] },
+    ],
+    packages: [],
+    qty: 3, sent: 0, received: 0,
+    status: "待发货",
+  },
+  {
+    id: "FHD2609170092", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-17 13:22:00",
+    shipper: "供应商003", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
+    orderNos: ["ORD260917000144"],
+    items: [
+      { product: "什锦果蔬", spec: "礼盒装", emoji: "🧺", qty: 5, sent: 0, received: 0, from: [{ orderNo: "ORD260917000144", qty: 5 }] },
+    ],
+    packages: [],
+    qty: 5, sent: 0, received: 0,
+    status: "待发货",
+  },
+  {
+    id: "FHD2609200097", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-20 14:52:22",
+    shipper: "供应商002", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
+    orderNos: ["ORD260920000205"],
+    items: [
+      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 8, sent: 0, received: 0, from: [{ orderNo: "ORD260920000205", qty: 8 }] },
+    ],
+    packages: [],
+    qty: 8, sent: 0, received: 0,
+    status: "待发货",
+  },
+  {
+    id: "FHD2609200098", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-20 17:20:41",
+    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260917000148", "ORD260920000207"],
+    items: [
+      { product: "儿童绘本套装", spec: "全 8 册", emoji: "📚", qty: 3, sent: 0, received: 0, from: [{ orderNo: "ORD260920000207", qty: 3 }] },
+      { product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 5, sent: 0, received: 0, from: [{ orderNo: "ORD260917000148", qty: 5 }] },
+    ],
+    packages: [],
+    qty: 8, sent: 0, received: 0,
+    status: "待发货",
+  },
+  {
+    id: "FHD2609200099", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-20 18:02:11",
+    shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260920000208"],
+    items: [
+      { product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 2, sent: 0, received: 0, from: [{ orderNo: "ORD260920000208", qty: 2 }] },
+    ],
+    packages: [],
+    qty: 2, sent: 0, received: 0,
+    status: "待发货",
+  },
+  {
+    id: "FHD2609200100", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-20 18:46:05",
+    shipper: "供应商001", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260920000209"],
+    items: [
+      { product: "华为手机", spec: "规格: 默认", emoji: "📱", qty: 1, sent: 0, received: 0, from: [{ orderNo: "ORD260920000209", qty: 1 }] },
+    ],
+    packages: [],
+    qty: 1, sent: 0, received: 0,
+    status: "待发货",
+  },
+  {
+    id: "FHD2609180099", leg: "supplier_to_hq", source: "配送差异补发", batchAt: "2026-09-18 10:00:00",
+    shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260916000145"],
+    items: [
+      { product: "什锦果蔬", spec: "礼盒装", emoji: "🧺", qty: 1, sent: 0, received: 0, from: [{ orderNo: "ORD260916000145", qty: 1 }] },
+    ],
+    packages: [],
+    qty: 1, sent: 0, received: 0,
+    status: "待发货", isMakeup: true, reshipOf: "DIFF2609170003",
+  },
+  {
+    id: "FHD2609120090", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-12 09:20:00",
+    shipper: "九天教育总仓", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
+    orderNos: ["ORD260912000031"],
+    items: [
+      { product: "什锦果蔬", spec: "礼盒装 / 12 盒", emoji: "🧺", qty: 5, sent: 5, received: 0, from: [{ orderNo: "ORD260912000031", qty: 5 }] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112301", track: "已签收 2026-09-12 18:00:00" }],
+    qty: 5, sent: 5, received: 0,
+    status: "收货异常",
+  },
+  {
+    id: "FHD2609180100", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-18 08:20:00",
+    shipper: "九天教育总仓", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
+    orderNos: ["ORD260914000058", "ORD260918000021"],
+    items: [
+      { product: "儿童绘本套装", spec: "全 8 册", emoji: "📚", qty: 9, sent: 9, received: 0, from: [{ orderNo: "ORD260914000058", qty: 9 }] },
+      { product: "画板套装", spec: "基础版", emoji: "🎨", qty: 2, sent: 2, received: 0, from: [{ orderNo: "ORD260918000021", qty: 2 }] },
+    ],
+    packages: [{ carrier: "韵达快递", tracking: "YD1122334401", track: "已签收 2026-09-14 17:30:00" }, { carrier: "中通快递", tracking: "ZT8800112500", track: "已签收 2026-09-18 12:40:00" }],
+    qty: 11, sent: 11, received: 0,
+    status: "收货异常",
+  },
+  {
+    id: "FHD2609170093", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-17 16:02:00",
+    shipper: "供应商002", receiver: "九天门店", receiverAddr: "广东省广州市荔湾区宝华路 76 号",
+    orderNos: ["ORD260917000152"],
+    items: [
+      { product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 3, sent: 3, received: 2, from: [{ orderNo: "ORD260917000152", qty: 3 }] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712003399", track: "已签收 2026-09-18 09:40:00" }],
+    qty: 3, sent: 3, received: 2,
+    status: "收货异常",
+  },
+  {
+    id: "FHD2609160093", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-16 11:03:00",
+    shipper: "供应商003", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260916000145"],
+    items: [
+      { product: "什锦果蔬", spec: "礼盒装", emoji: "🧺", qty: 4, sent: 4, received: 3, from: [{ orderNo: "ORD260916000145", qty: 4 }] },
+    ],
+    packages: [{ carrier: "韵达快递", tracking: "YD1122334455", track: "已签收 2026-09-17 08:10:00" }],
+    qty: 4, sent: 4, received: 3,
+    status: "收货异常",
+  },
+  {
+    id: "FHD2609180101", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-18 11:20:00",
+    shipper: "供应商001", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260918000066"],
+    items: [
+      { product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 6, sent: 6, received: 0, from: [{ orderNo: "ORD260918000066", qty: 6 }] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712003501", track: "已签收 2026-09-18 16:05:00" }],
+    qty: 6, sent: 6, received: 0,
+    status: "收货异常",
+  },
+  {
+    id: "FHD2609170094", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-17 11:08:00",
     shipper: "供应商002", receiver: "9071门店", receiverAddr: "辽宁省铁岭市银州区工人街 28 号",
-    carrier: "圆通速递", tracking: "YT5500338811", track: "已签收 2026-09-14 10:20:00", status: "已收货", ops: ["详情"],
+    orderNos: ["ORD260917000139"],
+    items: [
+      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 6, sent: 6, received: 4, from: [{ orderNo: "ORD260917000139", qty: 6 }] },
+    ],
+    packages: [{ carrier: "韵达快递", tracking: "YD1122334477", track: "已发货 2026-09-18 10:00:00" }],
+    qty: 6, sent: 6, received: 4,
+    status: "部分收货",
+  },
+  {
+    id: "FHD2609170095", leg: "supplier_to_hq", source: "发货任务生成", batchAt: "2026-09-17 08:15:00",
+    shipper: "供应商002", receiver: "九天教育总仓", receiverAddr: "广州市天河区科韵路 16 号",
+    orderNos: ["ORD260916000142", "ORD260917000130"],
+    items: [
+      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 15, sent: 15, received: 6, from: [{ orderNo: "ORD260916000142", qty: 6 }, { orderNo: "ORD260917000130", qty: 9 }] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT9900887766", track: "已发货 2026-09-17 09:20:00" }, { carrier: "圆通速递", tracking: "YT9900887711", track: "已发货 2026-09-18 07:20:00" }],
+    qty: 15, sent: 15, received: 6,
+    status: "部分收货",
   },
 ];
 
-// 累计实收（只增不减）：与租户侧同口径；部分收货/收货异常单独标
-SUPPLIER_DOCS.forEach((d) => { if (d.received === undefined) d.received = d.status === "已收货" ? d.qty : 0; });
-SUPPLIER_DOCS.find((d) => d.id === "FHD2609160009").received = 3; // 收货异常（差异单 DIFF2609170003 来源）
-SUPPLIER_DOCS.find((d) => d.id === "FHD2609170015").received = 6; // 部分收货
-SUPPLIER_DOCS.find((d) => d.id === "FHD2609170017").received = 4; // 部分收货
-SUPPLIER_DOCS.find((d) => d.id === "FHD2609170018").received = 2; // 收货异常（差异单 DIFF2609170005 来源）
+
+/* 供应商侧独占的单据：供应商 → 消费者（一件代发）。共享链路（供应商→总仓 / 供应商→门店）
+   由下面的同步块从 SUPPLY_DOCS 复制过来，两端始终是同一张物理单据 */
+export const SUPPLIER_DOCS = [
+
+  {
+    id: "FHD2609180011", leg: "sup_consumer", source: "订单支付自动生成", batchAt: "2026-09-18 14:47:36",
+    shipper: "JOJO供应商", receiver: "火火（消费者）", receiverAddr: "江苏省南通市海门市海门高新区测试",
+    orderNos: ["ORD260918000018"],
+    items: [
+      { product: "西瓜", spec: "规格: S", emoji: "🍉", qty: 1, sent: 0, received: 0, from: [{ orderNo: "ORD260918000018", qty: 1 }] },
+    ],
+    packages: [],
+    qty: 1, sent: 0, received: 0,
+    status: "待发货",
+  },
+
+  {
+    id: "FHD2609180010", leg: "sup_consumer", source: "订单支付自动生成", batchAt: "2026-09-18 11:20:03",
+    shipper: "供应商002", receiver: "周然（消费者）", receiverAddr: "广东省广州市越秀区中山五路 33 号",
+    orderNos: ["ORD260918000009"],
+    items: [
+      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, sent: 2, received: 0, from: [{ orderNo: "ORD260918000009", qty: 2 }] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712003388", track: "已发货 2026-09-18 15:20:00" }],
+    qty: 2, sent: 2, received: 0,
+    status: "已发货",
+  },
+
+  {
+    id: "FHD2609170009", leg: "sup_consumer", source: "订单支付自动生成", batchAt: "2026-09-17 16:40:00",
+    shipper: "供应商002", receiver: "吴桐（消费者）", receiverAddr: "上海市浦东新区世纪大道 100 号",
+    orderNos: ["ORD260917000140"],
+    items: [
+      { product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 1, sent: 1, received: 0, from: [{ orderNo: "ORD260917000140", qty: 1 }] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112299", track: "已签收 2026-09-18 09:10:00" }],
+    qty: 1, sent: 1, received: 0,
+    status: "已签收",
+  },
+
+  {
+    id: "FHD2609150021", leg: "sup_consumer", source: "订单支付自动生成", batchAt: "2026-09-15 10:08:21",
+    shipper: "JOJO供应商", receiver: "沈知夏（消费者）", receiverAddr: "四川省成都市武侯区天府大道 199 号",
+    orderNos: ["ORD260915000123"],
+    items: [
+      { product: "沐浴露", spec: "持久留香 / 500ml", emoji: "🧴", qty: 1, sent: 1, received: 0, from: [{ orderNo: "ORD260915000123", qty: 1 }] },
+    ],
+    packages: [{ carrier: "圆通速递", tracking: "YT5598712266", track: "已签收 2026-09-16 14:30:00" }],
+    qty: 1, sent: 1, received: 0,
+    status: "已签收",
+  },
+
+  {
+    id: "FHD2609160033", leg: "sup_consumer", source: "订单支付自动生成", batchAt: "2026-09-16 09:15:44",
+    shipper: "JOJO供应商", receiver: "赵一鸣（消费者）", receiverAddr: "江苏省南京市鼓楼区中山北路 8 号",
+    orderNos: ["ORD260916000188"],
+    items: [
+      { product: "智能手环", spec: "黑色 / 标准版", emoji: "⌚", qty: 1, sent: 0, received: 0, from: [{ orderNo: "ORD260916000188", qty: 1 }] },
+    ],
+    packages: [],
+    qty: 1, sent: 0, received: 0,
+    status: "已取消",
+  },
+
+  {
+    id: "FHD2609180044", leg: "sup_consumer", source: "订单支付自动生成", batchAt: "2026-09-18 16:22:10",
+    shipper: "JOJO供应商", receiver: "孙小满（消费者）", receiverAddr: "湖北省武汉市洪山区珞喻路 129 号",
+    orderNos: ["ORD260918000466"],
+    items: [
+      { product: "电饭煲", spec: "4L / 智能款", emoji: "🍚", qty: 1, sent: 1, received: 0, from: [{ orderNo: "ORD260918000466", qty: 1 }] },
+    ],
+    packages: [{ carrier: "韵达快递", tracking: "YD1122336801", track: "已发货 2026-09-19 09:30:00" }],
+    qty: 1, sent: 1, received: 0,
+    status: "已发货",
+  },
+
+  {
+    id: "FHD2609180051", leg: "sup_consumer", source: "订单支付自动生成", batchAt: "2026-09-18 18:05:12",
+    shipper: "JOJO供应商", receiver: "方小北（消费者）", receiverAddr: "福建省厦门市思明区软件园二期 33 号",
+    orderNos: ["ORD260918000512"],
+    items: [
+      { product: "篮球", spec: "7号 / 标准", emoji: "🏀", qty: 2, sent: 0, received: 0, from: [{ orderNo: "ORD260918000512", qty: 2 }] },
+    ],
+    packages: [],
+    qty: 2, sent: 0, received: 0,
+    status: "待发货",
+  },
+
+  {
+    id: "FHD2609190052", leg: "sup_consumer", source: "订单支付自动生成", batchAt: "2026-09-19 09:14:40",
+    shipper: "JOJO供应商", receiver: "唐小满（消费者）", receiverAddr: "陕西省西安市雁塔区高新路 25 号",
+    orderNos: ["ORD260919000088"],
+    items: [
+      { product: "台灯", spec: "护眼 / 白色", emoji: "💡", qty: 1, sent: 0, received: 0, from: [{ orderNo: "ORD260919000088", qty: 1 }] },
+    ],
+    packages: [],
+    qty: 1, sent: 0, received: 0,
+    status: "待发货",
+  },
+];
 
 /* 同 id 的供货单在两端是同一张物理单据：共享链路（供应商→总仓 / 供应商→门店）
    必须两端可见；仅供应商侧「供应商→消费者」、仅租户侧「总部仓→门店」不参与同步 */
@@ -949,6 +1113,62 @@ SUPPLIER_DOCS.find((d) => d.id === "FHD2609170018").received = 2; // 收货异�
   }
 }
 
+
+/* ==========================================================================
+   汇总供货单的读取与分配
+   一张供货单 = 一个收货主体（门店 / 总仓）的一批货，含多个订单、多个商品行、可能多个包裹。
+   单据级的 qty / sent / received 是 items 的汇总值（列表快速展示用），明细一律以 items 为准。
+   ========================================================================== */
+export const itemsOf = (d) => d.items || [];
+export const ordersOf = (d) => d.orderNos || [];
+export const packagesOf = (d) => d.packages || [];
+export const sumOf = (d, k) => itemsOf(d).reduce((s, i) => s + (i[k] || 0), 0);
+/* 汇总口径下这三个值得算，不能直接读字段——写回时 items 才是源头 */
+export const qtyOf = (d) => (d.items ? sumOf(d, "qty") : d.qty || 0);
+export const sentOf = (d) => (d.items ? sumOf(d, "sent") : d.sent || 0);
+export const receivedOf = (d) => (d.items ? sumOf(d, "received") : d.received || 0);
+/* 列表里商品列的展示文案：单个直接给名字，多个给「首个 等 N 种」 */
+export const itemsLabel = (d) => {
+  const it = itemsOf(d);
+  if (!it.length) return { first: d.product || "-", spec: d.spec || "", emoji: d.emoji || "📦", more: 0 };
+  return { first: it[0].product, spec: it[0].spec, emoji: it[0].emoji, more: Math.max(0, it.length - 1) };
+};
+
+/* 先下单先满足：把每个商品的**实收**数量按订单下单时间先后依次分配，分满的订单才激活提货码。
+   货是一样的东西，少的那件无法精确归因到某一笔订单，所以不让人工指认，按先下单先满足自动分——
+   缺口自然落在最后下单的那几笔上。返回 { ready: 可提货的订单号, short: 还缺货的订单号 } */
+export function allocateByOrder(doc, orders) {
+  const need = {};   // orderNo -> { 商品: 需要件数 }
+  for (const it of itemsOf(doc)) {
+    for (const f of it.from || []) {
+      need[f.orderNo] = need[f.orderNo] || {};
+      need[f.orderNo][it.product] = (need[f.orderNo][it.product] || 0) + f.qty;
+    }
+  }
+  const avail = {};  // 商品 -> 已收件数（可分配的总量）
+  for (const it of itemsOf(doc)) avail[it.product] = (avail[it.product] || 0) + (it.received || 0);
+  const seq = ordersOf(doc)
+    .map((no) => orders.find((o) => o.no === no))
+    .filter(Boolean)
+    .sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
+  const ready = [], short = [];
+  for (const o of seq) {
+    const want = need[o.no] || {};
+    const enough = Object.entries(want).every(([p, q]) => (avail[p] || 0) >= q);
+    if (enough) {
+      for (const [p, q] of Object.entries(want)) avail[p] -= q;
+      ready.push(o.no);
+    } else short.push(o.no);
+  }
+  return { ready, short };
+}
+
+/* 种子一致性：供货任务里已经用掉的订单回填 batchNo —— 否则它们会重复出现在待发货订单池里。
+   真实系统里这张单在生成任务时就写了，这里是种子数据的事后对齐 */
+export const ORDERS_READY = ORDERS.map((o) => {
+  const hit = [...SUPPLY_DOCS, ...SUPPLIER_DOCS].find((d) => (d.orderNos || []).includes(o.no));
+  return hit ? { ...o, batchNo: hit.id } : o;
+});
 
 /* 一件代发的判定口径（只写这一处）：供应商直配 + 快递发货 = 供应商直发消费者。
    订单列表调它；售后列表不用它——afterSaleStore 装的就是代发售后单（与供应商侧同一份），
@@ -1002,20 +1222,20 @@ export const EXPRESS_TPL = [
 
 /* 配送差异单（双来源，谁被上报谁审核：总部上报 → 供应商审核；门店上报 → 总部审核） */
 export const DIFFS = [
-  { id: "DIFF2609170003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609160009", shipper: "供应商003", summary: "什锦果蔬 应收4/实收3 差1", diffQty: 1, status: "待补发", evidence: "少货 · 照片 2 张", makeup: "FHD2609180013" },
-  { id: "DIFF2609170001", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609180007", shipper: "九天教育总仓", summary: "画板套装 应收2/实收0 差2", diffQty: 2, status: "待举证", evidence: "—" },
-  { id: "DIFF2609170002", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609120002", shipper: "九天教育总仓", summary: "什锦果蔬 应收5/实收4 差1", diffQty: 1, status: "待总部审核", evidence: "少货 · 照片 1 张" },
-  { id: "DIFF2609170004", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609140003", shipper: "九天教育总仓", summary: "儿童绘本套装 应收9/实收8 差1", diffQty: 1, status: "补发中", evidence: "少货 · 照片 3 张", makeup: "FHD2609170907" },
-  { id: "DIFF2609170005", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170018", shipper: "供应商002", summary: "相机 应收3/实收2 差1", diffQty: 1, status: "待举证", evidence: "—" },
-  { id: "DIFF2609150004", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609150002", shipper: "JOJO供应商", summary: "华为手机 应收1/实收1 错货 1 件", diffQty: 1, status: "审核不通过", evidence: "错货 · 照片 2 张", rejectReason: "举证照片无法证明错货，线下核实商品无误" },
-  { id: "DIFF2609190002", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180009", shipper: "JOJO供应商", summary: "奶粉(复制) 应收2/实收1 差1", diffQty: 1, status: "已关闭", evidence: "少货 · 照片 1 张" },
+  { id: "DIFF2609170003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609160093", shipper: "供应商003", summary: "什锦果蔬 应收4/实收3 差1", diffQty: 1, status: "待补发", evidence: "少货 · 照片 2 张", makeup: "FHD2609180099" },
+  { id: "DIFF2609170001", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609180100", shipper: "九天教育总仓", summary: "画板套装 应收2/实收0 差2", diffQty: 2, status: "待举证", evidence: "—" },
+  { id: "DIFF2609170002", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609120090", shipper: "九天教育总仓", summary: "什锦果蔬 应收5/实收4 差1", diffQty: 1, status: "待总部审核", evidence: "少货 · 照片 1 张" },
+  { id: "DIFF2609170004", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609180100", shipper: "九天教育总仓", summary: "儿童绘本套装 应收9/实收8 差1", diffQty: 1, status: "补发中", evidence: "少货 · 照片 3 张", makeup: "FHD2609180091" },
+  { id: "DIFF2609170005", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170093", shipper: "供应商002", summary: "相机 应收3/实收2 差1", diffQty: 1, status: "待举证", evidence: "—" },
+  { id: "DIFF2609150004", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609150090", shipper: "JOJO供应商", summary: "华为手机 应收1/实收1 错货 1 件", diffQty: 1, status: "审核不通过", evidence: "错货 · 照片 2 张", rejectReason: "举证照片无法证明错货，线下核实商品无误" },
+  { id: "DIFF2609190002", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180098", shipper: "JOJO供应商", summary: "奶粉(复制) 应收2/实收1 差1", diffQty: 1, status: "已关闭", evidence: "少货 · 照片 1 张" },
   /* 总部上报样例：总仓收货登记少收（举证随收货完成），待供应商审核 → 通过后供应商补发 */
-  { id: "DIFF2609190001", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180017", shipper: "供应商001", summary: "奶粉 应收6/实收5 差1", diffQty: 1, status: "待供应商审核", evidence: "少货 · 照片 2 张" },
+  { id: "DIFF2609190001", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180101", shipper: "供应商001", summary: "奶粉 应收6/实收5 差1", diffQty: 1, status: "待供应商审核", evidence: "少货 · 照片 2 张" },
   /* Tab 状态覆盖补齐：总部上报的 补发中 / 补发完成 / 审核不通过，门店上报的 已关闭 */
-  { id: "DIFF2609170010", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609170014", shipper: "供应商002", summary: "相机 应收8/实收7 差1", diffQty: 1, status: "补发中", evidence: "少货 · 照片 2 张", makeup: "FHD2609180030" },
-  { id: "DIFF2609160001", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180008", shipper: "JOJO供应商", summary: "奶粉(复制) 应收2/实收1 差1", diffQty: 1, status: "补发完成", evidence: "少货 · 照片 1 张", makeup: "FHD2609160010" },
-  { id: "DIFF2609150003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609170004", shipper: "供应商002", summary: "华为手机 应收1/实收1 错货 1 件", diffQty: 1, status: "审核不通过", evidence: "错货 · 照片 2 张", rejectReason: "错货商品已线下换回，无需补发" },
-  { id: "DIFF2609140001", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170017", shipper: "供应商002", summary: "苹果 应收6/实收5 差1", diffQty: 1, status: "已关闭", evidence: "少货 · 照片 2 张" },
+  { id: "DIFF2609170010", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180093", shipper: "供应商002", summary: "相机 应收8/实收7 差1", diffQty: 1, status: "补发中", evidence: "少货 · 照片 2 张", makeup: "FHD2609180095" },
+  { id: "DIFF2609160001", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180094", shipper: "JOJO供应商", summary: "奶粉(复制) 应收2/实收1 差1", diffQty: 1, status: "补发完成", evidence: "少货 · 照片 1 张", makeup: "FHD2609160092" },
+  { id: "DIFF2609150003", source: "总部上报", leg: "供应商 → 总仓", reporter: "总部", supplyNo: "FHD2609180093", shipper: "供应商002", summary: "华为手机 应收1/实收1 错货 1 件", diffQty: 1, status: "审核不通过", evidence: "错货 · 照片 2 张", rejectReason: "错货商品已线下换回，无需补发" },
+  { id: "DIFF2609140001", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609170094", shipper: "供应商002", summary: "苹果 应收6/实收5 差1", diffQty: 1, status: "已关闭", evidence: "少货 · 照片 2 张" },
 ];
 
 /* ==========================================================================
@@ -1027,7 +1247,7 @@ export const DIFFS = [
 export const RETURN_STEPS = ["待返厂", "返厂中", "已返厂"];
 export const RETURNS = [
   {
-    id: "RTV2609190001", orderNo: "ORD260917000139", supplyNo: "FHD2609170017",
+    id: "RTV2609190001", orderNo: "ORD260917000139", supplyNo: "FHD2609170094",
     store: "9071门店", leg: "supplier_inbound", viaHq: false, returnTo: "供应商002",
     product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, reason: "七天无理由退货",
     createdAt: "2026-09-19 09:12:00", status: "待返厂",
@@ -1035,7 +1255,7 @@ export const RETURNS = [
     hops: [{ from: "9071门店", to: "供应商002", carrier: "", tracking: "", status: "待发货" }],
   },
   {
-    id: "RTV2609190002", orderNo: "ORD260917000152", supplyNo: "FHD2609170018",
+    id: "RTV2609190002", orderNo: "ORD260917000152", supplyNo: "FHD2609170093",
     store: "九天门店", leg: "supplier_inbound", viaHq: false, returnTo: "供应商002",
     product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 1, reason: "商品与描述不符",
     createdAt: "2026-09-18 16:40:00", status: "返厂中",
@@ -1043,7 +1263,7 @@ export const RETURNS = [
     hops: [{ from: "九天门店", to: "供应商002", carrier: "顺丰速运", tracking: "SF7712003411", status: "运输中" }],
   },
   {
-    id: "RTV2609190003", orderNo: "ORD260916000121", supplyNo: "FHD2609160003",
+    id: "RTV2609190003", orderNo: "ORD260916000121", supplyNo: "FHD2609160091",
     store: "九天门店", leg: "hq_store", viaHq: true, returnTo: "供应商003",
     product: "什锦果蔬", spec: "礼盒装 / 12 盒", emoji: "🧺", qty: 3, reason: "客户取消（未提货）",
     createdAt: "2026-09-18 11:05:00", status: "返厂中",
@@ -1054,7 +1274,7 @@ export const RETURNS = [
     ],
   },
   {
-    id: "RTV2609190004", orderNo: "ORD260915000088", supplyNo: "FHD2609150002",
+    id: "RTV2609190004", orderNo: "ORD260915000088", supplyNo: "FHD2609150090",
     store: "濮源直播间", leg: "supplier_inbound", viaHq: false, returnTo: "JOJO供应商",
     product: "华为手机", spec: "蓝色 / M", emoji: "📱", qty: 1, reason: "七天无理由退货",
     createdAt: "2026-09-15 14:22:00", status: "已返厂",
@@ -1062,7 +1282,7 @@ export const RETURNS = [
     hops: [{ from: "濮源直播间", to: "JOJO供应商", carrier: "圆通速递", tracking: "YT5598712300", status: "已收货" }],
   },
   {
-    id: "RTV2609190005", orderNo: "ORD260916000144", supplyNo: "FHD2609160005",
+    id: "RTV2609190005", orderNo: "ORD260916000144", supplyNo: "FHD2609160090",
     store: "9071门店", leg: "hq_store", viaHq: true, returnTo: "供应商001",
     product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 2, reason: "客户取消（未提货）",
     createdAt: "2026-09-19 08:30:00", status: "待返厂",
@@ -1073,7 +1293,7 @@ export const RETURNS = [
     ],
   },
   {
-    id: "RTV2609190006", orderNo: "ORD260918000093", supplyNo: "FHD2609180016",
+    id: "RTV2609190006", orderNo: "ORD260918000093", supplyNo: "FHD2609180097",
     store: "濮源直播间", leg: "supplier_inbound", viaHq: false, returnTo: "供应商003",
     product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 1, reason: "商品质量问题",
     createdAt: "2026-09-19 10:05:00", status: "待返厂",
@@ -1081,7 +1301,7 @@ export const RETURNS = [
     hops: [{ from: "濮源直播间", to: "供应商003", carrier: "", tracking: "", status: "待发货" }],
   },
   {
-    id: "RTV2609190007", orderNo: "ORD260918000101", supplyNo: "FHD2609180014",
+    id: "RTV2609190007", orderNo: "ORD260918000101", supplyNo: "FHD2609180096",
     store: "濮源直播间", leg: "hq_store", viaHq: true, returnTo: "JOJO供应商",
     product: "华为手机", spec: "黑色 / L", emoji: "📱", qty: 1, reason: "七天无理由退货",
     createdAt: "2026-09-18 19:48:00", status: "返厂中",

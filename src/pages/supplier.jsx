@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag, DiffAuditModal } from "./supply.jsx";
+import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, applyShip, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag, DiffAuditModal } from "./supply.jsx";
+import { itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, SUPPLIER_SELF } from "../data.js";
+import { OrderPool, GenTaskModal, poolOf, OrderRefsPop } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager, Confirm } from "../ui.jsx";
 import { supplierStore, supplyStore, diffStore, orderStore, patchDoc, addrStore, afterSaleStore } from "../store.js";
 
@@ -9,10 +11,14 @@ const LEG_LABEL = {
 };
 const CARRIERS = ["顺丰速运", "圆通速递", "中通快递", "京东物流", "韵达快递", "极兔速递"];
 /* 供货单物流可改窗口：已发货且收货方未收货（部分收货/已收货/收货异常一律锁定） */
-const canEditDocTrack = (d) => !!d.tracking && ["待发货", "已发货"].includes(d.status);
+const canEditDocTrack = (d) => !!packagesOf(d).length && ["待发货", "已发货"].includes(d.status);
 
 /* ---------------- 供应商供货任务列表（三个页面共用，含发货/详情/物流轨迹） ---------------- */
 export function SupTasks({ leg, title, desc }) {
+  /* 供应商侧同样是「订单池 → 生成发货任务」两步：日常按订单看，发货按任务看 */
+  const scope = leg === "supplier_to_hq" ? "sup_hq" : "sup_store";
+  const [view, setView] = useState("pool");
+  const [append, setAppend] = useState(null);
   const [tab, setTab] = useState("全部");
   const [modal, setModal] = useState(null);
   const [batch, setBatch] = useState(null);
@@ -31,6 +37,17 @@ export function SupTasks({ leg, title, desc }) {
 
   return (
     <>
+      <div className="tabs" style={{ display: "flex", gap: 28, borderBottom: "1px solid var(--line)", marginBottom: 16, paddingLeft: 8 }}>
+        {[["pool", "待发货订单"], ["tasks", "发货任务"]].map(([k, t]) => (
+          <span key={k} onClick={() => setView(k)}
+            style={{ paddingBottom: 12, fontSize: 14, cursor: "pointer",
+              color: view === k ? "var(--brand)" : "var(--text-2)",
+              borderBottom: view === k ? "2px solid var(--brand)" : "2px solid transparent",
+              fontWeight: view === k ? 600 : 400 }}>{t}</span>
+        ))}
+      </div>
+
+      {view === "pool" ? <OrderPool scope={scope} /> : (<>
       <div className="filters">
         <div className="row">
           <div className="field"><label>供货单号 / 销售订单</label><input className="ctl w-lg" placeholder="请输入供货单号或销售订单号" /></div>
@@ -83,21 +100,29 @@ export function SupTasks({ leg, title, desc }) {
                   {d.id}
                   <MakeupTag d={d} />
                 </td>
-                <td className="tw mono">{d.orderNo}</td>
+                <td className="tw mono">{ordersOf(d).length > 1
+                  ? <>{ordersOf(d)[0]}<small style={{ display: "block", color: "#999" }}>等 {ordersOf(d).length} 笔订单</small></>
+                  : <>{ordersOf(d)[0] || "-"}</>}</td>
                 <td>
                   <div className="prod-cell">
-                    <span className="thumb" style={{ background: "#f4f7f6" }}>{d.emoji}</span>
-                    <div><div>{d.product}</div><small>{d.spec}</small></div>
+                    <span className="thumb" style={{ background: "#f4f7f6" }}>{itemsLabel(d).emoji}</span>
+                    <div>
+                      <div>{itemsLabel(d).first}{itemsLabel(d).more > 0 && <span className="note"> 等 {itemsOf(d).length} 种</span>}</div>
+                      <small>{itemsLabel(d).spec}</small>
+                    </div>
                   </div>
                 </td>
                 <td className="tw">{LEG_LABEL[d.leg]}</td>
                 <td>{d.receiver}<small>{d.receiverAddr}</small></td>
-                <td className="tw mono">{d.qty}/{d.sent}
-                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {d.received ?? 0}｜待补 {d.qty - (d.received ?? 0)} 件</small>}
-                  {d.status === "收货异常" && !d.makeupAnomaly && <small style={{ color: "#f5522e" }}>实收 {d.received ?? 0}｜差 {Math.max(0, d.qty - (d.received ?? 0))} 件</small>}
+                <td className="tw mono">{qtyOf(d)}/{sentOf(d)}
+                  {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {receivedOf(d)}｜待补 {qtyOf(d) - receivedOf(d)} 件</small>}
+                  {d.status === "收货异常" && !d.makeupAnomaly && <small style={{ color: "#f5522e" }}>实收 {receivedOf(d)}｜差 {Math.max(0, qtyOf(d) - receivedOf(d))} 件</small>}
                   {d.makeupAnomaly && <small style={{ color: "#f5522e" }}>补发仍有异常 · 转线下</small>}
                 </td>
-                <td className="tw mono">{d.tracking ? <>{d.carrier}<small>{d.tracking}</small></> : "-"}</td>
+                <td className="tw mono">{packagesOf(d).length
+                  ? <>{packagesOf(d)[0].carrier}<small>{packagesOf(d)[0].tracking}</small>
+                    {packagesOf(d).length > 1 && <small style={{ display: "block", color: "#999" }}>共 {packagesOf(d).length} 个包裹</small>}</>
+                  : "-"}</td>
                 <td className="tw">
                   <span className={`tag ${statusText(d) === "待发货" ? "warn" : statusText(d) === "已发货" ? "blue" : statusText(d) === "收货异常" ? "danger" : ""}`}>{statusText(d)}</span>
                   {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>部分收货</small>}
@@ -106,10 +131,11 @@ export function SupTasks({ leg, title, desc }) {
                   <div className="op-col">
                     <button className="gray" onClick={() => setModal({ k: "detail", d })}>详情</button>
                     {/* 补发单的发货操作收口在配送差异页，本列表只读监控 */}
+                    {d.status === "待发货" && !d.isMakeup && <button className="gray" onClick={() => setAppend(d)}>追加订单</button>}
                     {["待发货", "部分收货"].includes(d.status) && (d.isMakeup
                       ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>在配送差异发货</span>
                       : <button onClick={() => setModal({ k: "ship", d })}>{d.status === "部分收货" ? "发货（补齐）" : "发货"}</button>)}
-                    {d.tracking && <button className="gray" onClick={() => setModal({ k: "track", d })}>物流轨迹</button>}
+                    {packagesOf(d).length > 0 && <button className="gray" onClick={() => setModal({ k: "track", d })}>物流轨迹</button>}
                     {canEditDocTrack(d) && <button className="gray" onClick={() => setModal({ k: "edit", d })}>修改物流</button>}
                   </div>
                 </td>
@@ -126,35 +152,30 @@ export function SupTasks({ leg, title, desc }) {
           doc={modal.d}
           onClose={() => setModal(null)}
           onDone={(p) => {
-            /* 不封顶：部分收货的「发货（补齐）」增量要如实计入（与租户侧 applyShip 同口径） */
-            const sent = (modal.d.sent ?? 0) + p.qty;
-            const ts = new Date().toISOString().slice(0, 19).replace("T", " ");
-            patchDoc(modal.d.id, {
-              sent,
-              carrier: p.carrier || modal.d.carrier,
-              tracking: p.tracking || modal.d.tracking,
-              track: "已发货 " + ts,
-              /* 未发满保持「待发货」便于继续发；发满转「已发货」 */
-              status: sent >= modal.d.qty ? "已发货" : "待发货",
-            });
-            tip(`供货单 ${modal.d.id} 已发货 ${p.qty} 件` + (sent < modal.d.qty ? `，剩余 ${modal.d.qty - sent} 件可再发` : ""));
+            /* 与租户侧共用 applyShip：多商品行 + 多包裹，两端同一份写回口径 */
+            tip(applyShip(modal.d, p));
             setModal(null);
           }}
         />
       )}
       {modal?.k === "detail" && <SupDocDrawer doc={modal.d} onClose={() => setModal(null)} onTrack={() => setModal({ k: "track", d: modal.d })} />}
       {modal?.k === "track" && <TrackDrawer doc={modal.d} onClose={() => setModal(null)} />}
+      {append && <GenTaskModal scope={scope} pool={poolOf(scope, orderStore.get(), supplierStore.get())} task={append}
+        onClose={() => setAppend(null)}
+        onDone={(made) => { setAppend(null); tip(`已向 ${made[0].id} 追加 ${made[0].count} 笔订单`); }} />}
       {modal?.k === "edit" && <SupEditTrackModal
         no={modal.d.id}
-        desc={`${modal.d.product}　${modal.d.spec}`}
-        carrier={modal.d.carrier}
-        tracking={modal.d.tracking}
+        desc={`${itemsLabel(modal.d).first}　${itemsLabel(modal.d).spec}${packagesOf(modal.d).length > 1 ? `（本批共 ${packagesOf(modal.d).length} 个包裹，此处改第 1 个）` : ""}`}
+        carrier={packagesOf(modal.d)[0]?.carrier || ""}
+        tracking={packagesOf(modal.d)[0]?.tracking || ""}
         lockText="收货方确认收货后不可再改"
         syncText="修改会同步更新本单物流，租户侧发货管理看到的也是修改后的单号。"
         onClose={() => setModal(null)}
         onDone={(p) => {
           const ts = new Date().toISOString().slice(0, 19).replace("T", " ");
-          patchDoc(modal.d.id, { carrier: p.carrier, tracking: p.tracking, trackEditedAt: ts, trackEditFrom: modal.d.tracking });
+          /* 只改快递公司 + 单号并留痕；多包裹时此处改第 1 个 */
+          const pk = packagesOf(modal.d).map((x, i) => (i === 0 ? { ...x, carrier: p.carrier, tracking: p.tracking } : x));
+          patchDoc(modal.d.id, { packages: pk, trackEditedAt: ts, trackEditFrom: packagesOf(modal.d)[0]?.tracking });
           tip(`供货单 ${modal.d.id} 物流信息已更新`);
           setModal(null);
         }}
@@ -163,6 +184,7 @@ export function SupTasks({ leg, title, desc }) {
       {batch === "template" && <TemplateDrawer rows={canShipRows} onClose={() => setBatch(null)} />}
       {batch === "import" && <ImportDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => tip(`已导入发货 ${applyShipBatch(items)} 单`)} />}
       {batch === "batch" && <BatchShipDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => tip(`已批量发货 ${applyShipBatch(items)} 单`)} />}
+      </>)}
     </>
   );
 }
@@ -957,15 +979,19 @@ export const SupToStore = () => <SupTasks leg="supplier_inbound" title="发门�
 
 /* ---------------- 供应商发货弹窗（版式与真实 SaaS「发货」弹窗一致） ---------------- */
 function SupShipModal({ doc, onClose, onDone }) {
-  const remain = doc.status === "部分收货" ? doc.qty - (doc.received ?? 0) : doc.qty - doc.sent;
-  const [qty, setQty] = useState(Math.max(1, remain));
-  const [tracking, setTracking] = useState("");
-  const [carrier, setCarrier] = useState("");
-  const [addr, setAddr] = useState(0);
-  const addresses = [
-    { name: "JOJO供应商", phone: "18100010002", addr: "广东省广州市天河区科苑路 16 号" },
-    { name: "供应商002", phone: "13979554185", addr: "广东省广州市天河区科韵路 16 号" },
-  ];
+  /* 汇总批次整批发，不逐商品问数量 */
+  const lines = itemsOf(doc).map((it) => {
+    const remain = doc.status === "部分收货" ? it.qty - (it.received || 0) : it.qty - (it.sent || 0);
+    return { product: it.product, spec: it.spec, emoji: it.emoji, qty: it.qty, out: Math.max(0, remain), from: it.from || [] };
+  });
+  const [pk, setPk] = useState([{ carrier: "", tracking: "" }]);
+  const setPkAt = (i, k, v) => setPk((a) => a.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
+  const totalOut = lines.reduce((a, x) => a + x.out, 0);
+  const parcels = pk.filter((x) => x.carrier && x.tracking.trim());
+  /* 发货地址只从供应商自己的「地址库 › 发货地址」里选，默认地址唯一 */
+  const addresses = addrStore.use().filter((a) => a.type === "ship" && a.owner === SUPPLIER_SELF);
+  const [addr, setAddr] = useState(() => Math.max(0, addresses.findIndex((a) => a.isDefault)));
+  const [rel, setRel] = useState(null);      // 订单关联弹层
 
   return (
     <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -976,33 +1002,30 @@ function SupShipModal({ doc, onClose, onDone }) {
             <thead>
               <tr>
                 <th style={{ width: 40 }}><input type="checkbox" /></th>
-                <th>商品信息</th><th className="tw">单价(元)</th><th className="tw">数量/单位</th>
-                <th className="tw">未发货数量</th><th className="tw">发货数量</th><th className="tw">发货状态</th><th className="tw">运单号</th>
+                <th>商品信息</th><th className="tw">订单关联</th><th className="tw">单价(元)</th><th className="tw">数量/单位</th>
+                <th className="tw">未发货数量</th><th className="tw">本次发货</th><th className="tw">发货状态</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><input type="checkbox" /></td>
-                <td>
-                  <div className="prod-cell">
-                    <span className="thumb" style={{ background: "#f4f7f6" }}>{doc.emoji}</span>
-                    <div><div>{doc.product}</div><small>{doc.spec}</small></div>
-                  </div>
-                </td>
-                <td className="tw"><span className="tag gray">已脱敏</span></td>
-                <td className="tw">{doc.qty}</td>
-                <td className="tw mono">{remain}</td>
-                <td className="tw">
-                  <span style={{ display: "inline-flex", alignItems: "center", border: "1px solid #e5e5e5", borderRadius: 3, height: 30 }}>
-                    <span style={{ padding: "0 8px", color: "#999", fontSize: 12.5, borderRight: "1px solid #e5e5e5", lineHeight: "28px" }}>发货数</span>
-                    <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
-                    <input value={qty} onChange={(e) => setQty(Math.min(remain, Number(e.target.value.replace(/\D/g, "")) || 0))} style={{ width: 44, height: 28, border: 0, textAlign: "center", padding: 0 }} />
-                    <button className="btn" style={{ width: 28, height: 28, padding: 0, background: "transparent" }} onClick={() => setQty((q) => Math.min(remain, q + 1))}>＋</button>
-                  </span>
-                </td>
-                <td className="tw">未发货</td>
-                <td className="tw"><input placeholder="请输入" style={{ height: 30 }} /></td>
-              </tr>
+              {lines.map((l) => (
+                <tr key={l.product}>
+                  <td><input type="checkbox" checked readOnly /></td>
+                  <td>
+                    <div className="prod-cell">
+                      <span className="thumb" style={{ background: "#f4f7f6" }}>{l.emoji}</span>
+                      <div><div>{l.product}</div><small>{l.spec}</small></div>
+                    </div>
+                  </td>
+                  <td className="tw">
+                    <span onClick={() => setRel(l)} style={{ color: "#25c7a5", cursor: "pointer" }}>{l.from.length} 笔订单</span>
+                  </td>
+                  <td className="tw"><span className="tag gray">已脱敏</span></td>
+                  <td className="tw">{l.qty}</td>
+                  <td className="tw mono">{l.out}</td>
+                  <td className="tw"><span style={{ color: "#25c7a5" }}>本次发 {l.out}</span></td>
+                  <td className="tw">{doc.status}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
 
@@ -1024,35 +1047,49 @@ function SupShipModal({ doc, onClose, onDone }) {
             <thead><tr><th style={{ width: 36 }}></th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
             <tbody>
               {addresses.map((a, i) => (
-                <tr key={i}>
+                <tr key={a.id}>
                   <td><input type="radio" checked={addr === i} onChange={() => setAddr(i)} /></td>
-                  <td className="tw">{a.name} <span className="tag gray">默认</span></td>
+                  <td className="tw">{a.name} {a.isDefault && <span className="tag gray">默认</span>}</td>
                   <td className="tw mono">{a.phone}</td>
-                  <td>{a.addr}</td>
+                  <td>{a.region.replace(/\//g, "")} {a.detail}</td>
+                </tr>
+              ))}
+              {!addresses.length && <tr><td colSpan={4} className="note" style={{ padding: 16 }}>地址库里还没有发货地址，请先到「地址库」添加</td></tr>}
+            </tbody>
+          </table>
+
+          <div style={{ display: "flex", alignItems: "center", margin: "18px 0 8px" }}>
+            <h3 style={{ fontSize: 14, margin: 0 }}>包裹与物流</h3>
+            <button className="btn link" style={{ marginLeft: "auto" }} onClick={() => setPk((a) => [...a, { carrier: "", tracking: "" }])}>+ 添加包裹</button>
+          </div>
+          <table className="tbl-tight">
+            <thead><tr><th className="tw" style={{ width: 80 }}>包裹</th><th className="tw">快递公司</th><th className="tw">快递单号</th><th style={{ width: 60 }}></th></tr></thead>
+            <tbody>
+              {pk.map((p, i) => (
+                <tr key={i}>
+                  <td className="tw">第 {i + 1} 个</td>
+                  <td className="tw">
+                    <select className="ctl" value={p.carrier} onChange={(e) => setPkAt(i, "carrier", e.target.value)} style={{ width: 180, height: 30, color: p.carrier ? "#333" : "#bbb" }}>
+                      <option value="">请选择或搜索快递公司</option>
+                      {CARRIERS.map((c) => <option key={c}>{c}</option>)}
+                    </select>
+                  </td>
+                  <td className="tw"><input className="ctl" style={{ height: 30 }} placeholder="请输入快递单号" value={p.tracking} onChange={(e) => setPkAt(i, "tracking", e.target.value)} /></td>
+                  <td>{pk.length > 1 && <button className="btn link" onClick={() => setPk((a) => a.filter((_, j) => j !== i))}>删除</button>}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-
-          <div style={{ display: "flex", gap: 40, marginTop: 22, alignItems: "center", fontSize: 13, color: "#666" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span>快递公司信息：<i className="req">*</i></span>
-              <select className="ctl" value={carrier} onChange={(e) => setCarrier(e.target.value)} style={{ width: 220, height: 32, color: carrier ? "#333" : "#bbb" }}><option value="">请选择或搜索快递公司</option>
-                {CARRIERS.map((c) => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span>快递单号：<i className="req">*</i></span>
-              <input className="ctl" style={{ width: 200, height: 32 }} placeholder="请输入快递单号" value={tracking} onChange={(e) => setTracking(e.target.value)} />
-            </div>
-          </div>
+          <div className="note">这一批（{lines.length} 种商品、{totalOut} 件）整批发往 {doc.receiver}；装不下时可以拆成多个包裹，每个包裹一条运单号。</div>
 
         </div>
         <div className="foot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={!carrier || !tracking.trim() || qty < 1} onClick={() => onDone({ qty, tracking: tracking.trim(), carrier })}>确定</button>
+          <button className="btn primary" disabled={!parcels.length || totalOut < 1}
+            onClick={() => onDone({ lines: lines.filter((x) => x.out > 0).map((x) => ({ product: x.product, qty: x.out })), packages: parcels })}>确认发货</button>
         </div>
       </div>
+      {rel && <OrderRefsPop item={rel} orders={orderStore.get()} mask onClose={() => setRel(null)} />}
     </div>
   );
 }
@@ -1083,10 +1120,14 @@ function SupDocDrawer({ doc, onClose, onTrack }) {
           <h3 style={{ fontSize: 14, margin: "0 0 8px" }}>供货商品明细</h3>
           <table className="tbl-tight">
             <thead><tr><th>商品</th><th className="tw">应发数量</th><th className="tw">已发数量</th><th className="tw">累计实收</th></tr></thead>
-            <tbody><tr>
-              <td><div className="prod-cell"><span className="thumb" style={{ background: "#f4f7f6" }}>{doc.emoji}</span><div><div>{doc.product}</div><small>{doc.spec}</small></div></div></td>
-              <td className="tw mono">{doc.qty}</td><td className="tw mono">{doc.sent}</td><td className="tw mono">{doc.received ?? 0}</td>
-            </tr></tbody>
+            <tbody>
+              {itemsOf(doc).map((it) => (
+                <tr key={it.product}>
+                  <td><div className="prod-cell"><span className="thumb" style={{ background: "#f4f7f6" }}>{it.emoji}</span><div><div>{it.product}</div><small>{it.spec}</small></div></div></td>
+                  <td className="tw mono">{it.qty}</td><td className="tw mono">{it.sent || 0}</td><td className="tw mono">{it.received || 0}</td>
+                </tr>
+              ))}
+            </tbody>
           </table>
 
           <h3 style={{ fontSize: 14, margin: "18px 0 8px" }}>收货信息</h3>
@@ -1096,11 +1137,14 @@ function SupDocDrawer({ doc, onClose, onTrack }) {
           </div>
 
           <h3 style={{ fontSize: 14, margin: "18px 0 8px" }}>供货物流</h3>
-          {doc.tracking ? (
+          {packagesOf(doc).length ? (
             <div style={{ lineHeight: 2 }}>
-              <div>快递公司：{doc.carrier}</div>
-              <div>物流单号：<span className="mono">{doc.tracking}</span></div>
-              <div>最新状态：{doc.track}</div>
+              {packagesOf(doc).map((p, i) => (
+                <div key={i} style={{ borderTop: i ? "1px solid var(--line)" : "none", paddingTop: i ? 8 : 0, marginTop: i ? 8 : 0 }}>
+                  <div>包裹 {i + 1}：{p.carrier}　<span className="mono">{p.tracking}</span></div>
+                  <div className="note">{p.track}</div>
+                </div>
+              ))}
               <button className="btn link" onClick={onTrack}>查看物流轨迹</button>
             </div>
           ) : <div className="note">尚未发货，暂无物流信息</div>}
@@ -1130,13 +1174,19 @@ export function SupDiff() {
   const approveAudit = (d) => {
     const orig = [...supplierStore.get(), ...supplyStore.get()].find((x) => x.id === d.supplyNo);
     const reshipId = newFhdId();
+    /* 补发只补**少的那几个商品**，不复制整批 */
+    const miss = itemsOf(orig).map((it) => {
+      const need = (it.sent || 0) - (it.received || 0);
+      return need > 0 ? { ...it, qty: need, sent: 0, received: 0 } : null;
+    }).filter(Boolean);
+    const its = miss.length ? miss : [{ product: "补发商品", spec: "", emoji: "📦", qty: d.diffQty ?? 1, sent: 0, received: 0, from: [] }];
     const doc = {
       id: reshipId, leg: orig?.leg || "supplier_to_hq", source: "配送差异补发",
-      createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
-      orderNo: orig?.orderNo || "—", product: orig?.product || "补发商品", spec: orig?.spec || "",
-      emoji: orig?.emoji || "📦", qty: d.diffQty ?? 1, sent: 0, supplyMode: orig?.supplyMode, goodsSource: orig?.goodsSource,
+      batchAt: new Date().toISOString().slice(0, 19).replace("T", " "),
       shipper: d.shipper, receiver: orig?.receiver || "九天教育总仓", receiverAddr: orig?.receiverAddr || "",
-      carrier: "", tracking: "", track: "", status: "待发货", ops: ["详情", "发货"],
+      orderNos: ordersOf(orig), items: its, packages: [],
+      qty: its.reduce((a, x) => a + x.qty, 0), sent: 0, received: 0, status: "待发货",
+      supplyMode: orig?.supplyMode, goodsSource: orig?.goodsSource,
       isMakeup: true, reshipOf: d.id,
     };
     supplierStore.set((ds) => [doc, ...ds]);

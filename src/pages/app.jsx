@@ -118,8 +118,8 @@ export function StoreApp() {
           )}
           {view === "diffs" && <Diffs onDetail={(d) => { setDiffCard(d); setView("diffDetail"); }} onEvidence={(d) => { setDiffCard(d); setView("evidence"); }} />}
           {view === "diffDetail" && <DiffDetail row={diffCard} onBack={() => setView("diffs")} onEvidence={() => { setDiffCard(diffCard); setView("evidence"); }} />}
-          {view === "evidence" && <Evidence card={diffCard} onBack={() => setView("diffs")}
-            onSubmitted={() => setPhoneDiffs((ds) => ds.map((d) => (d.id === diffCard.id && d.state === "待举证" ? { ...d, state: "待审核" } : d)))} />}
+          {/* 举证提交直接写 diffStore，列表读的是同一份数据，不需要回调再改本地 state */}
+          {view === "evidence" && <Evidence card={diffCard} onBack={() => setView("diffs")} />}
           {view === "returns" && <Returns />}
         </div>
 
