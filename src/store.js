@@ -139,3 +139,7 @@ export function patchHop(id, idx, patch) {
     return { ...r, hops, status: deriveStatus(hops) };
   }));
 }
+
+/* 租户级设置：本轮做「启用进销存」。
+   关掉后自提订单付完款就能提货，不再等货到门店，也不产生供货单 —— 给不做库存周转的租户留的口子 */
+export const settingStore = createStore({ supplyChain: true });

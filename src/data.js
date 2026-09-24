@@ -1428,6 +1428,16 @@ export const ORDERS_READY = ORDERS.map((o) => {
   return hits.length ? { ...o, batchNos: hits.map((d) => d.id) } : o;
 });
 
+/* 自提订单能不能提货：
+   · 启用进销存（默认）＝ 货要先到门店，门店确认收货那一刻才激活（写回 pickupReady）
+   · 关掉进销存   ＝ 付完款就能提，不等到货 —— 这类租户不自提链路走供货单
+   买家端、订单管理两处判提货码可用性都走这里，避免两处各写一套 */
+export const pickupReadyOf = (o, supplyChain) => {
+  if (!o || !o.store || o.delivery !== "上门自提") return false;
+  if (!supplyChain) return !["待付款", "已取消", "已关闭", "已全额退款"].includes(o.status);
+  return !!o.pickupReady;
+};
+
 /* 订单搜索：店员/客服手上有的是订单号、手机号或姓名，三者都能搜到同一笔单。
    三处订单列表（门店APP 关联订单、后台关联销售订单、商品行的订单关联）共用，避免各写一套 */
 export const matchOrder = (o, kw) => {
