@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useToast, useRowSelect, BatchBar, Confirm, usePaged, Pager } from "../ui.jsx";
-import { orderStore, supplyStore, settingStore } from "../store.js";
+import { orderStore, supplyStore, settingStore, addressBookStore } from "../store.js";
 import { pickupCodeOf, fmtPickupCode, supplyLabelOf, isDropship, pickupReadyOf } from "../data.js";
 
 /* 自提单的最后一跳（总部仓 → 门店）是内部段，走发货管理（供货单）；
@@ -450,13 +450,10 @@ function ShipModal({ order, onClose, onDone }) {
   const [qty, setQty] = useState(remainQty);
   const [carrier, setCarrier] = useState("");
   const [tracking, setTracking] = useState("");
-  const [addr, setAddr] = useState(0);
-  const addresses = [
-    { name: "张三", phone: "13800138000", addr: "广东省广州市天河区体育西路100号" },
-    { name: "张三", phone: "13800138001", addr: "广东省广州市天河区天河路208号天河城广场1楼" },
-    { name: "张三", phone: "13800138001", addr: "广东省广州市天河区天河路208号天河城广场1楼" },
-    { name: "李四", phone: "13800138009", addr: "广东省深圳市南山区科技中一路1001号" },
-  ];
+  /* 发货地址只从「设置 › 地址库 › 发货地址」里选，默认地址唯一、打开即选中 ——
+     与供货单发货弹窗同一口径；使用现场不新建地址（原来这里写死 4 条、还挂着「+ 添加地址」） */
+  const addresses = addressBookStore.use().filter((a) => a.type === "ship");
+  const [addr, setAddr] = useState(() => Math.max(0, addresses.findIndex((a) => a.isDefault)));
 
   return (
     <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -509,17 +506,17 @@ function ShipModal({ order, onClose, onDone }) {
 
           <div style={{ display: "flex", alignItems: "center", margin: "26px 0 12px" }}>
             <h3 style={{ fontSize: 15, margin: 0, borderLeft: "none", paddingLeft: 0 }}>选择发货地址</h3>
-            <button className="btn link" style={{ marginLeft: "auto" }}>+ 添加地址</button>
+            <span className="note" style={{ marginLeft: "auto" }}>地址在「设置 › 地址库」维护，这里只做选择</span>
           </div>
           <table className="tbl-tight">
             <thead><tr><th style={{ width: 46, background: "#fff" }}></th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
             <tbody>
               {addresses.map((a, i) => (
-                <tr key={i}>
+                <tr key={a.id}>
                   <td><input type="radio" checked={addr === i} onChange={() => setAddr(i)} /></td>
-                  <td className="tw">{a.name} <span style={{ color: "#999" }}>【默认】</span></td>
+                  <td className="tw">{a.name} {a.isDefault && <span style={{ color: "#999" }}>【默认】</span>}</td>
                   <td className="tw mono">{a.phone}</td>
-                  <td>{a.addr}</td>
+                  <td>{a.region.replace(/\//g, "")} {a.detail}</td>
                 </tr>
               ))}
             </tbody>

@@ -186,10 +186,10 @@ export function GeneralSetting() {
           </div>
         </div>
 
-        <div className="hl" data-hl="进销存：代发单由供应商执行" style={{ display: "block", marginLeft: 40, marginBottom: 20 }}>
+        <div className="hl" data-hl="进销存：代发单由总部审核退款" style={{ display: "block", marginLeft: 40, marginBottom: 20 }}>
           <div style={{ background: "#f7f7f7", padding: "14px 18px", fontSize: 12.5, lineHeight: 2, color: "var(--text-2)" }}>
             <div>进销存口径①：不允许发起 ≠ 不能退——买家可联系商家走线下协商退款；买家端「申请售后」入口对该订单置灰并给出提示</div>
-            <div>进销存口径②：一件代发订单的退款限制由<b>供应商</b>执行（流到供应商后台 · 售后处理），不是平台</div>
+            <div>进销存口径②：一件代发订单的<b>审核与退款由总部执行</b>（租户后台 · 售后管理）；供应商在「售后处理」只做签收验收 / 拒签，不参与钱款</div>
           </div>
         </div>
 

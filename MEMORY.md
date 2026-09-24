@@ -123,6 +123,7 @@
 - `node_modules` 是软链，别跑 `npm install`
 - git 提交/推送走 `bash ~/proto-push.sh`（沙箱内不能写 .git）
 - 详情/弹窗组件禁止写死数据——曾出现多张卡跳到同一张写死单据
+- **改了业务口径，注释 / 场景清单 / 流程图要一起改**——2026-09-24 全量审计（需求注释 13 处、场景清单 9 条、流程图 2 个文件）发现的全是同一类问题：改了代码没回头改文档。三处口径源要一起动：`reqnotes.jsx`（评审看的注释）、`scenarios.jsx`（场景清单）、`public/flow/*.html`（流程图，**手绘 SVG，节点文字是纯文本可以改，连线坐标要重算**）
 - **Hook 不能放在提前 return 之后**：`App.jsx` 对门店APP / 买家端是提前 return 的，把 `settingStore.use()` / `useEffect` 放在后面，一切 portal 就报「Rendered fewer hooks than expected」整页空白（2026-09-24 踩过）。新增 hook 一律提到所有提前 return 之前
 - **列表有的字段，详情也要有**——发货任务列表有「关联销售订单」列，详情抽屉原来没有，对不上账（2026-09-24 补上：详情头部给「任务来源 + 关联销售订单 N 笔」，商品明细给「订单关联」列，与发货弹窗同一套 `OrderRefsPop`）
 
