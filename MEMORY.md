@@ -98,6 +98,7 @@
 - `node_modules` 是软链，别跑 `npm install`
 - git 提交/推送走 `bash ~/proto-push.sh`（沙箱内不能写 .git）
 - 详情/弹窗组件禁止写死数据——曾出现多张卡跳到同一张写死单据
+- **列表有的字段，详情也要有**——发货任务列表有「关联销售订单」列，详情抽屉原来没有，对不上账（2026-09-24 补上：详情头部给「任务来源 + 关联销售订单 N 笔」，商品明细给「订单关联」列，与发货弹窗同一套 `OrderRefsPop`）
 
 ## 外部资源
 - 线上预览：https://eltonliz.github.io/saas-fulfillment-prototype/ （GitHub Pages，从 main 的 `docs/` 部署）

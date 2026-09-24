@@ -1220,6 +1220,7 @@ export function TemplateDrawer({ rows: rowsProp, onClose }) {
         <div className="body">
           <div className="alert">
             <span className="ic">i</span>模板已按待发货供货单预填好——<b style={{ margin: "0 4px" }}>灰色列是锁定列，禁止修改</b>；只需填「快递公司」和「物流单号」两列。
+            <b style={{ margin: "0 4px" }}>一行一张发货任务、只登记一个包裹</b>；这批要拆多个包裹的，请单张点「发货」逐个登记。
           </div>
 
           <div className="tbl-wrap">
@@ -1296,7 +1297,8 @@ export function ImportDrawer({ rows, onClose, onDone }) {
 
           {step === 0 && (
             <>
-              <div className="alert"><span className="ic">i</span>先下载模板：已按待发货供货单预填好，<b style={{ margin: "0 4px" }}>锁定列不可修改</b>，只需填「快递公司」和「物流单号」。</div>
+              <div className="alert"><span className="ic">i</span>先下载模板：已按待发货供货单逐张预填好，<b style={{ margin: "0 4px" }}>锁定列不可修改</b>，只需填「快递公司」和「物流单号」。
+              <b style={{ margin: "0 4px" }}>一行一张任务、只登记一个包裹</b>。</div>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button className="btn plain" onClick={() => downloadCsv(rows)}>下载发货模板</button>
                 <button className="btn primary" onClick={() => setStep(1)}>我已下载，去导入</button>
@@ -1405,7 +1407,8 @@ export function BatchShipDrawer({ rows, onClose, onDone }) {
       <div className="drawer" style={{ width: 900 }}>
         <header>批量发货<button className="x" onClick={onClose}>×</button></header>
         <div className="body">
-          <div className="alert"><span className="ic">i</span>批量发货要求<b style={{ margin: "0 4px" }}>同一发货方 + 同一收货人 + 同一收货地址</b>，不符合的会被拦下。</div>
+          <div className="alert"><span className="ic">i</span>一行是一张发货任务（发往一个门店），逐行填各自的物流单号。
+            <b style={{ margin: "0 4px" }}>一行只登记一个包裹</b>——这批要拆成多个包裹的，请单张点「发货」逐个登记。</div>
           <div className="frow">
             <label><i>*</i>快递公司</label>
             <div className="fc"><select value={carrier} onChange={(e) => setCarrier(e.target.value)} style={{ maxWidth: 260 }}>
