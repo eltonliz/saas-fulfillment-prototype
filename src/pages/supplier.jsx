@@ -18,7 +18,6 @@ export function SupTasks({ leg, title, desc }) {
   /* 供应商侧同样是「订单池 → 生成发货任务」两步：日常按订单看，发货按任务看 */
   const scope = leg === "supplier_to_hq" ? "sup_hq" : "sup_store";
   const [view, setView] = useState("pool");
-  const [append, setAppend] = useState(null);
   const [tab, setTab] = useState("全部");
   const [modal, setModal] = useState(null);
   const [batch, setBatch] = useState(null);
@@ -131,7 +130,6 @@ export function SupTasks({ leg, title, desc }) {
                   <div className="op-col">
                     <button className="gray" onClick={() => setModal({ k: "detail", d })}>详情</button>
                     {/* 补发单的发货操作收口在配送差异页，本列表只读监控 */}
-                    {d.status === "待发货" && !d.isMakeup && <button className="gray" onClick={() => setAppend(d)}>追加订单</button>}
                     {["待发货", "部分收货"].includes(d.status) && (d.isMakeup
                       ? <span style={{ color: "#bbb", fontSize: 14, height: 22 }}>在配送差异发货</span>
                       : <button onClick={() => setModal({ k: "ship", d })}>{d.status === "部分收货" ? "发货（补齐）" : "发货"}</button>)}
@@ -160,9 +158,6 @@ export function SupTasks({ leg, title, desc }) {
       )}
       {modal?.k === "detail" && <SupDocDrawer doc={modal.d} onClose={() => setModal(null)} onTrack={() => setModal({ k: "track", d: modal.d })} />}
       {modal?.k === "track" && <TrackDrawer doc={modal.d} onClose={() => setModal(null)} />}
-      {append && <GenTaskModal scope={scope} pool={poolOf(scope, orderStore.get(), supplierStore.get())} task={append}
-        onClose={() => setAppend(null)}
-        onDone={(made) => { setAppend(null); tip(`已向 ${made[0].id} 追加 ${made[0].count} 笔订单`); }} />}
       {modal?.k === "edit" && <SupEditTrackModal
         no={modal.d.id}
         desc={`${itemsLabel(modal.d).first}　${itemsLabel(modal.d).spec}${packagesOf(modal.d).length > 1 ? `（本批共 ${packagesOf(modal.d).length} 个包裹，此处改第 1 个）` : ""}`}
@@ -1060,7 +1055,9 @@ function SupShipModal({ doc, onClose, onDone }) {
 
           <div style={{ display: "flex", alignItems: "center", margin: "18px 0 8px" }}>
             <h3 style={{ fontSize: 14, margin: 0 }}>包裹与物流</h3>
-            <button className="btn link" style={{ marginLeft: "auto" }} onClick={() => setPk((a) => [...a, { carrier: "", tracking: "" }])}>+ 添加包裹</button>
+            {/* 一批最多拆 50 个包裹；再多就不该在一张任务里拆了，应该另开一批 */}
+            <button className="btn link" style={{ marginLeft: "auto" }} disabled={pk.length >= 50}
+              onClick={() => setPk((a) => [...a, { carrier: "", tracking: "" }])}>+ 添加包裹</button>
           </div>
           <table className="tbl-tight">
             <thead><tr><th className="tw" style={{ width: 80 }}>包裹</th><th className="tw">快递公司</th><th className="tw">快递单号</th><th style={{ width: 60 }}></th></tr></thead>

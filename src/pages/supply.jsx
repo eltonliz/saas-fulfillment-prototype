@@ -99,7 +99,7 @@ export function poolOf(scope, orders, supplyDocs) {
 }
 
 /* 生成发货任务：按门店分组，一个门店一张；items 从订单商品汇总，from 保留订单来源可追溯 */
-export function genTasksFrom(scope, pickedStores, cutoff, deps, targetTask) {
+export function genTasksFrom(scope, pickedStores, cutoff, deps) {
   const { orders, supplyDocs, setOrders } = deps;
   const pool = poolOf(scope, orders, supplyDocs)
     .filter((o) => pickedStores.includes(o.store) && (!cutoff || (o.payTime || o.createdAt || "") <= cutoff));
@@ -117,28 +117,17 @@ export function genTasksFrom(scope, pickedStores, cutoff, deps, targetTask) {
     }
     items.forEach((x) => delete x.key);
     const addQty = items.reduce((a, i) => a + i.qty, 0);
-    if (targetTask) {
-      /* 追加订单：只往这张任务里并，不新建 */
-      const merged = [...itemsOf(targetTask)];
-      for (const it of items) {
-        const same = merged.find((x) => x.product === it.product && x.spec === it.spec);
-        if (same) { same.qty += it.qty; same.from = [...(same.from || []), ...it.from]; }
-        else merged.push(it);
-      }
-      patchDoc(targetTask.id, { items: merged, orderNos: [...ordersOf(targetTask), ...os.map((o) => o.no)], qty: merged.reduce((a, i) => a + i.qty, 0) });
-      made.push({ id: targetTask.id, store, count: os.length, appended: true });
-    } else {
-      const id = newFhdId();
-      /* 生成只产出「待发货」任务：物流在发货环节填，生成这一步不碰物流 */
-      addDoc({
-        id, leg: POOL_SCOPES[scope].leg, source: "发货任务生成",
-        batchAt: new Date().toISOString().slice(0, 19).replace("T", " "),
-        shipper: POOL_SCOPES[scope].shipper, receiver: store, receiverAddr: STORE_ADDR[store] || "",
-        orderNos: os.map((o) => o.no), items, packages: [],
-        qty: addQty, sent: 0, received: 0, status: "待发货",
-      });
-      made.push({ id, store, count: os.length });
-    }
+    const id = newFhdId();
+    /* 生成只产出「待发货」任务：物流在发货环节填，生成这一步不碰物流。
+       任务一旦生成就锁死：不再支持往已有任务里追加订单，避免同一批货改来改去对不上账 */
+    addDoc({
+      id, leg: POOL_SCOPES[scope].leg, source: "发货任务生成",
+      batchAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+      shipper: POOL_SCOPES[scope].shipper, receiver: store, receiverAddr: STORE_ADDR[store] || "",
+      orderNos: os.map((o) => o.no), items, packages: [],
+      qty: addQty, sent: 0, received: 0, status: "待发货",
+    });
+    made.push({ id, store, count: os.length });
     const ns = os.map((o) => o.no);
     setOrders((all) => all.map((o) => (ns.includes(o.no) ? { ...o, batchNos: [...(o.batchNos || []), made[made.length - 1].id] } : o)));
   }
@@ -267,7 +256,7 @@ const Thumb = ({ d }) => {
   );
 };
 
-function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch, onAppend }) {
+function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
   /* 收货管理为收货方视角：单据「已发货」在收货侧显示为「待收货」（数据层状态不变） */
   const statusText = (d) => {
     if (mode === "receive" && ["已发货", "部分收货"].includes(d.status)) return "待收货"; // 收货方视角
@@ -336,7 +325,6 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch, onAppend }) 
                 <td>
                   <div className="op-col">
                     {/* 收货方的待收货行：重点是「这单是给谁的」，详情让位给关联订单 */}
-                    {mode === "ship" && onAppend && d.status === "待发货" && !d.isMakeup && <button className="gray" onClick={() => onAppend(d)}>追加订单</button>}
                     {mode === "receive" && statusText(d) === "待收货"
                       ? <button onClick={() => onOpen("order", d)}>关联订单</button>
                       : <button className="gray" onClick={() => onOpen("detail", d)}>详情</button>}
@@ -421,9 +409,9 @@ export function OrderPool({ scope }) {
 }
 
 /* 生成 / 追加发货任务：选门店（可多选）+ 选支付时间截止点，按门店各生成一张 */
-export function GenTaskModal({ scope, pool, task, onClose, onDone }) {
+export function GenTaskModal({ scope, pool, onClose, onDone }) {
   const stores = [...new Set(pool.map((o) => o.store))];
-  const [picked, setPicked] = useState(task ? [task.receiver] : stores);
+  const [picked, setPicked] = useState(stores);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [time, setTime] = useState("17:00");
   const cutoff = `${date} ${time}:59`;
@@ -440,7 +428,7 @@ export function GenTaskModal({ scope, pool, task, onClose, onDone }) {
   return (
     <div className="drawer-mask" style={{ justifyContent: "center", alignItems: "center" }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="drawer" style={{ width: 760, height: "auto", maxHeight: "88vh", borderRadius: 4 }}>
-        <header>{task ? "追加订单到发货任务" : "生成发货任务"}<button className="x" onClick={onClose}>×</button></header>
+        <header>生成发货任务<button className="x" onClick={onClose}>×</button></header>
         <div className="body">
           <div className="alert">
             <span className="ic">i</span>把「发往同一门店、支付时间在截止点之前」的订单汇总成一张发货任务，每个门店各一张。
@@ -450,18 +438,14 @@ export function GenTaskModal({ scope, pool, task, onClose, onDone }) {
           <div className="frow" style={{ marginTop: 14 }}>
             <label><i className="req">*</i>发往门店</label>
             <div className="fc">
-              {task ? (
-                <div><span className="tag blue">{task.receiver}</span><span className="note" style={{ marginLeft: 8 }}>追加模式：门店固定为这张任务的门店</span></div>
-              ) : (
-                <div className="radio-row" style={{ flexWrap: "wrap", gap: 16 }}>
-                  {stores.map((x) => (
-                    <label key={x}>
-                      <input type="checkbox" checked={picked.includes(x)} onChange={() => toggle(x)} />
-                      {x}<span className="note" style={{ marginLeft: 4 }}>（{pool.filter((o) => o.store === x).length} 笔）</span>
-                    </label>
-                  ))}
-                </div>
-              )}
+              <div className="radio-row" style={{ flexWrap: "wrap", gap: 16 }}>
+                {stores.map((x) => (
+                  <label key={x}>
+                    <input type="checkbox" checked={picked.includes(x)} onChange={() => toggle(x)} />
+                    {x}<span className="note" style={{ marginLeft: 4 }}>（{pool.filter((o) => o.store === x).length} 笔）</span>
+                  </label>
+                ))}
+              </div>
               {!stores.length && <div className="note">当前没有可汇总的订单</div>}
             </div>
           </div>
@@ -520,8 +504,8 @@ export function GenTaskModal({ scope, pool, task, onClose, onDone }) {
           <button className="btn primary" disabled={!n}
             onClick={() => onDone(genTasksFrom(scope, picked, cutoff, {
               orders: orderStore.get(), supplyDocs: supplyStore.get(), setOrders: orderStore.set,
-            }, task))}>
-            {task ? "追加到这张任务" : `生成 ${n} 张发货任务`}
+            }))}>
+            生成 {n} 张发货任务
           </button>
         </div>
       </div>
@@ -541,7 +525,6 @@ export function SupplyDispatch() {
   const pending = rows.filter((d) => canShip(d) && !d.isMakeup).length;
   /* 补发单发货收口在配送差异页：批量 / 导入 / 模板不含补发单 */
   const canShipRows = rows.filter((d) => canShip(d) && !d.isMakeup);
-  const [append, setAppend] = useState(null);   // 追加订单到某张任务
 
   return (
     <>
@@ -571,7 +554,7 @@ export function SupplyDispatch() {
         <span className="ic">i</span>您有 <b style={{ margin: "0 4px" }}>{pending}</b> 笔待发货供货单
       </div>
 
-      <DocTable rows={rows} tab={tab} setTab={setTab} tabs={["全部", "待发货", "已发货", "收货异常", "已收货"]} mode="ship" onOpen={(k, d) => setModal({ k, d })} onBatch={setBatch} onAppend={setAppend} />
+      <DocTable rows={rows} tab={tab} setTab={setTab} tabs={["全部", "待发货", "已发货", "收货异常", "已收货"]} mode="ship" onOpen={(k, d) => setModal({ k, d })} onBatch={setBatch} />
 
       {modal?.k === "ship" && <ShipDrawer doc={modal.d} onClose={() => setModal(null)} onDone={(p) => { tip(applyShip(modal.d, p)); setModal(null); }} />}
       {modal?.k === "receive" && <ReceiveDrawer doc={modal.d} onClose={() => setModal(null)} onDone={(p) => { tip(applyReceive(modal.d, p)); setModal(null); }} />}
@@ -581,9 +564,6 @@ export function SupplyDispatch() {
       {batch === "template" && <TemplateDrawer rows={canShipRows} onClose={() => setBatch(null)} />}
       {batch === "import" && <ImportDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => tip(`已导入发货 ${applyShipBatch(items)} 单`)} />}
       {batch === "batch" && <BatchShipDrawer rows={canShipRows} onClose={() => setBatch(null)} onDone={(items) => tip(`已批量发货 ${applyShipBatch(items)} 单`)} />}
-      {append && <GenTaskModal scope="hq_store" pool={poolOf("hq_store", orderStore.get(), supplyStore.get())} task={append}
-        onClose={() => setAppend(null)}
-        onDone={(made) => { setAppend(null); tip(`已向 ${made[0].id} 追加 ${made[0].count} 笔订单`); }} />}
       </>)}
     </>
   );
@@ -1003,7 +983,9 @@ function ShipDrawer({ doc, onClose, onDone }) {
 
           <div style={{ display: "flex", alignItems: "center", margin: "18px 0 8px" }}>
             <h3 style={{ fontSize: 14, margin: 0 }}>包裹与物流</h3>
-            <button className="btn link" style={{ marginLeft: "auto" }} onClick={() => setPk((a) => [...a, { carrier: "", tracking: "" }])}>+ 添加包裹</button>
+            {/* 一批最多拆 50 个包裹；再多就不该在一张任务里拆了，应该另开一批 */}
+            <button className="btn link" style={{ marginLeft: "auto" }} disabled={pk.length >= 50}
+              onClick={() => setPk((a) => [...a, { carrier: "", tracking: "" }])}>+ 添加包裹</button>
           </div>
           <table className="tbl-tight">
             <thead><tr><th className="tw" style={{ width: 80 }}>包裹</th><th className="tw">快递公司</th><th className="tw">快递单号</th><th style={{ width: 60 }}></th></tr></thead>
@@ -1568,6 +1550,9 @@ function RelatedOrderDrawer({ doc, onClose }) {
 }
 
 function DocDetailDrawer({ doc, onClose, mode }) {
+  /* 详情里也要能看到「这批货是哪些订单的」——列表有这一列，详情没有就对不上账；
+     商品行按件给订单关联，跟发货弹窗同一套口径 */
+  const [rel, setRel] = useState(null);
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="drawer" style={{ width: 720 }}>
@@ -1589,6 +1574,12 @@ function DocDetailDrawer({ doc, onClose, mode }) {
               <div className="field"><label>发货主体</label><b>{doc.shipper}</b></div>
               <div className="field"><label>收货主体</label><b>{doc.receiver}</b></div>
             </div>
+            <div className="row" style={{ gap: 30 }}>
+              <div className="field"><label>任务来源</label><span>{doc.source}{doc.batchAt ? `　${doc.batchAt}` : ""}</span></div>
+              <div className="field"><label>关联销售订单</label>
+                <span style={{ color: "#25c7a5", cursor: "pointer" }} onClick={() => setRel("all")}>{ordersOf(doc).length} 笔</span>
+              </div>
+            </div>
             <div className="row"><div className="field"><label>收货地址</label><span>{doc.receiverAddr}</span></div></div>
           </div>
 
@@ -1596,11 +1587,14 @@ function DocDetailDrawer({ doc, onClose, mode }) {
 
           <h3 style={{ fontSize: 14, margin: "0 0 10px", borderLeft: "3px solid #25c7a5", paddingLeft: 9 }}>供货商品明细</h3>
           <table>
-            <thead><tr><th>商品</th><th className="tw">应发数量</th><th className="tw">已发数量</th><th className="tw">累计实收</th></tr></thead>
+            <thead><tr><th>商品</th><th className="tw">订单关联</th><th className="tw">应发数量</th><th className="tw">已发数量</th><th className="tw">累计实收</th></tr></thead>
             <tbody>
               {itemsOf(doc).map((it) => (
                 <tr key={it.product}>
                   <td><div className="prod-cell"><span className="thumb" style={{ background: "#f4f7f6" }}>{it.emoji}</span><div><div>{it.product}</div><small>{it.spec}</small></div></div></td>
+                  <td className="tw">
+                    <span onClick={() => setRel(it)} style={{ color: "#25c7a5", cursor: "pointer" }}>{(it.from || []).length} 笔订单</span>
+                  </td>
                   <td className="tw mono">{it.qty}</td>
                   <td className="tw mono">{it.sent || 0}</td>
                   <td className="tw mono">{it.received || 0}</td>
@@ -1627,6 +1621,13 @@ function DocDetailDrawer({ doc, onClose, mode }) {
         </div>
         <div className="foot"><button className="btn plain" onClick={onClose}>关闭</button></div>
       </div>
+      {rel && (
+        <OrderRefsPop
+          item={rel === "all"
+            ? { product: "本批全部商品", spec: `共 ${itemsOf(doc).length} 种`, qty: qtyOf(doc), from: itemsOf(doc).flatMap((it) => it.from || []) }
+            : rel}
+          orders={orderStore.get()} onClose={() => setRel(null)} />
+      )}
     </div>
   );
 }
