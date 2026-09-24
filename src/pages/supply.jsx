@@ -365,7 +365,8 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch, onAppend }) 
   );
 }
 
-/* ---------------- 待发货订单池（日常按订单看；发货是显式动作） ---------------- */
+/* ---------------- 待汇总订单（自提单池子：货要到门店去交接，还没有变成发货任务） ----------------
+   池子里只有「上门自提」的订单，所以配送方式是恒定的，不占一列；门店这一列就是这个单要去自提的门店 */
 export function OrderPool({ scope }) {
   const orders = orderStore.use();
   const docs = supplyStore.use();
@@ -379,7 +380,7 @@ export function OrderPool({ scope }) {
     <>
       <div className="alert">
         <span className="ic">i</span>
-        您有 <b style={{ margin: "0 4px" }}>{pool.length}</b> 笔订单待生成发货任务
+        <b style={{ margin: "0 4px" }}>{pool.length}</b> 笔已支付的自提单待汇总成发货任务
         {pool.length > 0 && <>，最早一笔已等待 <b style={{ margin: "0 4px" }}>{waitH}</b> 小时</>}
         <button className="btn primary" style={{ marginLeft: "auto" }} disabled={!pool.length} onClick={() => setGen({ k: "new" })}>生成发货任务</button>
       </div>
@@ -387,8 +388,8 @@ export function OrderPool({ scope }) {
       <div className="tbl-wrap">
         <table className="tbl-tight">
           <thead>
-            <tr><th>商品信息</th><th className="tw">数量</th><th>买家 / 收件人</th><th className="tw">发往门店</th>
-              <th className="tw">配送方式</th><th className="tw">支付时间</th><th className="tw">供货模式</th></tr>
+            <tr><th>商品信息</th><th className="tw">数量</th><th>买家</th><th className="tw">自提门店</th>
+              <th className="tw">支付时间</th><th className="tw">供货模式</th></tr>
           </thead>
           <tbody>
             {pool.map((o) => (
@@ -403,14 +404,16 @@ export function OrderPool({ scope }) {
                   </div>
                 </td>
                 <td className="tw mono">{o.qty}</td>
-                <td>{Object.entries(o.buyer || {}).map(([k, v]) => (<div key={k} style={{ display: "flex", gap: 4 }}><span style={{ color: "#999", whiteSpace: "nowrap" }}>{k}:</span><span>{v}</span></div>))}</td>
+                <td>
+                  <div>{o.buyer?.["昵称"] || "—"}</div>
+                  <small className="mono">{o.buyer?.["收件人电话"] || "—"}</small>
+                </td>
                 <td className="tw">{o.store}</td>
-                <td className="tw">{o.delivery}</td>
                 <td className="tw mono">{o.payTime || o.createdAt}</td>
                 <td className="tw">{supplyLabelOf(o)}</td>
               </tr>
             ))}
-            {!pool.length && <tr><td colSpan={7} style={{ textAlign: "center", padding: 34, color: "#999" }}>暂无待发货订单——待发货的都已生成发货任务</td></tr>}
+            {!pool.length && <tr><td colSpan={6} style={{ textAlign: "center", padding: 34, color: "#999" }}>没有待汇总的订单——待发货的都已生成发货任务</td></tr>}
           </tbody>
         </table>
       </div>
@@ -446,7 +449,7 @@ export function GenTaskModal({ scope, pool, task, onClose, onDone }) {
         <div className="body">
           <div className="alert">
             <span className="ic">i</span>把「发往同一门店、支付时间在截止点之前」的订单汇总成一张发货任务，每个门店各一张。
-            订单进入任务后不会再次出现在待发货订单池里，避免重复发货。
+            订单进入任务后不会再次出现在待汇总订单里，避免重复发货。
           </div>
 
           <div className="frow" style={{ marginTop: 14 }}>
@@ -533,7 +536,7 @@ export function GenTaskModal({ scope, pool, task, onClose, onDone }) {
 
 /* ============================ 供货发货 ============================ */
 export function SupplyDispatch() {
-  const [view, setView] = useState("pool");     // pool 待发货订单 / tasks 发货任务
+  const [view, setView] = useState("pool");     // pool 待汇总订单 / tasks 发货任务
   const [tab, setTab] = useState("全部");
   const [modal, setModal] = useState(null);
   const [batch, setBatch] = useState(null);
@@ -549,7 +552,7 @@ export function SupplyDispatch() {
     <>
       {/* 日常按订单看（订单池），发货按任务看（汇总单）——批次是发货方显式生成的，不是系统按时间切的 */}
       <div className="tabs" style={{ display: "flex", gap: 28, borderBottom: "1px solid var(--line)", marginBottom: 16, paddingLeft: 8 }}>
-        {[["pool", "待发货订单"], ["tasks", "发货任务"]].map(([k, t]) => (
+        {[["pool", "待汇总订单"], ["tasks", "发货任务"]].map(([k, t]) => (
           <span key={k} onClick={() => setView(k)}
             style={{ paddingBottom: 12, fontSize: 14, cursor: "pointer",
               color: view === k ? "var(--brand)" : "var(--text-2)",
