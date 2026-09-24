@@ -76,17 +76,20 @@ export const POOL_SCOPES = {
   hq_store: { leg: "hq_store", shipper: "九天教育总仓", match: (o) => o.delivery === "上门自提" && o.supplyMode === "总部仓直配" },
   /* 供应商后台 · 发门店：供应商直配的自提单 */
   sup_store: { leg: "supplier_inbound", shipper: "JOJO供应商", match: (o) => o.delivery === "上门自提" && o.supplyMode === "供应商直配" },
-  /* 供应商后台 · 发总仓：总部仓直配 · 供应商供货 的订单，货要先到总仓 */
-  sup_hq: { leg: "supplier_to_hq", shipper: "JOJO供应商", match: (o) => o.supplyMode === "总部仓直配" && o.goodsSource === "供应商供货" },
+  /* 供应商后台 · 发总仓：总部仓直配 · 供应商供货 的自提单，货要先到总仓再发门店。
+     快递单不进池——货由发货方直发消费者，不经过总仓 / 门店，供货单承载不到它 */
+  sup_hq: { leg: "supplier_to_hq", shipper: "JOJO供应商", match: (o) => o.delivery === "上门自提" && o.supplyMode === "总部仓直配" && o.goodsSource === "供应商供货" },
 };
 const POOL_DONE = ["已完成", "已取消", "已全额退款", "已关闭"];
 
 /* 订单池自动筛，不给人工勾：能发哪些单是业务规则定的，让人勾一定会把不该发的单生成任务。
-   已经进过某张任务的订单（o.batchNo）不再进池——否则会重复生成、重复发货 */
+   已经进过同链路任务的订单不再进池——否则会重复生成、重复发货。
+   按**链路**判重而不是一票否决：同一个订单会先走「供应商 → 总仓」再走「总仓 → 门店」，两次都要入池 */
 export function poolOf(scope, orders, supplyDocs) {
   const cfg = POOL_SCOPES[scope];
+  const batched = new Set(supplyDocs.filter((d) => d.leg === cfg.leg).flatMap((d) => d.orderNos || []));
   return orders.filter((o) => {
-    if (POOL_DONE.includes(o.status) || o.batchNo) return false;
+    if (POOL_DONE.includes(o.status) || batched.has(o.no)) return false;
     if (!cfg.match(o)) return false;
     if (scope === "hq_store" && o.goodsSource !== "总部自有") {
       const up = supplyDocs.find((x) => x.leg === "supplier_to_hq" && ordersOf(x).includes(o.no));
@@ -138,7 +141,7 @@ export function genTasksFrom(scope, pickedStores, cutoff, deps, targetTask) {
       made.push({ id, store, count: os.length });
     }
     const ns = os.map((o) => o.no);
-    setOrders((all) => all.map((o) => (ns.includes(o.no) ? { ...o, batchNo: made[made.length - 1].id } : o)));
+    setOrders((all) => all.map((o) => (ns.includes(o.no) ? { ...o, batchNos: [...(o.batchNos || []), made[made.length - 1].id] } : o)));
   }
   return made;
 }
@@ -1513,7 +1516,7 @@ function RelatedOrderDrawer({ doc, onClose }) {
             <thead>
               <tr>
                 <th className="tw">销售订单</th><th>购买者</th><th>联系电话</th>
-                <th className="tw">配送方式</th><th className="tw">下单时间</th><th className="tw">订单状态</th>
+                <th className="tw">配送方式</th><th className="tw">下单时间</th>
               </tr>
             </thead>
             <tbody>
@@ -1527,7 +1530,6 @@ function RelatedOrderDrawer({ doc, onClose }) {
                     <td className="mono">{b["收件人电话"] || "—"}</td>
                     <td className="tw">{o?.delivery ? `${o.delivery}${o.store ? ` · ${o.store}` : ""}` : "—"}</td>
                     <td className="tw mono">{o?.createdAt || "—"}</td>
-                    <td className="tw">{o ? <span className="tag">{o.status}</span> : "—"}</td>
                   </tr>
                 );
               })}

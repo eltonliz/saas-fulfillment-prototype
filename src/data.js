@@ -1163,11 +1163,106 @@ export function allocateByOrder(doc, orders) {
   return { ready, short };
 }
 
-/* 种子一致性：供货任务里已经用掉的订单回填 batchNo —— 否则它们会重复出现在待发货订单池里。
+/* ============================================================================
+   种子一致性（一）：供货单只为「上门自提」的订单服务
+   快递单由发货方直发消费者，货不经过总仓 / 门店，所以不会出现在任何供货单上。
+   批量种子里每张内部供货单的商品与数量，在这里反查 / 补齐对应的自提单并回填 from，
+   保证「每件商品的数量 = 该商品全部来源订单之和」，且每条来源都是真实存在的自提单。
+   先复用种子里已有的自提单，不够的按商品 + 门店补出来。
+   ============================================================================ */
+const INTERNAL_LEGS = ["hq_store", "supplier_inbound", "supplier_to_hq"];
+const PICKUP_BUYERS = [
+  ["九九", "13810000000"], ["林小满", "13917654321"], ["徐一诺", "13725308642"], ["苏晚", "13632962963"],
+  ["陆知行", "13540617284"], ["王悦", "13348271605"], ["林一诺", "18955925926"], ["周婶", "18663580247"],
+  ["小画廊", "15971234568"], ["果园老张", "15878888889"], ["橙子汽水", "15286543210"], ["团购小分队", "13194197531"],
+  ["绘本妈妈", "17711851853"], ["店员小陈", "13219506174"], ["安安", "13901234567"], ["老陈", "13712345678"],
+  ["三水", "13623456789"], ["阿May", "13534567890"], ["小满", "13345678901"], ["木木", "18956789012"],
+];
+
+/* 各链路对「来源订单」的要求 */
+const LEG_ORDER_RULE = {
+  hq_store: { supplyMode: "总部仓直配", storeOf: (d) => d.receiver },
+  supplier_inbound: { supplyMode: "供应商直配", storeOf: (d) => d.receiver },
+  supplier_to_hq: { supplyMode: "总部仓直配", goodsSource: "供应商供货", storeOf: () => "九天门店" },
+};
+
+function seedBatchOrders() {
+  const docs = [];
+  for (const d of [...SUPPLY_DOCS, ...SUPPLIER_DOCS]) if (!docs.some((x) => x.id === d.id)) docs.push(d);
+  const taken = new Set();
+  const dateOf = (t) => String(t || "").slice(0, 10).replace(/-/g, "").slice(2);
+  /* 批次时间可能是「2026-09-18 10:12」也可能是「…10:12:05」，统一补成秒 */
+  const toTime = (t) => {
+    const [d, hms = "00:00"] = String(t || "2026-09-01 00:00").split(" ");
+    const [h, mi, se = "00"] = hms.split(":");
+    return new Date(`${d}T${h}:${mi}:${se}`).getTime();
+  };
+  const fmt = (ms) => {
+    const x = new Date(ms);
+    const p = (n) => String(n).padStart(2, "0");
+    return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())} ${p(x.getHours())}:${p(x.getMinutes())}:${p(x.getSeconds())}`;
+  };
+  let seq = 500000;
+
+  for (const doc of docs) {
+    if (!INTERNAL_LEGS.includes(doc.leg)) continue;
+    const rule = LEG_ORDER_RULE[doc.leg];
+    const store = rule.storeOf(doc);
+    let made = 0;   // 本批次内补单的序号，用来把下单时间逐单往前错开
+    for (const it of doc.items || []) {
+      const picked = [];
+      let need = it.qty;
+      /* 先复用种子里已有的自提单（同链路 + 同门店 + 同商品，且还没被别的批次用掉） */
+      for (const o of ORDERS) {
+        if (need <= 0) break;
+        if (taken.has(o.no) || o.delivery !== "上门自提") continue;
+        if (o.product !== it.product || o.supplyMode !== rule.supplyMode) continue;
+        if (rule.goodsSource && o.goodsSource !== rule.goodsSource) continue;
+        if (rule.storeOf(doc) && o.store !== store) continue;
+        if (toTime(o.createdAt) > toTime(doc.batchAt)) continue;   // 下单不可能晚于批次生成
+        if ((o.qty || 0) > need) continue;
+        taken.add(o.no);
+        picked.push({ orderNo: o.no, qty: o.qty });
+        need -= o.qty || 0;
+      }
+      /* 不够的按商品补单：一张单 2～6 件，剩下的凑最后一单 */
+      while (need > 0) {
+        const q = need > 6 ? 2 + (seq % 5) : need;
+        const lagMin = (++made) * 11 + 6;
+        need -= q;
+        const no = "ORD" + dateOf(doc.batchAt) + String(seq++);
+        const [nick, phone] = PICKUP_BUYERS[seq % PICKUP_BUYERS.length];
+        const amt = (0.01 * q).toFixed(2);
+        ORDERS.push({
+          id: "g" + seq, no, product: it.product, spec: it.spec, qty: q, unitPrice: "¥0.01", emoji: it.emoji,
+          afterSale: "暂无售后",
+          amounts: { 商品金额: amt, 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: amt, 实收金额: amt },
+          buyer: { 昵称: nick, 收件人: nick, 收件人电话: phone },
+          store, delivery: "上门自提", pickupCode: "查看自提码",
+          pickupReady: doc.status === "已收货",
+          supplyMode: rule.supplyMode, ...(rule.goodsSource ? { goodsSource: rule.goodsSource } : {}),
+          /* 下单时间要早于批次时间，且各单错开，不然一批货的订单像同一秒下的 */
+          createdAt: fmt(toTime(doc.batchAt) - lagMin * 60000),
+          status: doc.status === "待发货" ? "待发货" : "已发货",
+        });
+        taken.add(no);   // 补出来的单也要占位，否则后面的批次会把它再认领一次
+        picked.push({ orderNo: no, qty: q });
+      }
+      it.from = picked;
+      it.qty = picked.reduce((a, x) => a + x.qty, 0);
+    }
+    doc.orderNos = doc.items.flatMap((it) => (it.from || []).map((f) => f.orderNo));
+  }
+}
+seedBatchOrders();
+
+/* 种子一致性（二）：已经进过某张任务的订单回填 batchNos —— 否则会重复出现在待发货订单池里。
+   记成数组：同一个订单会先走「供应商 → 总仓」再走「总仓 → 门店」，两条链路各算一次入池，
+   订单池按链路判重（见 poolOf），所以不能只记一张单。
    真实系统里这张单在生成任务时就写了，这里是种子数据的事后对齐 */
 export const ORDERS_READY = ORDERS.map((o) => {
-  const hit = [...SUPPLY_DOCS, ...SUPPLIER_DOCS].find((d) => (d.orderNos || []).includes(o.no));
-  return hit ? { ...o, batchNo: hit.id } : o;
+  const hits = [...SUPPLY_DOCS, ...SUPPLIER_DOCS].filter((d) => (d.orderNos || []).includes(o.no));
+  return hits.length ? { ...o, batchNos: hits.map((d) => d.id) } : o;
 });
 
 /* 一件代发的判定口径（只写这一处）：供应商直配 + 快递发货 = 供应商直发消费者。
