@@ -644,7 +644,16 @@ export const SUPPLY_DOCS = [
       { product: "华为手机", spec: "规格: 默认", emoji: "📱", qty: 1, sent: 1, received: 0, from: [{ orderNo: "ORD260917000153", qty: 1 }] },
       { product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 8, sent: 8, received: 0, from: [{ orderNo: "ORD260917000136", qty: 8 }] },
     ],
-    packages: [{ carrier: "圆通速递", tracking: "YT9900887799", track: "已发货 2026-09-18 15:00:00" }, { carrier: "顺丰速运", tracking: "SF7712003510", track: "已发货 2026-09-17 19:30:00" }, { carrier: "京东物流", tracking: "JD5566778811", track: "已发货 2026-09-18 08:30:00" }],
+    /* 相机贵重、绘本成套，供应商分 7 个快递发出 —— 放一张多包裹的样本，物流轨迹的包裹页签 / 「更多」下拉有得看 */
+    packages: [
+      { carrier: "圆通速递", tracking: "YT9900887799", track: "已发货 2026-09-18 15:00:00" },
+      { carrier: "顺丰速运", tracking: "SF7712003510", track: "已发货 2026-09-17 19:30:00" },
+      { carrier: "京东物流", tracking: "JD5566778811", track: "已发货 2026-09-18 08:30:00" },
+      { carrier: "中通快递", tracking: "ZT8800112507", track: "已发货 2026-09-18 09:10:00" },
+      { carrier: "韵达快递", tracking: "YD3300991122", track: "已发货 2026-09-18 11:40:00" },
+      { carrier: "极兔速递", tracking: "JT8800123456", track: "已发货 2026-09-18 13:05:00" },
+      { carrier: "顺丰速运", tracking: "SF7712003688", track: "已签收 2026-09-19 10:20:00" },
+    ],
     qty: 18, sent: 18, received: 0,
     status: "已发货",
   },

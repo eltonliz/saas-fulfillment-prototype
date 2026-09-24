@@ -1577,12 +1577,7 @@ function DocDetailDrawer({ doc, onClose, mode }) {
               <div className="field"><label>发货主体</label><b>{doc.shipper}</b></div>
               <div className="field"><label>收货主体</label><b>{doc.receiver}</b></div>
             </div>
-            <div className="row" style={{ gap: 30 }}>
-              <div className="field"><label>任务来源</label><span>{doc.source}{doc.batchAt ? `　${doc.batchAt}` : ""}</span></div>
-              <div className="field"><label>关联销售订单</label>
-                <span style={{ color: "#25c7a5", cursor: "pointer" }} onClick={() => setRel("all")}>{ordersOf(doc).length} 笔</span>
-              </div>
-            </div>
+            <div className="row"><div className="field"><label>任务来源</label><span>{doc.source}{doc.batchAt ? `　${doc.batchAt}` : ""}</span></div></div>
             <div className="row"><div className="field"><label>收货地址</label><span>{doc.receiverAddr}</span></div></div>
           </div>
 
@@ -1624,13 +1619,7 @@ function DocDetailDrawer({ doc, onClose, mode }) {
         </div>
         <div className="foot"><button className="btn plain" onClick={onClose}>关闭</button></div>
       </div>
-      {rel && (
-        <OrderRefsPop
-          item={rel === "all"
-            ? { product: "本批全部商品", spec: `共 ${itemsOf(doc).length} 种`, qty: qtyOf(doc), from: itemsOf(doc).flatMap((it) => it.from || []) }
-            : rel}
-          orders={orderStore.get()} onClose={() => setRel(null)} />
-      )}
+      {rel && <OrderRefsPop item={rel} orders={orderStore.get()} onClose={() => setRel(null)} />}
     </div>
   );
 }
