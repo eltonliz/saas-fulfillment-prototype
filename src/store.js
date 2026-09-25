@@ -23,14 +23,20 @@ export function createStore(initial) {
   return { get, set, use };
 }
 
-export const supplyStore = createStore(SUPPLY_DOCS);         // 供货单（租户侧可见范围）
-export const supplierStore = createStore(SUPPLIER_DOCS);     // 供货单（供应商侧可见范围）
-export const diffStore = createStore(DIFFS);                 // 配送差异单
-export const returnStore = createStore(RETURNS);             // 退货返厂单
-export const orderStore = createStore(ORDERS_READY);         // 销售订单（已生成任务的订单带 batchNos，按链路判重见 poolOf）
+/* 供应商是**全局主体**：同一个供应商账号可以在多个项目（租户）下都有单 ——
+   所以每张单据都带「所属项目」，供应商后台的列表与详情要显示它，否则多项目的单混在一起分不清是谁的。
+   本原型只有一个项目，正式版这个值来自登录身份（租户 × 供应商） */
+export const PROJECT_NAME = "九天教育";
+const withProject = (rows) => rows.map((r) => ({ ...r, project: r.project || PROJECT_NAME }));
+
+export const supplyStore = createStore(withProject(SUPPLY_DOCS));         // 供货单（租户侧可见范围）
+export const supplierStore = createStore(withProject(SUPPLIER_DOCS));     // 供货单（供应商侧可见范围）
+export const diffStore = createStore(withProject(DIFFS));                 // 配送差异单
+export const returnStore = createStore(withProject(RETURNS));             // 退货返厂单
+export const orderStore = createStore(withProject(ORDERS_READY));         // 销售订单（已生成任务的订单带 batchNos，按链路判重见 poolOf）
 export const productStore = createStore(PRODUCTS);           // 商品（租户后台）
 export const addrStore = createStore(SUP_ADDRESSES);         // 供应商地址簿（发货地址 / 售后地址）
-export const afterSaleStore = createStore(AFTER_SALES);      // 售后单（代发：总部审核退款、供应商只做货源，两侧同一份）
+export const afterSaleStore = createStore(withProject(AFTER_SALES));      // 售后单（代发：总部审核退款、供应商只做货源，两侧同一份）
 export const addressBookStore = createStore(ADDRESS_BOOK);   // 租户地址库（发货 / 售后 / 仓库）
 export const expressTplStore = createStore(EXPRESS_TPL);     // 快递模板
 
@@ -111,7 +117,8 @@ export const patchDoc = (id, patch) => {
 /* 新增一张供货单并落到**该看到它的那一端**：
    共享链路（供应商→总仓 / 供应商→门店）两端都是同一张物理单据，必须双写；
    供应商→消费者只有供应商看得到，总部仓→门店只有租户看得到 */
-export const addDoc = (doc) => {
+export const addDoc = (raw) => {
+  const doc = { ...raw, project: raw.project || PROJECT_NAME };
   const SHARED = ["supplier_to_hq", "supplier_inbound"];
   if (SHARED.includes(doc.leg)) { supplyStore.set((ds) => [doc, ...ds]); supplierStore.set((ds) => [doc, ...ds]); }
   else if (doc.leg === "sup_consumer") supplierStore.set((ds) => [doc, ...ds]);
@@ -119,7 +126,7 @@ export const addDoc = (doc) => {
 };
 
 /* 新增一张配送差异单（收货异常时产生） */
-export const addDiff = (diff) => diffStore.set((ds) => [diff, ...ds]);
+export const addDiff = (raw) => diffStore.set((ds) => [{ ...raw, project: raw.project || PROJECT_NAME }, ...ds]);
 
 /* ---------------- 退货返厂：整体状态由各段派生 ---------------- */
 export const useReturns = returnStore.use;

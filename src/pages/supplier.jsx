@@ -86,7 +86,7 @@ export function SupTasks({ leg, title, desc }) {
           <thead>
             <tr>
               <th style={{ width: 36 }}><input type="checkbox" checked={allSel} onChange={toggleAll} /></th>
-              <th className="tw">供货单号</th><th className="tw">关联销售订单</th><th>商品</th>
+              <th className="tw">供货单号</th><th className="tw">项目</th><th className="tw">关联销售订单</th><th>商品</th>
               <th className="tw">供货路径</th><th>收货主体</th><th className="tw">应发/已发</th>
               <th className="tw">快递公司/物流单号</th><th className="tw">供货状态</th><th style={{ minWidth: 92 }}>操作</th>
             </tr>
@@ -99,6 +99,7 @@ export function SupTasks({ leg, title, desc }) {
                   {d.id}
                   <MakeupTag d={d} />
                 </td>
+                <td className="tw">{d.project}</td>
                 <td className="tw mono">{ordersOf(d).length > 1
                   ? <>{ordersOf(d)[0]}<small style={{ display: "block", color: "#999" }}>等 {ordersOf(d).length} 笔订单</small></>
                   : <>{ordersOf(d)[0] || "-"}</>}</td>
@@ -287,6 +288,7 @@ export function SupDirect({ onNav }) {
         <table className="tbl-tight">
           <thead>
             <tr>
+              <th style={{ minWidth: 96 }}>项目</th>
               <th style={{ minWidth: 196 }}>商品信息</th>
               <th style={{ minWidth: 84 }}>售后信息</th>
               <th style={{ minWidth: 120 }}>实收金额</th>
@@ -301,6 +303,7 @@ export function SupDirect({ onNav }) {
           <tbody>
             {pg.pageRows.map((o) => (
               <tr key={o.id}>
+                <td className="tw">{o.project}</td>
                 <td>
                   <div className="prod-cell">
                     <span className="thumb" style={{ background: "#f4f7f6" }}>{o.emoji}</span>
@@ -460,6 +463,7 @@ function SupOrderDetailDrawer({ order, onClose, onShip, onNote }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
             <button className="btn" style={{ padding: 0, width: 22, height: 22, fontSize: 16 }} onClick={onClose}>‹</button>
             <span style={{ color: "#666" }}>订单编号：<span className="mono">{order.no}</span></span>
+            <span style={{ marginLeft: "auto", fontSize: 13, color: "#666" }}>所属项目：<b style={{ color: "#333" }}>{order.project}</b></span>
           </div>
 
           <div style={{ border: "1px solid #ececec", borderRadius: 4, display: "flex", padding: "20px 24px", alignItems: "center" }}>
@@ -1110,6 +1114,7 @@ function SupDocDrawer({ doc, onClose, onTrack }) {
             <div className="row" style={{ gap: 30 }}>
               <div className="field"><label>供货单号</label><b className="mono">{doc.id}</b></div>
               <div className="field"><label>供货路径</label><b>{LEG_LABEL[doc.leg]}</b></div>
+              <div className="field"><label>所属项目</label><b>{doc.project}</b></div>
               <div className="field"><label>供货状态</label><span className={`tag ${doc.status === "收货异常" ? "danger" : ""}`}>{doc.status === "部分收货" ? "已发货" : doc.status}</span>{doc.status === "部分收货" && <span className="note" style={{ display: "inline", marginLeft: 6, color: "#f5a623" }}>部分收货</span>}</div>
             </div>
             {doc.isMakeup && (
@@ -1221,12 +1226,13 @@ export function SupDiff() {
       <div className="tbl-wrap">
         <table>
           <thead>
-            <tr><th className="tw">差异单号</th><th className="tw">来源链路</th><th className="tw">关联供货单</th><th>差异摘要</th><th>异常原因 / 凭证</th><th className="tw">审核结果</th><th className="tw">状态</th><th className="tw">补发任务</th><th className="tw">操作</th></tr>
+            <tr><th className="tw">差异单号</th><th className="tw">项目</th><th className="tw">来源链路</th><th className="tw">关联供货单</th><th>差异摘要</th><th>异常原因 / 凭证</th><th className="tw">审核结果</th><th className="tw">状态</th><th className="tw">补发任务</th><th className="tw">操作</th></tr>
           </thead>
           <tbody>
             {pgD.pageRows.map((d) => (
               <tr key={d.id}>
                 <td className="tw mono">{d.id}</td>
+                <td className="tw">{d.project}</td>
                 <td className="tw">{d.leg}</td>
                 <td className="tw mono">{d.supplyNo}</td>
                 <td>{d.summary}</td>
@@ -1441,6 +1447,7 @@ export function SupAfterSales() {
               <div style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 4, padding: "14px 18px" }}>
                 <b style={{ fontSize: 13.5 }}>售后申请信息</b>
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9, fontSize: 13, color: "var(--text-2)" }}>
+                  <div><span className="note">所属项目：</span>{d.project}</div>
                   <div><span className="note">售后类型：</span>{d.way}</div>
                   <div><span className="note">退款金额：</span><b>￥{d.refund}</b></div>
                   <div><span className="note">退还积分：</span>{d.points}</div>
@@ -1542,6 +1549,7 @@ export function SupAfterSales() {
             <tr>
               <th style={{ width: 36 }}><input type="checkbox" checked={allSel} onChange={toggleAll} /></th>
               <th style={{ width: 40 }}>序号</th>
+              <th className="tw">项目</th>
               <th style={{ minWidth: 200 }}>商品信息</th><th className="tw">售后编号</th><th className="tw">售后方式</th>
               <th className="tw">发货状态</th><th className="tw">订单金额</th><th className="tw">数量</th>
               <th className="tw">退款金额(元)</th><th className="tw">退还积分</th><th className="tw">申请时间</th><th className="tw">超时时间</th>
@@ -1554,6 +1562,7 @@ export function SupAfterSales() {
               <tr key={r.asNo}>
                 <td><input type="checkbox" checked={sel.has(r.asNo)} onChange={() => toggleOne(r.asNo)} /></td>
                 <td>{(pgA.page - 1) * pgA.pageSize + i + 1}</td>
+                <td className="tw">{r.project}</td>
                 <td>
                   <div className="prod-cell">
                     <span className="thumb" style={{ background: "#f4f7f6" }}>{r.emoji}</span>

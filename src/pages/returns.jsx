@@ -205,7 +205,7 @@ export function SupplierReturns() {
       <div className="tbl-wrap">
         <table className="tbl-tight">
           <thead>
-            <tr><th className="tw">返厂单号</th><th className="tw">退货门店</th><th>商品</th><th className="tw">退货数量</th><th className="tw">退货原因</th><th className="tw">金额</th><th className="tw">状态</th><th style={{ minWidth: 92 }}>操作</th></tr>
+            <tr><th className="tw">返厂单号</th><th className="tw">项目</th><th className="tw">退货门店</th><th>商品</th><th className="tw">退货数量</th><th className="tw">退货原因</th><th className="tw">金额</th><th className="tw">状态</th><th style={{ minWidth: 92 }}>操作</th></tr>
           </thead>
           <tbody>
             {pgS.pageRows.map((r) => {
@@ -214,6 +214,7 @@ export function SupplierReturns() {
               return (
                 <tr key={r.id}>
                   <td className="tw mono">{r.id}<small>{r.createdAt}</small></td>
+                  <td className="tw">{r.project}</td>
                   <td className="tw">{r.store}</td>
                   <td>
                     <div className="prod-cell">
@@ -272,6 +273,7 @@ function ReturnDetailDrawer({ row, portal, onClose }) {
           <section className="card">
             <h3>返厂单 {row.id}</h3>
             <div className="cbody">
+              <div className="frow"><label>所属项目</label><div className="fc"><input value={row.project} readOnly /></div></div>
               <div className="frow"><label>退货门店</label><div className="fc"><input value={row.store} readOnly /></div></div>
               <div className="frow"><label>关联供货单</label><div className="fc"><input className="mono" value={row.supplyNo} readOnly /></div></div>
               {!supplier && <div className="frow"><label>关联销售订单</label><div className="fc"><input className="mono" value={row.orderNo} readOnly /></div></div>}
