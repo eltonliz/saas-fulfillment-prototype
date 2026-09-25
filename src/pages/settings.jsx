@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useToast, Pager, usePaged } from "../ui.jsx";
-import { addressBookStore, expressTplStore, addrStore, settingStore } from "../store.js";
+import { addressBookStore, expressTplStore, addrStore } from "../store.js";
 import { SUPPLIER_SELF } from "../data.js";
 
 /* ============================================================================
@@ -47,7 +47,6 @@ function Row({ label, children, note, hl, hlText, sub, last }) {
 export function GeneralSetting() {
   const [tab, setTab] = useState("交易设置");
   const [sw, setSw] = useState({ 极速退款: true, 支付有礼校验: false, 寄送商品: false, 核销商品: false, 限制用户退款申请: false });
-  const setting = settingStore.use();
   const [cond, setCond] = useState("订单发货");
   const [toast, tip] = useToast();
   const flip = (k) => setSw((s) => ({ ...s, [k]: !s[k] }));
@@ -95,29 +94,6 @@ export function GeneralSetting() {
           <Txt>物流发货后 <Num v={14} /> 天，自动确认收货</Txt>
         </Row>
 
-        {/* ---------- 进销存新增：启用进销存（总开关） ---------- */}
-        <Row label="启用进销存" hl hlText="新增：启用进销存（原系统无此项）"
-          note="开启后，自提订单的货要先由供应商 / 总部仓发到门店，门店确认收货后买家才能提货（这条链路就是左侧「进销存」菜单）；关闭后，自提订单支付成功即可提货，不产生供货单">
-          <span className={`switch ${setting.supplyChain ? "on" : ""}`} style={{ cursor: "pointer" }}
-            onClick={() => settingStore.set((v) => ({ ...v, supplyChain: !v.supplyChain }))} />
-        </Row>
-
-        <div style={{ background: "#f7f7f7", padding: "16px 18px", marginBottom: 22, paddingLeft: 132, fontSize: 12.5, lineHeight: 2, color: "var(--text-2)" }}>
-          {setting.supplyChain ? (
-            <>
-              <div>左侧「进销存」菜单可用：发货管理 / 收货管理 / 配送差异 / 退货返厂</div>
-              <div>自提订单：买家付款 → 货到门店 → 门店确认收货 → 提货码激活（未全部到货时提货码不可用）</div>
-              <div>快递单不受影响：一直是由发货方直接发到买家手上，不经过门店</div>
-            </>
-          ) : (
-            <>
-              <div>左侧「进销存」菜单隐藏；自提订单<b>支付成功即可提货</b>，买家端直接显示提货码，不再等待到货</div>
-              <div>适合不做库存周转、门店收到货即上架的租户；重新开启后，未到货的自提订单仍按「货到才可提」执行</div>
-              <div>快递单不受影响：一直是由发货方直接发到买家手上，不经过门店</div>
-            </>
-          )}
-        </div>
-
         {/* ---------- 原系统既有：极速退款（原样保留，不做改动） ---------- */}
         <Row label="极速退款" sub
           note="开启后，买家提交退款申请，将无需审核，自动通过（下方极速退款条件修改后，实时影响所有订单；为符合《消费者权益保护法》，该功能必须保持开启状态，不符合极速退款条件的售后单，商家也需在限定时间内审核）">
@@ -161,7 +137,7 @@ export function GeneralSetting() {
 
         {/* ---------- 进销存新增：限制用户退款申请 ---------- */}
         <Row label="限制用户退款申请" hl hlText="新增：限制用户退款申请（原系统无此项）"
-          note="开启后，买家在下方设置的条件下，不允许发起退款申请；关闭时，则买家均允许发起退款申请。与「启用进销存」相互独立：不做进销存的租户也可能要限制退款">
+          note="开启后，买家在下方设置的条件下，不允许发起退款申请；关闭时，则买家均允许发起退款申请">
           <Sw k="限制用户退款申请" />
         </Row>
 

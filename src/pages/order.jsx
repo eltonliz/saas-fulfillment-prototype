@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useToast, useRowSelect, BatchBar, Confirm, usePaged, Pager } from "../ui.jsx";
-import { orderStore, supplyStore, settingStore, addressBookStore } from "../store.js";
+import { orderStore, supplyStore, addressBookStore } from "../store.js";
 import { pickupCodeOf, fmtPickupCode, supplyLabelOf, isDropship, pickupReadyOf } from "../data.js";
 
 /* 自提单的最后一跳（总部仓 → 门店）是内部段，走发货管理（供货单）；
@@ -243,9 +243,7 @@ function AfterSalePop({ order, onClose }) {
 
 /* ---------------- 查看自提码 ---------------- */
 function PickupCodePop({ order, onClose }) {
-  /* 关掉进销存的租户，自提单付完款就能提 —— 提货码可用性按开关算 */
-  const supplyChain = settingStore.use().supplyChain;
-  const ready = pickupReadyOf(order, supplyChain);
+  const ready = pickupReadyOf(order);
   const used = !!order.pickupUsed;
   return (
     <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -261,16 +259,8 @@ function PickupCodePop({ order, onClose }) {
           </div>
         </div>
         <div className="note" style={{ lineHeight: 1.9 }}>
-          {supplyChain ? (
-            <>
-              进销存口径：只有<b>全部到货</b>后提货码才激活；未到齐时门店端提示「尚未全部到货，提货码不可用」。<br />
-              <b>G2②</b>：若门店长时间不点「确认到货」，系统在<b>到店满 3 天</b>后自动确认到货并激活提货码，避免客户到店却取不了货。
-            </>
-          ) : (
-            <>
-              该租户<b>未启用进销存</b>（设置 › 通用设置 › 交易设置）：自提订单支付成功即可提货，不等货到门店，门店收到货自行上架。
-            </>
-          )}
+          进销存口径：只有<b>全部到货</b>后提货码才激活；未到齐时门店端提示「尚未全部到货，提货码不可用」。<br />
+          <b>G2②</b>：若门店长时间不点「确认到货」，系统在<b>到店满 3 天</b>后自动确认到货并激活提货码，避免客户到店却取不了货。
         </div>
         <div className="gfoot">
           <button className="btn primary" onClick={onClose}>关闭</button>

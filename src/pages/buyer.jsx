@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { orderStore, supplyStore, settingStore } from "../store.js";
+import { orderStore, supplyStore } from "../store.js";
 import { pickupCodeOf, fmtPickupCode, pickupReadyOf } from "../data.js";
 import { useReqPage } from "./reqnotes.jsx";
 
@@ -12,12 +12,12 @@ const isPickup = (o) => o.delivery === "上门自提";
 /* 自提订单状态：unpaid 待付款 / unship 待发货 / shipping 待收货（在途）/ ready 待提货 /
    done 已完成 / canceled 已取消 / aftersale 售后中；
    货未到店的按关联供货单的货物流转定状态（流转路径对买家可见） */
-export const buyerStateOf = (o, docs = [], supplyChain = true) => {
+export const buyerStateOf = (o, docs = []) => {
   if (o.status === "待付款") return "unpaid";
   if (o.status === "已取消" || o.status === "已全额退款") return "canceled";
   if (o.status === "售后中") return "aftersale";
   if (o.pickupUsed) return "done";
-  if (pickupReadyOf(o, supplyChain)) return "ready";
+  if (pickupReadyOf(o)) return "ready";
   if (o.status === "已完成") return "done";     /* 快递单：签收即完成 */
   if (o.status === "已发货") return "shipping"; /* 快递单：在途 */
   /* 买家视角只看末段（到店 / 到消费者）的货：「供应商→总仓」上游段不影响买家状态 */
@@ -87,7 +87,6 @@ const btnStyleOf = (kind) => (kind === "primary" ? btnPrimaryStyle : kind === "c
 export function BuyerApp() {
   const orders = orderStore.use();
   const docs = supplyStore.use();
-  const supplyChain = settingStore.use().supplyChain;
   const [view, setView] = useState("list");
   const [tab, setTab] = useState("全部");
   const [curId, setCurId] = useState(null);
@@ -97,7 +96,7 @@ export function BuyerApp() {
   useReqPage(view === "list" ? "buyer:list" : "buyer:detail");
 
   const all = orders.filter(isPickup);
-  const list = all.filter((o) => inTab(buyerStateOf(o, docs, supplyChain), o.status, tab));
+  const list = all.filter((o) => inTab(buyerStateOf(o, docs), o.status, tab));
   const order = orders.find((o) => o.id === curId);
   const back = () => { setView("list"); setCodeOpen(false); };
   const say = (m) => { setFlash(m); setTimeout(() => setFlash(""), 1800); };
@@ -136,7 +135,7 @@ export function BuyerApp() {
               </div>
               <div className="mpad">
                 {list.map((o) => (
-                  <OrderCard key={o.id} o={o} st={buyerStateOf(o, docs, supplyChain)}
+                  <OrderCard key={o.id} o={o} st={buyerStateOf(o, docs)}
                     say={say}
                     onOpen={() => { setCurId(o.id); setView("detail"); }}
                     onCode={() => { setCurId(o.id); setCodeOpen(true); }} />
@@ -147,7 +146,7 @@ export function BuyerApp() {
           )}
 
           {view === "detail" && order && (() => {
-            const st = buyerStateOf(order, docs, supplyChain);
+            const st = buyerStateOf(order, docs);
             const m = STATE_META[st];
             const a = order.amounts || {};
             const si = STORE_INFO[order.store] || {};
@@ -270,7 +269,7 @@ export function BuyerApp() {
 
         {view === "detail" && order && (
           <div style={{ flex: "none", background: "#fff", borderTop: "1px solid #f1f1f1", padding: "10px 14px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            {(DETAIL_ACTIONS[buyerStateOf(order, docs, supplyChain)] || []).map(([label, kind]) => (
+            {(DETAIL_ACTIONS[buyerStateOf(order, docs)] || []).map(([label, kind]) => (
               <button key={label} style={btnStyleOf(kind)} onClick={() => say(`「${label}」为示意操作`)}>{label}</button>
             ))}
           </div>
@@ -279,7 +278,7 @@ export function BuyerApp() {
           <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: view === "detail" ? 70 : 26, background: "rgba(16,22,29,.82)", color: "#fff", fontSize: 12.5, padding: "7px 14px", borderRadius: 8, zIndex: 60, whiteSpace: "nowrap" }}>{flash}</div>
         )}
 
-        {codeOpen && order && <PickupCodeModal order={order} done={buyerStateOf(order, docs, supplyChain) === "done"} voided={buyerStateOf(order, docs, supplyChain) === "canceled"} onClose={() => setCodeOpen(false)} />}
+        {codeOpen && order && <PickupCodeModal order={order} done={buyerStateOf(order, docs) === "done"} voided={buyerStateOf(order, docs) === "canceled"} onClose={() => setCodeOpen(false)} />}
       </div>
     </div>
       )}

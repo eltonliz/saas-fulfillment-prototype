@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Shell } from "./Shell.jsx";
 import { MENU, SUPPLIER_MENU } from "./data.js";
 import { ProductManagement, NewProductDrawer } from "./pages/product.jsx";
@@ -18,9 +18,7 @@ import { StateMatrix } from "./pages/states.jsx";
 import { FlowsView } from "./pages/flows.jsx";
 import { VersionLog } from "./pages/versions.jsx";
 import { useToast } from "./ui.jsx";
-import { supplyStore, supplierStore, settingStore } from "./store.js";
-
-const SUPPLY_PAGES = ["发货管理", "收货管理", "配送差异", "退货返厂"];
+import { supplyStore, supplierStore } from "./store.js";
 
 const TENANT = {
   版本记录: { crumbs: ["版本记录"], tabs: ["版本记录"] },
@@ -61,7 +59,6 @@ export function App() {
   const [drawer, setDrawer] = useState(false);
   const [supLoggedIn, setSupLoggedIn] = useState(false);
   const [toast, tip] = useToast();
-  const supplyChain = settingStore.use().supplyChain;
 
   const switchPortal = (p) => {
     setPortal(p);
@@ -78,13 +75,6 @@ export function App() {
     else { setPortal("supplier"); setPage("一件代发"); }
     tip(`已跳转「${dest}」，查找供货单 ${no}`);
   };
-
-  /* 已经站在进销存某个页上再把开关关掉 → 退回订单管理，别停在空气页。
-     注意：这个 effect 必须留在上面那些提前 return **之前**，否则切到门店APP/买家端时
-     App 的 hooks 数量会变，React 会直接报「Rendered fewer hooks than expected」 */
-  useEffect(() => {
-    if (portal === "tenant" && !supplyChain && SUPPLY_PAGES.includes(page)) setPage("订单管理");
-  }, [portal, supplyChain, page]);
 
   /* 补发单的发货操作已收口在「配送差异」页内，无需跨页跳转 */
 
@@ -125,8 +115,7 @@ export function App() {
   }
 
   const isTenant = portal === "tenant";
-  /* 关掉进销存的租户看不到左侧「进销存」这一组 —— 菜单是能力的入口，能力关了入口就不该在 */
-  const menu = isTenant && !supplyChain ? MENU.filter((m) => m.label !== "进销存") : isTenant ? MENU : SUPPLIER_MENU;
+  const menu = isTenant ? MENU : SUPPLIER_MENU;
   const routes = isTenant ? TENANT : SUPPLIER;
   const r = routes[page] || routes[Object.keys(routes)[0]];
   const canNav = (t) => (isTenant ? TENANT[t] : SUPPLIER[t]);

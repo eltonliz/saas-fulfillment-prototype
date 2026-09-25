@@ -1455,13 +1455,10 @@ export const matchDoc = (d, kw) => {
   ].some((v) => String(v || "").toLowerCase().includes(k));
 };
 
-/* 自提订单能不能提货：
-   · 启用进销存（默认）＝ 货要先到门店，门店确认收货那一刻才激活（写回 pickupReady）
-   · 关掉进销存   ＝ 付完款就能提，不等到货 —— 这类租户不自提链路走供货单
+/* 自提订单能不能提货：货要先到门店，门店确认收货那一刻才激活（写回 pickupReady）。
    买家端、订单管理两处判提货码可用性都走这里，避免两处各写一套 */
-export const pickupReadyOf = (o, supplyChain) => {
+export const pickupReadyOf = (o) => {
   if (!o || !o.store || o.delivery !== "上门自提") return false;
-  if (!supplyChain) return !["待付款", "已取消", "已关闭", "已全额退款"].includes(o.status);
   return !!o.pickupReady;
 };
 
