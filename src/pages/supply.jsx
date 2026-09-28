@@ -381,6 +381,8 @@ export function OrderPool({ scope }) {
   const [toast, tip] = useToast();
   const all = poolOf(scope, orders, docs);
   const stores = [...new Set(all.map((o) => o.store))];
+  /* 供应商后台的池子要标出订单属于哪个项目：同一供应商账号可能跨多个项目（租户侧只有一个项目，不显示） */
+  const showProject = scope !== "hq_store";
 
   /* 筛选区就是「这次要发哪一批」的圈定范围，生成动作跟着它走：
      不再把支付时间藏在生成弹窗里，否则页面上看到的和实际要发的对不上。
@@ -437,7 +439,7 @@ export function OrderPool({ scope }) {
       <div className="tbl-wrap">
         <table className="tbl-tight">
           <thead>
-            <tr><th>商品信息</th><th className="tw">数量</th><th>买家</th><th className="tw">自提门店</th>
+            <tr><th>商品信息</th>{showProject && <th className="tw col-new w2" data-hl="本次新增">项目</th>}<th className="tw">数量</th><th>买家</th><th className="tw">自提门店</th>
               <th className="tw">支付时间</th><th className="tw">供货模式</th></tr>
           </thead>
           <tbody>
@@ -452,6 +454,7 @@ export function OrderPool({ scope }) {
                     </div>
                   </div>
                 </td>
+                {showProject && <td className="tw col-new">{o.project}</td>}
                 <td className="tw mono">{o.qty}</td>
                 <td>
                   <div>{o.buyer?.["昵称"] || "—"}</div>
@@ -463,7 +466,7 @@ export function OrderPool({ scope }) {
               </tr>
             ))}
             {!pool.length && (
-              <tr><td colSpan={6} style={{ textAlign: "center", padding: 34, color: "#999" }}>
+              <tr><td colSpan={showProject ? 7 : 6} style={{ textAlign: "center", padding: 34, color: "#999" }}>
                 {all.length ? `当前筛选条件下没有订单（池子里还有 ${all.length} 笔）` : "没有待生成任务的自提单"}
               </td></tr>
             )}
