@@ -760,16 +760,32 @@ export const returnAddrOf = (who, book) => (who === HQ_NAME
    不再从「已收货供货单」派生——没走过供货单的货（总部自有 / 门店自有）也能退）。
    退回方看商品绑定的供应商；退货期按支付后 N 天算（原型没有核销时间字段，正式版应改按核销时间） */
 export const RETURN_WINDOW_DAYS = 15;
-export const returnSourcesOf = (orders, products, returns) => {
+export const returnSourcesOf = (orders, products, returns, supplyDocs) => {
   const rows = [];
   for (const o of orders) {
     if (o.delivery !== "上门自提" || o.store !== STORE_NAME) continue;
     if (!o.pickupUsed) continue;   // 客户提过货，才谈得上「退货给门店」
     if (["已取消", "已关闭", "已全额退款", "售后中", "退款中"].includes(o.status)) continue;
-    /* 退回方优先看订单上的快照（这单当时怎么卖的），商品绑定兜底 */
+    /* 退回路径「原路返回」：从订单反查当时载过它的供货单——
+       供应商直发门店的退那家供应商；经总仓到店的先回总仓、再退上游供应商（供应商 → 总仓那张单的发货主体）；
+       总部自有货没有供应商，退到总仓为止。查不到供货链路（门店自有货等）时按商品绑定 / 订单快照兜底 */
     const p = (products || []).find((x) => x.name === o.product);
     const own = o.goodsSource === "总部自有" || p?.goodsSource === "总部自有";
-    const shipMode = o.supplyMode || p?.shipMode || "";
+    const docs = (supplyDocs || []).filter((d) => (d.orderNos || []).includes(o.no));
+    const toStore = docs.find((d) => d.leg === "hq_store");
+    const toHq = docs.find((d) => d.leg === "supplier_to_hq");
+    const inbound = docs.find((d) => d.leg === "supplier_inbound");
+    let returnTo, viaHq;
+    if (toStore) {
+      viaHq = !!toHq;
+      returnTo = toHq ? toHq.shipper : HQ_NAME;
+    } else if (inbound) {
+      viaHq = false;
+      returnTo = inbound.shipper;
+    } else {
+      viaHq = !own && (o.supplyMode || p?.shipMode) === "总部仓直配";
+      returnTo = own ? HQ_NAME : (p?.supplier || SUPPLIER_SELF);
+    }
     const doneQty = (returns || []).filter((r) => r.orderNo === o.no).reduce((a, r) => a + (r.qty || 0), 0);
     const canQty = Math.max(0, (o.qty || 1) - doneQty);
     if (canQty <= 0) continue;     // 这笔订单的货已经全退过了
@@ -781,8 +797,7 @@ export const returnSourcesOf = (orders, products, returns) => {
       qty: canQty, totalQty: o.qty || 1, doneQty,
       buyer: o.buyer?.["昵称"] || "—", phone: o.buyer?.["收件人电话"] || "",
       code: pickupCodeOf(o), at, days, overdue: days > RETURN_WINDOW_DAYS,
-      returnTo: own ? HQ_NAME : (p?.supplier || SUPPLIER_SELF),
-      viaHq: !own && shipMode === "总部仓直配",
+      returnTo, viaHq,
     });
   }
   return rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));   // 最近提货的排前面
@@ -792,7 +807,7 @@ const RET_TONE = (s) => (s === "待返厂" ? "#f5a623" : s === "返厂中" ? "#2
 function Returns() {
   const all = useReturns();
   const rows = all.filter((r) => r.store === STORE_NAME);
-  const sources = returnSourcesOf(orderStore.use(), productStore.use(), all);
+  const sources = returnSourcesOf(orderStore.use(), productStore.use(), all, [...supplyStore.use(), ...supplierStore.use()]);
   const [chip, setChip] = useState("全部");
   const [detail, setDetail] = useState(null);
   const [sheet, setSheet] = useState(null);   // {k:"new"} | {k:"ship", r}
