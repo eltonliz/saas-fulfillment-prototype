@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { useReturns, setReturns, patchHop, diffStore, addDiff, supplyStore, supplierStore, orderStore } from "../store.js";
+import { useReturns, setReturns, patchHop, diffStore, addDiff, supplyStore, supplierStore, orderStore, productStore, addressBookStore } from "../store.js";
 import { diffInTab, DIFF_TABS, applyReceive } from "./supply.jsx";
-import { afterAddrOf, fmtAddr, itemsOf, qtyOf, sentOf, receivedOf, packagesOf, ordersOf, itemsLabel, matchOrder, matchDoc } from "../data.js";
+import { afterAddrOf, fmtAddr, fmtPickupCode, pickupCodeOf, HQ_NAME, SUPPLIER_SELF, itemsOf, qtyOf, sentOf, receivedOf, packagesOf, ordersOf, itemsLabel, matchOrder, matchDoc } from "../data.js";
 import { FlowNode, FlowArrow } from "./buyer.jsx";
 import { useReqPage } from "./reqnotes.jsx";
 
@@ -751,31 +751,48 @@ function DiffDetail({ row, onBack }) {
 /* ---------------- 退货返厂（门店自提链路的消费者退货） ---------------- */
 const STORE_NAME = STORE_SELF;
 const RETURN_REASONS = ["七天无理由退货", "商品质量问题", "商品与描述不符", "客户取消（未提货）"];
-/* 可发起返厂的来源 = 本门店**已收货**的供货单上的商品（不再写死演示卡：
-   返厂是从「手上这批货」发起的，必须能对上是哪张供货单的哪笔订单） */
-export const returnSourcesOf = (supplyDocs, supplierDocs, orders) => {
+/* 退回地址：供应商 → 供应商地址库的售后地址；总部仓 → 租户地址库的仓库地址 */
+export const returnAddrOf = (who, book) => (who === HQ_NAME
+  ? (book.find((x) => x.type === "warehouse" && x.isDefault) || book.find((x) => x.type === "warehouse") || null)
+  : afterAddrOf(who));
+
+/* 可发起返厂的来源 = 本门店**已核销**的自提单商品行（消费者退货是订单的事：
+   不再从「已收货供货单」派生——没走过供货单的货（总部自有 / 门店自有）也能退）。
+   退回方看商品绑定的供应商；退货期按支付后 N 天算（原型没有核销时间字段，正式版应改按核销时间） */
+export const RETURN_WINDOW_DAYS = 15;
+export const returnSourcesOf = (orders, products, returns) => {
   const rows = [];
-  for (const d of storeDocsOf(supplyDocs, supplierDocs)) {
-    if (d.status !== "已收货") continue;
-    /* 供应商直发的直接退供应商；经总部仓的走「门店 → 总仓 → 供应商」 */
-    const returnTo = d.leg === "supplier_inbound" ? d.shipper : "JOJO供应商";
-    for (const it of itemsOf(d)) for (const f of it.from || []) {
-      const o = orders.find((x) => x.no === f.orderNo);
-      rows.push({
-        supplyNo: d.id, orderNo: f.orderNo, product: it.product, spec: it.spec, emoji: it.emoji,
-        qty: f.qty, returnTo, viaHq: d.leg !== "supplier_inbound",
-        buyer: o?.buyer?.["昵称"] || "—",
-      });
-    }
+  for (const o of orders) {
+    if (o.delivery !== "上门自提" || o.store !== STORE_NAME) continue;
+    if (!o.pickupUsed) continue;   // 客户提过货，才谈得上「退货给门店」
+    if (["已取消", "已关闭", "已全额退款", "售后中", "退款中"].includes(o.status)) continue;
+    /* 退回方优先看订单上的快照（这单当时怎么卖的），商品绑定兜底 */
+    const p = (products || []).find((x) => x.name === o.product);
+    const own = o.goodsSource === "总部自有" || p?.goodsSource === "总部自有";
+    const shipMode = o.supplyMode || p?.shipMode || "";
+    const doneQty = (returns || []).filter((r) => r.orderNo === o.no).reduce((a, r) => a + (r.qty || 0), 0);
+    const canQty = Math.max(0, (o.qty || 1) - doneQty);
+    if (canQty <= 0) continue;     // 这笔订单的货已经全退过了
+    const at = o.payTime || o.createdAt || "";
+    const days = at ? Math.floor((Date.now() - new Date(at.replace(/-/g, "/")).getTime()) / 864e5) : 0;
+    rows.push({
+      key: `${o.no}|${o.product}`,
+      orderNo: o.no, product: o.product, spec: o.spec, emoji: o.emoji,
+      qty: canQty, totalQty: o.qty || 1, doneQty,
+      buyer: o.buyer?.["昵称"] || "—", phone: o.buyer?.["收件人电话"] || "",
+      code: pickupCodeOf(o), at, days, overdue: days > RETURN_WINDOW_DAYS,
+      returnTo: own ? HQ_NAME : (p?.supplier || SUPPLIER_SELF),
+      viaHq: !own && shipMode === "总部仓直配",
+    });
   }
-  return rows;
+  return rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));   // 最近提货的排前面
 };
 const RET_TONE = (s) => (s === "待返厂" ? "#f5a623" : s === "返厂中" ? "#2f80ed" : "#25c7a5");
 
 function Returns() {
   const all = useReturns();
   const rows = all.filter((r) => r.store === STORE_NAME);
-  const sources = returnSourcesOf(supplyStore.use(), supplierStore.use(), orderStore.use());
+  const sources = returnSourcesOf(orderStore.use(), productStore.use(), all);
   const [chip, setChip] = useState("全部");
   const [detail, setDetail] = useState(null);
   const [sheet, setSheet] = useState(null);   // {k:"new"} | {k:"ship", r}
@@ -787,7 +804,7 @@ function Returns() {
   const create = (src, qty, reason) => {
     const id = "RTV260919" + String(all.length + 1).padStart(4, "0");
     setReturns((rs) => [{
-      id, orderNo: src.orderNo, supplyNo: src.supplyNo, store: STORE_NAME, viaHq: src.viaHq,
+      id, orderNo: src.orderNo, store: STORE_NAME, viaHq: src.viaHq,
       returnTo: src.returnTo, product: src.product, spec: src.spec, emoji: src.emoji, qty, reason,
       createdAt: new Date().toISOString().slice(0, 19).replace("T", " "), status: "待返厂",
       refunded: false, refundNote: "退款由总部按售后规则独立执行",
@@ -823,7 +840,6 @@ function Returns() {
             <div className="mrow"><span>返厂单号</span><b className="mono">{r.id}</b></div>
             <div className="mrow"><span>申请时间</span><b className="mono">{r.createdAt}</b></div>
             <div className="mrow"><span>关联销售订单</span><b className="mono">{r.orderNo}</b></div>
-            <div className="mrow"><span>关联供货单</span><b className="mono">{r.supplyNo}</b></div>
             <div className="mrow"><span>商品</span><b style={{ fontWeight: 400, textAlign: "right" }}>{r.emoji} {r.product}</b></div>
             <div className="mrow"><span>规格</span><b style={{ fontWeight: 400, textAlign: "right" }}>{r.spec}</b></div>
             <div className="mrow"><span>退货数量</span><b>{r.qty} 件</b></div>
@@ -840,15 +856,15 @@ function Returns() {
       </div>
 
       {detail && <ReturnDetail row={detail} onClose={() => setDetail(null)} />}
-      {sheet?.k === "new" && sources.length > 0 && <NewReturnSheet sources={sources} onClose={() => setSheet(null)} onSubmit={create} />}
+      {sheet?.k === "new" && <NewReturnSheet sources={sources} onClose={() => setSheet(null)} onSubmit={create} />}
       {sheet?.k === "ship" && <ShipReturnSheet row={sheet.r} onClose={() => setSheet(null)} onSubmit={ship} />}
     </div>
   );
 }
 
-/* 退回地址：门店寄件时照着填快递单，取自供应商「地址库 › 售后地址」，不在返厂单里另存 */
+/* 退回地址：门店寄件时照着填快递单（取供应商售后地址 / 总部仓地址），不在返厂单里另存 */
 function AddrRows({ who }) {
-  const a = afterAddrOf(who);
+  const a = returnAddrOf(who, addressBookStore.use());
   if (!a) return <div className="note">「{who}」尚未在供应商地址库维护售后地址，请联系总部补充</div>;
   return (
     <>
@@ -872,7 +888,7 @@ function ReturnDetail({ row, onClose }) {
         </div>
         <div className="mcard">
           <div className="mrow"><span>返厂单号</span><b className="mono">{row.id}</b></div>
-          <div className="mrow"><span>关联供货单</span><b className="mono">{row.supplyNo}</b></div>
+          <div className="mrow"><span>关联销售订单</span><b className="mono">{row.orderNo}</b></div>
           <div className="mrow"><span>商品</span><b>{row.product}</b></div>
           <div className="mrow"><span>规格</span><b style={{ fontWeight: 400 }}>{row.spec}</b></div>
           <div className="mrow"><span>退货数量</span><b>{row.qty} 件</b></div>
@@ -897,7 +913,7 @@ function ReturnDetail({ row, onClose }) {
         </div>
 
         <div className="mcard">
-          <div className="hd"><b>退回地址</b><span className="note" style={{ fontSize: 11.5 }}>供应商售后地址</span></div>
+          <div className="hd"><b>退回地址</b><span className="note" style={{ fontSize: 11.5 }}>{row.returnTo === HQ_NAME ? "总部仓地址" : "供应商售后地址"}</span></div>
           <AddrRows who={row.returnTo} />
         </div>
 
@@ -909,11 +925,18 @@ function ReturnDetail({ row, onClose }) {
 
 /* 发起返厂 */
 function NewReturnSheet({ sources, onClose, onSubmit }) {
-  const [idx, setIdx] = useState(0);
+  const [kw, setKw] = useState("");
+  const [key, setKey] = useState(null);
   const [qty, setQty] = useState(1);
   const [reason, setReason] = useState(RETURN_REASONS[0]);
-  const src = sources[idx];
-  if (!src) return null;
+  const book = addressBookStore.use();
+  const k = kw.trim().toLowerCase();
+  /* 订单号 / 提货码 / 手机号 / 昵称都能搜，只在本门店已核销的自提单里搜 */
+  const hits = (k
+    ? sources.filter((s) => [s.orderNo, s.phone, s.buyer, s.product, String(s.code)].some((v) => String(v || "").toLowerCase().includes(k)))
+    : sources).slice(0, 20);
+  const src = sources.find((s) => s.key === key) || null;
+  const pick = (s) => { setKey(s.key); setQty(s.qty); };
   return (
     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.35)", display: "flex", alignItems: "flex-end" }} onClick={onClose}>
       <div style={{ width: "100%", background: "#fff", borderRadius: "12px 12px 0 0", padding: "16px 16px 22px", maxHeight: "86%", overflow: "auto" }}
@@ -924,23 +947,46 @@ function NewReturnSheet({ sources, onClose, onSubmit }) {
         </div>
 
         <div className="mfield">
-          <label><i>*</i>关联供货单</label>
-          <select value={idx} onChange={(e) => setIdx(Number(e.target.value))} style={{ width: "100%", height: 38 }}>
-            {sources.map((s, i) => (
-              <option key={s.supplyNo + s.orderNo} value={i}>{s.supplyNo} · {s.product} · {s.orderNo} · {s.buyer}</option>
-            ))}
-          </select>
+          <label><i>*</i>找这笔订单</label>
+          <input value={kw} onChange={(e) => setKw(e.target.value)} placeholder="订单号 / 提货码 / 手机号 / 昵称" style={{ width: "100%", height: 38 }} />
+          <div className="note" style={{ marginTop: 6 }}>只列本门店<b>已核销</b>的自提单——客户提过货，才谈得上退货</div>
         </div>
 
+        <div className="mcard" style={{ margin: "0 0 12px", maxHeight: 216, overflow: "auto" }}>
+          {hits.map((s) => (
+            <div key={s.key} onClick={() => pick(s)}
+              style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "9px 0", borderTop: "1px solid #f2f2f2", cursor: "pointer", background: s.key === key ? "#f2fbf9" : "transparent" }}>
+              <input type="radio" checked={s.key === key} onChange={() => pick(s)} style={{ marginTop: 4 }} />
+              <div style={{ fontSize: 12.5, lineHeight: 1.7 }}>
+                <b>{s.emoji} {s.product}</b> × {s.qty} 件
+                <div className="mono" style={{ color: "#666", fontSize: 11.5 }}>{s.orderNo} · {s.at.slice(0, 10)} 提货</div>
+                <div style={{ color: "#666", fontSize: 11.5 }}>买家 {s.buyer}{s.phone ? ` · ${s.phone}` : ""}</div>
+                {s.doneQty > 0 && <div style={{ color: "#666", fontSize: 11.5 }}>本单共 {s.totalQty} 件，已退 {s.doneQty} 件，可退 {s.qty} 件</div>}
+                {s.overdue && <div style={{ color: "#f5a623", fontSize: 11.5 }}>已超 {RETURN_WINDOW_DAYS} 天退货期，请联系总部确认</div>}
+              </div>
+            </div>
+          ))}
+          {!hits.length && (
+            <div style={{ textAlign: "center", color: "#999", padding: 22, fontSize: 12.5 }}>
+              {sources.length ? "没搜到：换个订单号 / 手机号，或确认这笔单是不是本门店提的货" : "本门店还没有「已提货」的自提单，退不了货"}
+            </div>
+          )}
+        </div>
+
+        {src && (
         <div className="mcard" style={{ margin: "0 0 12px" }}>
           <div className="mrow"><span>销售订单</span><b className="mono">{src.orderNo}</b></div>
+          <div className="mrow"><span>提货码</span><b className="mono">{fmtPickupCode(src.code)}</b></div>
           <div className="mrow"><span>买家</span><b>{src.buyer}</b></div>
           <div className="mrow"><span>商品</span><b>{src.emoji} {src.product}</b></div>
           <div className="mrow"><span>规格</span><b style={{ fontWeight: 400 }}>{src.spec}</b></div>
+          <div className="mrow"><span>可退数量</span><b>{src.qty} 件</b></div>
           <div className="mrow"><span>退回方</span><b>{src.returnTo}</b></div>
           <div className="mrow"><span>返厂路径</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.viaHq ? `门店 → 总部仓 → ${src.returnTo}` : `门店 → ${src.returnTo}`}</b></div>
-          <div className="mrow"><span>退回地址</span><b style={{ fontWeight: 400, textAlign: "right" }}>{fmtAddr(afterAddrOf(src.returnTo)) || "该供应商未维护"}</b></div>
-        </div>
+          <div className="mrow"><span>退回地址</span><b style={{ fontWeight: 400, textAlign: "right" }}>{fmtAddr(returnAddrOf(src.returnTo, book)) || "尚未维护退回地址，请联系总部补充"}</b></div>
+        </div>)}
+
+        {src && (<>
 
         <div className="mfield">
           <label><i>*</i>退货数量</label>
@@ -962,9 +1008,11 @@ function NewReturnSheet({ sources, onClose, onSubmit }) {
           </div>
         </div>
 
+        </>)}
+
         <div style={{ display: "flex", gap: 10 }}>
           <button className="btn plain" style={{ flex: 1 }} onClick={onClose}>取消</button>
-          <button className="btn primary" style={{ flex: 2 }} onClick={() => { onSubmit(src, qty, reason); onClose(); }}>提交返厂单</button>
+          <button className="btn primary" style={{ flex: 2 }} disabled={!src} onClick={() => { onSubmit(src, qty, reason); onClose(); }}>提交返厂单</button>
         </div>
       </div>
     </div>

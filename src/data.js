@@ -1432,6 +1432,50 @@ function seedBatchOrders() {
 }
 seedBatchOrders();
 
+/* 门店APP 发起返厂的种子：本门店（濮源直播间）**已核销**的自提单。
+   返厂现在挂订单、不挂供货单，所以种子按订单准备——三种供货模式各一条，
+   外加一条 15 天前的用来演示「已超退货期」 */
+ORDERS.push(
+  {
+    id: "o60", no: "ORD260925000401", product: "苹果", spec: "红富士 / 5 斤装", qty: 2, unitPrice: "¥49.90", emoji: "🍎",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "99.80", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "99.80", 实收金额: "99.80" },
+    buyer: { 昵称: "阿凯", 收件人电话: "17723456781" },
+    store: "濮源直播间", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true, pickupUsed: true,
+    createdAt: "2026-09-25 10:12:08", status: "已完成",
+    payMethod: "微信支付", payTime: "2026-09-25 10:12:10", ops: ["详情", "备注"], supplyMode: "供应商直配",
+  },
+  {
+    id: "o61", no: "ORD260926000402", product: "华为手机", spec: "规格: 默认", qty: 1, unitPrice: "¥1999.00", emoji: "📱",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "1999.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "1999.00", 实收金额: "1999.00" },
+    buyer: { 昵称: "周婵", 收件人电话: "18663580247" },
+    store: "濮源直播间", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true, pickupUsed: true,
+    createdAt: "2026-09-26 15:30:41", status: "已完成",
+    payMethod: "微信支付", payTime: "2026-09-26 15:30:43", ops: ["详情", "备注"],
+    supplyMode: "总部仓直配", goodsSource: "供应商供货",
+  },
+  {
+    id: "o62", no: "ORD260927000403", product: "儿童书包", spec: "蓝色 / 大号", qty: 1, unitPrice: "¥129.00", emoji: "🎒",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "129.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "129.00", 实收金额: "129.00" },
+    buyer: { 昵称: "贝贝妈", 收件人电话: "13112345670" },
+    store: "濮源直播间", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true, pickupUsed: true,
+    createdAt: "2026-09-27 09:20:17", status: "已完成",
+    payMethod: "微信支付", payTime: "2026-09-27 09:20:19", ops: ["详情", "备注"],
+    supplyMode: "总部仓直配", goodsSource: "总部自有",
+  },
+  {
+    id: "o63", no: "ORD260908000404", product: "苹果", spec: "红富士 / 5 斤装", qty: 3, unitPrice: "¥49.90", emoji: "🍎",
+    afterSale: "暂无售后",
+    amounts: { 商品金额: "149.70", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "149.70", 实收金额: "149.70" },
+    buyer: { 昵称: "老周", 收件人电话: "18667890123" },
+    store: "濮源直播间", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true, pickupUsed: true,
+    createdAt: "2026-09-08 11:03:26", status: "已完成",
+    payMethod: "微信支付", payTime: "2026-09-08 11:03:28", ops: ["详情", "备注"], supplyMode: "供应商直配",
+  },
+);
+
 /* 种子一致性（二）：已经进过某张任务的订单回填 batchNos —— 否则会重复出现在待发货订单池里。
    记成数组：同一个订单会先走「供应商 → 总仓」再走「总仓 → 门店」，两条链路各算一次入池，
    订单池按链路判重（见 poolOf），所以不能只记一张单。
@@ -1487,6 +1531,8 @@ export const SUP_ADDRESSES = [
   { id: "ad5", owner: "供应商002", type: "after", name: "供应商002（退货组）", phone: "13979554185", region: "江西省/南昌市/青山湖区", detail: "高新大道 199 号 3 号库", postcode: "330029", isDefault: true },
   { id: "ad6", owner: "供应商003", type: "after", name: "供应商003（退货组）", phone: "13122223333", region: "浙江省/杭州市/余杭区", detail: "仓前街道文一西路 1218 号 5 号库", postcode: "311121", isDefault: true },
 ];
+/* 退回方为「总部仓」：总部自有货没有供应商，退给总部仓（地址取租户地址库的仓库地址） */
+export const HQ_NAME = "九天教育总仓";
 /* 返厂寄件地址：门店/总仓把货退回供应商时，取该供应商「地址库 › 售后地址」 */
 export const afterAddrOf = (supplier) => SUP_ADDRESSES.find((a) => a.owner === supplier && a.type === "after") || null;
 export const fmtAddr = (a) => (a ? `${a.region.replace(/\//g, "")} ${a.detail}` : "");
@@ -1551,7 +1597,7 @@ export const DIFFS = [
 export const RETURN_STEPS = ["待返厂", "返厂中", "已返厂"];
 export const RETURNS = [
   {
-    id: "RTV2609190001", orderNo: "ORD260917000139", supplyNo: "FHD2609170094",
+    id: "RTV2609190001", orderNo: "ORD260917000139",
     store: "9071门店", leg: "supplier_inbound", viaHq: false, returnTo: "供应商002",
     product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 2, reason: "七天无理由退货",
     createdAt: "2026-09-19 09:12:00", status: "待返厂",
@@ -1559,7 +1605,7 @@ export const RETURNS = [
     hops: [{ from: "9071门店", to: "供应商002", carrier: "", tracking: "", status: "待发货" }],
   },
   {
-    id: "RTV2609190002", orderNo: "ORD260917000152", supplyNo: "FHD2609170093",
+    id: "RTV2609190002", orderNo: "ORD260917000152",
     store: "九天门店", leg: "supplier_inbound", viaHq: false, returnTo: "供应商002",
     product: "相机", spec: "银色 / 标准版", emoji: "📷", qty: 1, reason: "商品与描述不符",
     createdAt: "2026-09-18 16:40:00", status: "返厂中",
@@ -1567,7 +1613,7 @@ export const RETURNS = [
     hops: [{ from: "九天门店", to: "供应商002", carrier: "顺丰速运", tracking: "SF7712003411", status: "运输中" }],
   },
   {
-    id: "RTV2609190003", orderNo: "ORD260916000121", supplyNo: "FHD2609160091",
+    id: "RTV2609190003", orderNo: "ORD260916000121",
     store: "九天门店", leg: "hq_store", viaHq: true, returnTo: "供应商003",
     product: "什锦果蔬", spec: "礼盒装 / 12 盒", emoji: "🧺", qty: 3, reason: "客户取消（未提货）",
     createdAt: "2026-09-18 11:05:00", status: "返厂中",
@@ -1578,7 +1624,7 @@ export const RETURNS = [
     ],
   },
   {
-    id: "RTV2609190004", orderNo: "ORD260915000088", supplyNo: "FHD2609150090",
+    id: "RTV2609190004", orderNo: "ORD260915000088",
     store: "濮源直播间", leg: "supplier_inbound", viaHq: false, returnTo: "JOJO供应商",
     product: "华为手机", spec: "蓝色 / M", emoji: "📱", qty: 1, reason: "七天无理由退货",
     createdAt: "2026-09-15 14:22:00", status: "已返厂",
@@ -1586,7 +1632,7 @@ export const RETURNS = [
     hops: [{ from: "濮源直播间", to: "JOJO供应商", carrier: "圆通速递", tracking: "YT5598712300", status: "已收货" }],
   },
   {
-    id: "RTV2609190005", orderNo: "ORD260916000144", supplyNo: "FHD2609160090",
+    id: "RTV2609190005", orderNo: "ORD260916000144",
     store: "9071门店", leg: "hq_store", viaHq: true, returnTo: "供应商001",
     product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 2, reason: "客户取消（未提货）",
     createdAt: "2026-09-19 08:30:00", status: "待返厂",
@@ -1597,7 +1643,7 @@ export const RETURNS = [
     ],
   },
   {
-    id: "RTV2609190006", orderNo: "ORD260918000093", supplyNo: "FHD2609180097",
+    id: "RTV2609190006", orderNo: "ORD260918000093",
     store: "濮源直播间", leg: "supplier_inbound", viaHq: false, returnTo: "供应商003",
     product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 1, reason: "商品质量问题",
     createdAt: "2026-09-19 10:05:00", status: "待返厂",
@@ -1605,7 +1651,7 @@ export const RETURNS = [
     hops: [{ from: "濮源直播间", to: "供应商003", carrier: "", tracking: "", status: "待发货" }],
   },
   {
-    id: "RTV2609190007", orderNo: "ORD260918000101", supplyNo: "FHD2609180096",
+    id: "RTV2609190007", orderNo: "ORD260918000101",
     store: "濮源直播间", leg: "hq_store", viaHq: true, returnTo: "JOJO供应商",
     product: "华为手机", spec: "黑色 / L", emoji: "📱", qty: 1, reason: "七天无理由退货",
     createdAt: "2026-09-18 19:48:00", status: "返厂中",

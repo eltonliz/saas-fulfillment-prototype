@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { RETURN_STEPS } from "../data.js";
 import { useToast, Confirm, usePaged, Pager } from "../ui.jsx";
 import { useReturns, setReturns, patchHop } from "../store.js";
+import { HQ_NAME } from "../data.js";
 
 const HOP_TAG = { 待发货: "warn", 运输中: "blue", 已收货: "" };
 
@@ -22,7 +23,7 @@ export function TenantReturns() {
     <>
       <div className="filters">
         <div className="row">
-          <div className="field"><label>返厂单号 / 供货单号</label><input className="ctl w-lg" placeholder="请输入返厂单号或供货单号" /></div>
+          <div className="field"><label>返厂单号 / 订单号</label><input className="ctl w-lg" placeholder="请输入返厂单号或订单号" /></div>
           <div className="field"><label>退货门店</label>
             <select className="ctl" defaultValue="全部"><option>全部</option><option>濮源直播间</option><option>九天门店</option><option>9071门店</option></select>
           </div>
@@ -48,7 +49,7 @@ export function TenantReturns() {
         <table className="tbl-tight">
           <thead>
             <tr>
-              <th className="tw">返厂单号</th><th className="tw">退货门店</th><th className="tw">关联供货单</th>
+              <th className="tw">返厂单号</th><th className="tw">退货门店</th><th className="tw">关联销售订单</th>
               <th>商品</th><th className="tw">退货数量</th><th className="tw">退货原因</th>
               <th className="tw">返厂路径</th><th className="tw">退回方</th><th className="tw">状态</th>
               <th style={{ minWidth: 120 }}>操作</th>
@@ -56,14 +57,15 @@ export function TenantReturns() {
           </thead>
           <tbody>
             {pg.pageRows.map((r) => {
-              const hqHop = r.viaHq ? r.hops[0] : null;
-              const canRecvByHq = hqHop && hqHop.status === "运输中";
+              /* 货要到总仓的（经总仓转供应商 / 自有货退回总仓）都由总仓点收货 */
+              const recvIdx = r.hops.findIndex((h) => h.to === HQ_NAME);
+              const canRecvByHq = recvIdx >= 0 && r.hops[recvIdx].status === "运输中";
               const canForward = r.viaHq && r.hops[0].status === "已收货" && r.hops[1].status === "待发货";
               return (
                 <tr key={r.id}>
                   <td className="tw mono">{r.id}<small>{r.createdAt}</small></td>
                   <td className="tw">{r.store}</td>
-                  <td className="tw mono">{r.supplyNo}<small>{r.orderNo}</small></td>
+                  <td className="tw mono">{r.orderNo}</td>
                   <td>
                     <div className="prod-cell">
                       <span className="thumb" style={{ background: "#f4f7f6" }}>{r.emoji}</span>
@@ -103,9 +105,11 @@ export function TenantReturns() {
       {recv && (
         <Confirm
           title="确认收到返厂货"
-          text={`确认已收到「${recv.store}」退回的 ${recv.product} × ${recv.qty}，货已入总部仓中转，下一步转发 ${recv.returnTo}。是否确认？`}
+          text={recv.viaHq
+            ? `确认已收到「${recv.store}」退回的 ${recv.product} × ${recv.qty}，货已入总部仓中转，下一步转发 ${recv.returnTo}。是否确认？`
+            : `确认已收到「${recv.store}」退回的 ${recv.product} × ${recv.qty}（总部自有货，无需再转发供应商）。是否确认？`}
           okText="确认收货"
-          onOk={() => { patch(recv.id, 0, { status: "已收货" }, `返厂单 ${recv.id} 总仓已收货，待转发供应商`); setRecv(null); }}
+          onOk={() => { patch(recv.id, recv.hops.findIndex((h) => h.to === HQ_NAME), { status: "已收货" }, recv.viaHq ? `返厂单 ${recv.id} 总仓已收货，待转发供应商` : `返厂单 ${recv.id} 总仓已收货，返厂完成`); setRecv(null); }}
           onCancel={() => setRecv(null)}
         />
       )}
@@ -169,7 +173,8 @@ function ForwardDrawer({ row, onClose, onDone }) {
 
 /* ============================ 供应商后台：退货返厂 ============================ */
 export function SupplierReturns() {
-  const rows = useReturns();
+  /* 退回方是总部仓的（总部自有货）不经过任何供应商，不进供应商后台 */
+  const rows = useReturns().filter((r) => r.returnTo !== HQ_NAME);
   const [tab, setTab] = useState("全部");
   const [detail, setDetail] = useState(null);
   const [accept, setAccept] = useState(null);
@@ -275,7 +280,6 @@ function ReturnDetailDrawer({ row, portal, onClose }) {
             <div className="cbody">
               <div className="frow"><label>所属项目</label><div className="fc"><input value={row.project} readOnly /></div><span style={{ marginTop: 7 }} className="newtag">本次新增</span></div>
               <div className="frow"><label>退货门店</label><div className="fc"><input value={row.store} readOnly /></div></div>
-              <div className="frow"><label>关联供货单</label><div className="fc"><input className="mono" value={row.supplyNo} readOnly /></div></div>
               {!supplier && <div className="frow"><label>关联销售订单</label><div className="fc"><input className="mono" value={row.orderNo} readOnly /></div></div>}
               <div className="frow"><label>商品</label><div className="fc"><input value={row.product} readOnly /></div></div>
               <div className="frow"><label>规格</label><div className="fc"><input value={row.spec} readOnly /></div></div>
