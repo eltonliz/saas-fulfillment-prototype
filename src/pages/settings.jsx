@@ -186,7 +186,7 @@ export function GeneralSetting() {
    ============================================================================ */
 const ADDR_TABS = [
   { k: "ship", t: "发货地址", hint: "发货时从地址库里选，随发货记入订单的配送信息" },
-  { k: "after", t: "售后地址", hint: "总部在「售后管理」同意退货时从这里选，随同意发给买家当寄回地址" },
+  { k: "after", t: "售后地址", hint: "原系统既有页签（收退货地址）；本原型同意退货不再从这里选地址" },
   { k: "warehouse", t: "仓库地址", hint: "总部仓 / 门店收货点，供内部单据参照" },
 ];
 const SUP_ADDR_TABS = ADDR_TABS.filter((t) => t.k !== "warehouse");
