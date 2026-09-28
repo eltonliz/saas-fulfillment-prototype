@@ -7,12 +7,10 @@ export function SupplierLogin({ onSuccess }) {
   const [pwd, setPwd] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
-  const [agree, setAgree] = useState(true);
   const [err, setErr] = useState("");
   const [sent, setSent] = useState(false);
 
   const submit = () => {
-    if (!agree) return setErr("请先阅读并同意《账号安全使用协议》");
     if (mode === "pwd") {
       if (!account.trim()) return setErr("请输入账号 / 手机号");
       if (!pwd) return setErr("请输入密码");
@@ -67,11 +65,6 @@ export function SupplierLogin({ onSuccess }) {
             </div>
           </>
         )}
-
-        <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "#666", margin: "4px 0 14px" }}>
-          <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ width: 14, height: 14, accentColor: "#25c7a5" }} />
-          阅读并同意 <span style={{ color: "#25c7a5" }}>《账号安全使用协议》</span>
-        </label>
 
         {err && <div className="err" style={{ marginBottom: 12 }}>{err}</div>}
 
