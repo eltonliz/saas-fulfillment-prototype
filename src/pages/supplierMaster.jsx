@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useToast, useRowSelect, BatchBar, Confirm, usePaged, Pager } from "../ui.jsx";
+import { useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 
 /* 1:1 复刻真实 SAAS「供应商管理」页（供应商 > 供应商管理） */
 const ROWS = [
@@ -112,10 +112,6 @@ function SupplierEditDrawer({ row, isNew, onClose, onSaved }) {
   const [opened, setOpened] = useState(isNew ? true : row.enabled);
   const [opName, setOpName] = useState(row.enabled ? "JOJO发货员" : "");
   const [opPhone, setOpPhone] = useState(row.enabled ? "18800008888" : "");
-  const [opPwd, setOpPwd] = useState(row.enabled ? "123456" : "");
-  const [status, setStatus] = useState("已开启");
-  const [resetPwd, setResetPwd] = useState(false);
-  const [flash, setFlash] = useState("");
 
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -167,16 +163,6 @@ function SupplierEditDrawer({ row, isNew, onClose, onSaved }) {
                   <div className="frow"><label>账号绑定主体</label><div className="fc"><input value={`${row.name}（${row.no}）`} readOnly /></div></div>
                   <div className="frow"><label><i>*</i>操作员姓名</label><div className="fc"><input value={opName} onChange={(e) => setOpName(e.target.value)} placeholder="请输入操作员姓名" /></div></div>
                   <div className="frow"><label><i>*</i>登录手机号</label><div className="fc"><input value={opPhone} onChange={(e) => setOpPhone(e.target.value)} placeholder="请输入登录手机号" /></div></div>
-                  <div className="frow"><label><i>*</i>登录密码</label><div className="fc">
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <input type="password" value={opPwd} onChange={(e) => setOpPwd(e.target.value)} placeholder="请输入登录密码" style={{ flex: 1, maxWidth: 260 }} />
-                      <button className="btn plain sm" style={{ flex: "none" }} onClick={() => setResetPwd(true)}>重设密码</button>
-                    </div>
-                  </div></div>
-                  <div className="frow"><label>账号状态</label><div className="fc">
-                    <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: 200 }}><option>已开启</option><option>已禁用</option></select>
-                  </div></div>
-                  {flash && <div style={{ paddingLeft: 104, color: "#25c7a5", fontSize: 12.5 }}>{flash}</div>}
                   <div className="note" style={{ paddingLeft: 104 }}>
                     供应商后台支持两种登录方式：<b>账号密码登录</b>（账号 = 登录手机号 / 供应商编号）与<b>账号验证码登录</b>。
                   </div>
@@ -191,20 +177,6 @@ function SupplierEditDrawer({ row, isNew, onClose, onSaved }) {
           <button className="btn primary" onClick={onSaved || onClose}>保存</button>
         </div>
       </div>
-      {resetPwd && (
-        <Confirm
-          title="重设登录密码"
-          text={`将为操作员「${opName || "—"}」生成新的随机密码，原密码立即失效；保存后生效，需线下告知本人。是否继续？`}
-          okText="确认重设"
-          onOk={() => {
-            setOpPwd("S" + Math.random().toString(36).slice(2, 10));
-            setFlash("新密码已生成，保存后生效");
-            setResetPwd(false);
-            setTimeout(() => setFlash(""), 2600);
-          }}
-          onCancel={() => setResetPwd(false)}
-        />
-      )}
     </div>
   );
 }
