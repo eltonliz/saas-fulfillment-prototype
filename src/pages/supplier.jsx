@@ -116,8 +116,7 @@ export function SupTasks({ leg, title, desc }) {
                 <td>{d.receiver}<small>{d.receiverAddr}</small></td>
                 <td className="tw mono">{qtyOf(d)}/{sentOf(d)}
                   {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {receivedOf(d)}｜待补 {qtyOf(d) - receivedOf(d)} 件{sentOf(d) < qtyOf(d) ? `（发货方待发 ${qtyOf(d) - sentOf(d)} 件）` : ""}</small>}
-                  {d.status === "收货异常" && !d.makeupAnomaly && <small style={{ color: "#f5522e" }}>实收 {receivedOf(d)}｜差 {Math.max(0, qtyOf(d) - receivedOf(d))} 件</small>}
-                  {d.makeupAnomaly && <small style={{ color: "#f5522e" }}>补发仍有异常 · 转线下</small>}
+                  {d.status === "收货异常" && <small style={{ color: "#f5522e" }}>实收 {receivedOf(d)}｜差 {Math.max(0, qtyOf(d) - receivedOf(d))} 件</small>}
                 </td>
                 <td className="tw mono">{packagesOf(d).length
                   ? <>{packagesOf(d)[0].carrier}<small>{packagesOf(d)[0].tracking}</small>

@@ -179,10 +179,14 @@ export function applyReceive(doc, p) {
   }
 
   if (isDiff) {
-    /* 决策 5：补发单再出问题 → 只记异常标记，不再开新差异单，转线下 */
-    if (doc.isMakeup) {
-      patchDoc(doc.id, { makeupAnomaly: true });
-      return `补发单 ${doc.id} 记收货异常标记（不再开新差异单，转线下处理）`;
+    /* 补发单再次短收：补发这一轮到此闭环（上一张差异单转「补发完成」、原供货单结案），
+       差的部分**再开一张差异单**、关联这张补发单，继续走同一套「审核 → 补发」流程 */
+    if (doc.isMakeup && doc.reshipOf) {
+      const prev = diffStore.get().find((x) => x.id === doc.reshipOf);
+      const src = prev?.supplyNo ? supplyStore.get().find((x) => x.id === prev.supplyNo) : null;
+      if (src) patchDoc(src.id, { status: "已收货", received: src.qty });
+      diffStore.set((ds) => ds.map((x) => (x.id === doc.reshipOf ? { ...x, status: "补发完成" } : x)));
+      extra += `，上一轮差异单 ${doc.reshipOf} 转「补发完成」`;
     }
     const d = new Date();
     const ymd = String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
@@ -333,8 +337,7 @@ function DocTable({ rows, tab, setTab, tabs, mode, onOpen, onBatch }) {
                 <td>{d.receiver}<small>{d.receiverAddr}</small></td>
                 <td className="tw mono">{qtyOf(d)}/{sentOf(d)}
                   {d.status === "部分收货" && <small style={{ color: "#f5a623" }}>已收 {receivedOf(d)}｜待补 {qtyOf(d) - receivedOf(d)} 件{sentOf(d) < qtyOf(d) ? `（发货方待发 ${qtyOf(d) - sentOf(d)} 件）` : ""}</small>}
-                  {d.status === "收货异常" && !d.makeupAnomaly && <small style={{ color: "#f5522e" }}>实收 {receivedOf(d)}｜差 {Math.max(0, qtyOf(d) - receivedOf(d))} 件</small>}
-                  {d.makeupAnomaly && <small style={{ color: "#f5522e" }}>补发仍有异常 · 转线下</small>}
+                  {d.status === "收货异常" && <small style={{ color: "#f5522e" }}>实收 {receivedOf(d)}｜差 {Math.max(0, qtyOf(d) - receivedOf(d))} 件</small>}
                 </td>
                 <td className="tw mono">{packagesOf(d).length
                   ? <>{packagesOf(d)[0].carrier}<small>{packagesOf(d)[0].tracking}</small>
@@ -1592,7 +1595,7 @@ export function ReceiveAbnormal({ doc, ro }) {
         ) : (
           <div>异常情况：<b>补发单收货异常（实收 {receivedOf(doc)} / 应发 {qtyOf(doc)} 件）</b>{doc.reshipOf && <>　源差异单 <span className="mono">{doc.reshipOf}</span></>}</div>
         )}
-        <div>处理流程：{diff ? "差异审核由总部执行；" : "按规则补发单不再新开差异单，转线下处理；"}{ro ? "供应商只读知情，" : ""}审核通过后生成补发任务，由原发货方补发。</div>
+        <div>处理流程：{diff ? "差异审核由总部执行；" : "已按同一流程开出差异单；"}{ro ? "供应商只读知情，" : ""}审核通过后生成补发任务，由原发货方补发；补发后再次短收，继续走这套流程。</div>
       </div>
     </>
   );
