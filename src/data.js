@@ -1545,10 +1545,10 @@ export const fmtAddr = (a) => (a ? `${a.region.replace(/\//g, "")} ${a.detail}` 
    · 仓库地址：总部仓 / 门店收货点，供内部单据参照
    ========================================================================== */
 export const ADDRESS_BOOK = [
-  { id: "ab1", type: "ship", name: "张三", phone: "13800138000", region: "广东省/广州市/天河区", detail: "体育西路100号", postcode: "510000", isDefault: true },
-  { id: "ab2", type: "ship", name: "九天教育总仓", phone: "18100020001", region: "广东省/广州市/荔湾区", detail: "宝华路76号", postcode: "510150", isDefault: false },
-  { id: "ab3", type: "ship", name: "JOJO供应商", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路16号", postcode: "510630", isDefault: false },
-  { id: "ab4", type: "ship", name: "康师傅店长", phone: "18100010003", region: "广东省/佛山市/高明区", detail: "云勇林场", postcode: "528500", isDefault: false },
+  { id: "ab1", type: "ship", kind: "门店", name: "张三", phone: "13800138000", region: "广东省/广州市/天河区", detail: "体育西路100号", postcode: "510000", isDefault: true },
+  { id: "ab2", type: "ship", kind: "总部仓", name: "九天教育总仓", phone: "18100020001", region: "广东省/广州市/荔湾区", detail: "宝华路76号", postcode: "510150", isDefault: false },
+  { id: "ab3", type: "ship", kind: "门店", name: "JOJO供应商", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路16号", postcode: "510630", isDefault: false },
+  { id: "ab4", type: "ship", kind: "门店", name: "康师傅店长", phone: "18100010003", region: "广东省/佛山市/高明区", detail: "云勇林场", postcode: "528500", isDefault: false },
   { id: "ab5", type: "after", name: "JOJO供应商（退货组）", phone: "18100010002", region: "广东省/广州市/天河区", detail: "科苑路16号 A栋1楼退货组", postcode: "510630", isDefault: true },
   { id: "ab6", type: "after", name: "九天教育退货组", phone: "18100020003", region: "河南省/三门峡市/义马市", detail: "朝阳路街道 8 号退货仓", postcode: "472300", isDefault: false },
   { id: "ab7", type: "after", name: "9071门店退货点", phone: "18100002222", region: "辽宁省/铁岭市/银州区", detail: "工人街 28 号", postcode: "112000", isDefault: false },

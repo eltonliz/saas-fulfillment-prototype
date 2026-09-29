@@ -203,7 +203,8 @@ const citiesOf = (p) => Object.keys(REGION[p] || {});
 const districtsOf = (p, c) => Object.keys(REGION[p]?.[c] || {});
 const streetsOf = (p, c, d) => REGION[p]?.[c]?.[d] || [];
 
-function AddrModal({ store, type, editing, onClose, onSaved }) {
+function AddrModal({ store, type, editing, kinds, onClose, onSaved }) {
+  const [kind, setKind] = useState(editing?.kind || kinds?.[0] || "");
   const [name, setName] = useState(editing?.name || "");
   const [phone, setPhone] = useState(editing?.phone || "");
   const [detail, setDetail] = useState(editing?.detail || "");
@@ -216,10 +217,10 @@ function AddrModal({ store, type, editing, onClose, onSaved }) {
   const [street, setStreet] = useState(init[3] || "");
   const tab = ADDR_TABS.find((t) => t.k === type);
   const region = [prov, city, dist, street].filter(Boolean).join("/");
-  const ok = name.trim() && phone.trim() && region && detail.trim();
+  const ok = name.trim() && phone.trim() && region && detail.trim() && (!kinds || kind);
 
   const save = () => {
-    const patch = { name: name.trim(), phone: phone.trim(), region, detail: detail.trim(), postcode: postcode.trim(), isDefault };
+    const patch = { name: name.trim(), phone: phone.trim(), region, detail: detail.trim(), postcode: postcode.trim(), isDefault, ...(kinds ? { kind } : {}) };
     store.set((as) => {
       /* 默认互斥：同类型下只留一个默认 */
       const cleared = isDefault ? as.map((a) => (a.type === type ? { ...a, isDefault: false } : a)) : as;
@@ -241,7 +242,19 @@ function AddrModal({ store, type, editing, onClose, onSaved }) {
     <div className="gmock" style={{ zIndex: 130 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="gbox" style={{ width: 660 }}>
         <b>{editing ? "编辑" : "新增"}{tab?.t}</b>
-        <div className="frow" style={{ marginTop: 16 }}>
+        {kinds && (
+          <div className="frow" style={{ marginTop: 16 }}>
+            <label><i>*</i>类型</label>
+            <div className="fc">
+              <div className="radio-row">
+                {kinds.map((k) => (
+                  <label key={k}><input type="radio" checked={kind === k} onChange={() => setKind(k)} />{k}</label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="frow" style={{ marginTop: kinds ? 4 : 16 }}>
           <label><i>*</i>联系人</label>
           <div className="fc"><input className="ctl" style={{ width: "100%" }} maxLength={20} placeholder="请输入联系人" value={name} onChange={(e) => setName(e.target.value)} /><span className="note">{name.length}/20</span></div>
         </div>
@@ -285,12 +298,15 @@ function AddrModal({ store, type, editing, onClose, onSaved }) {
 }
 
 /* store 可传：租户用 addressBookStore，供应商用自己的 addrStore —— 一份地址、各自维护 */
-export function AddressBook({ store = addressBookStore, filter, tabs = ADDR_TABS }) {
+/* shipKinds：租户的发货地址要区分「总部仓 / 门店」（发货主体不同）；供应商地址簿不传，就没有这一层 */
+export function AddressBook({ store = addressBookStore, filter, tabs = ADDR_TABS, shipKinds }) {
   const all = store.use().filter((a) => !filter || filter(a));
   const [tab, setTab] = useState("ship");
+  const [kind, setKind] = useState("全部");
   const [modal, setModal] = useState(null);   // null | {} | 编辑的行
   const [toast, tip] = useToast();
-  const list = all.filter((a) => a.type === tab);
+  const kindOn = !!shipKinds && tab === "ship";
+  const list = all.filter((a) => a.type === tab && (!kindOn || kind === "全部" || a.kind === kind));
   const pd = usePaged(list, 10);
   const tabDef = tabs.find((t) => t.k === tab);
 
@@ -316,20 +332,27 @@ export function AddressBook({ store = addressBookStore, filter, tabs = ADDR_TABS
 
       <div className="alert"><span className="ic">i</span>{tabDef?.hint}</div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, margin: "10px 0" }}>
-        <button className="btn primary" onClick={() => setModal({})}>添加地址</button>
-        <button className="btn" onClick={() => tip("已刷新")}>刷新</button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0" }}>
+        {kindOn && ["全部", ...shipKinds].map((k) => (
+          <span key={k} className={`pill ${kind === k ? "active" : ""}`} onClick={() => { setKind(k); pd.setPage(1); }}>{k}</span>
+        ))}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
+          <button className="btn primary" onClick={() => setModal({})}>添加地址</button>
+          <button className="btn" onClick={() => tip("已刷新")}>刷新</button>
+        </div>
       </div>
 
       <div className="tbl-wrap">
         <table className="tbl-tight">
           <thead><tr>
+            {kindOn && <th className="tw col-new w2" data-hl="本次新增" style={{ width: 100 }}>类型</th>}
             <th>联系人</th><th className="tw">联系电话</th><th className="tw">所在地区</th>
             <th>详细地址</th><th className="tw">邮编</th><th className="tw" style={{ width: 90 }}>是否默认</th><th className="tw" style={{ width: 170 }}>操作</th>
           </tr></thead>
           <tbody>
             {pd.pageRows.map((a) => (
               <tr key={a.id}>
+                {kindOn && <td className="tw col-new">{a.kind || "—"}</td>}
                 <td>{a.name}</td>
                 <td className="tw mono">{a.phone}</td>
                 <td className="tw">{a.region}</td>
@@ -345,13 +368,13 @@ export function AddressBook({ store = addressBookStore, filter, tabs = ADDR_TABS
                 </td>
               </tr>
             ))}
-            {!list.length && <tr><td colSpan={7} style={{ textAlign: "center", padding: 40, color: "#999" }}>暂无地址</td></tr>}
+            {!list.length && <tr><td colSpan={kindOn ? 8 : 7} style={{ textAlign: "center", padding: 40, color: "#999" }}>暂无地址</td></tr>}
           </tbody>
         </table>
       </div>
       <Pager {...pd} />
 
-      {modal && <AddrModal store={store} type={tab} editing={modal.id ? modal : null} onClose={() => setModal(null)} onSaved={() => { tip(modal.id ? "已保存" : "地址已添加"); setModal(null); }} />}
+      {modal && <AddrModal store={store} type={tab} kinds={kindOn ? shipKinds : null} editing={modal.id ? modal : null} onClose={() => setModal(null)} onSaved={() => { tip(modal.id ? "已保存" : "地址已添加"); setModal(null); }} />}
       {toast}
     </>
   );
