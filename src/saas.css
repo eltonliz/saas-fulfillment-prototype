@@ -220,6 +220,12 @@ body.hide-hl .hl::after { display: none; }
 .newtag { display: inline-block; margin-left: 6px; background: #ff4d4f; color: #fff; font-size: 10px; line-height: 16px; padding: 0 5px; border-radius: 2px; vertical-align: 1px; white-space: nowrap; }
 body.hide-hl .newtag { display: none; }
 
+/* 分段按钮（地址库的类型筛选等）：两个互斥按钮，选中的那个实心 */
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: var(--radius); overflow: hidden; }
+.seg button { height: 30px; padding: 0 16px; border: 0; background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line-2); }
+.seg button.on { background: var(--brand); color: #fff; font-weight: 600; }
+
 /* 顶栏标注开关 */
 .hl-toggle { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: var(--radius); border: 1px solid #ffb3b3; background: #fff5f5; color: #ff4d4f; cursor: pointer; font-size: 13px; }
 .hl-toggle.off { border-color: var(--line-2); background: #fff; color: var(--text-3); }

@@ -298,15 +298,15 @@ function AddrModal({ store, type, editing, kinds, onClose, onSaved }) {
 }
 
 /* store 可传：租户用 addressBookStore，供应商用自己的 addrStore —— 一份地址、各自维护 */
-/* shipKinds：租户的发货地址要区分「总部仓 / 门店」（发货主体不同）；供应商地址簿不传，就没有这一层 */
-export function AddressBook({ store = addressBookStore, filter, tabs = ADDR_TABS, shipKinds }) {
+/* kinds：租户的地址要区分「总部仓 / 门店」（发货主体 / 收货点不同），三个页签都带；供应商地址簿不传，就没有这一层 */
+export function AddressBook({ store = addressBookStore, filter, tabs = ADDR_TABS, kinds }) {
   const all = store.use().filter((a) => !filter || filter(a));
   const [tab, setTab] = useState("ship");
-  const [kind, setKind] = useState("全部");
+  const [kind, setKind] = useState(kinds?.[0] || "");
   const [modal, setModal] = useState(null);   // null | {} | 编辑的行
   const [toast, tip] = useToast();
-  const kindOn = !!shipKinds && tab === "ship";
-  const list = all.filter((a) => a.type === tab && (!kindOn || kind === "全部" || a.kind === kind));
+  const kindOn = !!kinds;
+  const list = all.filter((a) => a.type === tab && (!kindOn || a.kind === kind));
   const pd = usePaged(list, 10);
   const tabDef = tabs.find((t) => t.k === tab);
 
@@ -333,9 +333,13 @@ export function AddressBook({ store = addressBookStore, filter, tabs = ADDR_TABS
       <div className="alert"><span className="ic">i</span>{tabDef?.hint}</div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0" }}>
-        {kindOn && ["全部", ...shipKinds].map((k) => (
-          <span key={k} className={`pill ${kind === k ? "active" : ""}`} onClick={() => { setKind(k); pd.setPage(1); }}>{k}</span>
-        ))}
+        {kindOn && (
+          <span className="seg">
+            {kinds.map((k) => (
+              <button key={k} className={kind === k ? "on" : ""} onClick={() => { setKind(k); pd.setPage(1); }}>{k}</button>
+            ))}
+          </span>
+        )}
         <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
           <button className="btn primary" onClick={() => setModal({})}>添加地址</button>
           <button className="btn" onClick={() => tip("已刷新")}>刷新</button>
@@ -374,7 +378,7 @@ export function AddressBook({ store = addressBookStore, filter, tabs = ADDR_TABS
       </div>
       <Pager {...pd} />
 
-      {modal && <AddrModal store={store} type={tab} kinds={kindOn ? shipKinds : null} editing={modal.id ? modal : null} onClose={() => setModal(null)} onSaved={() => { tip(modal.id ? "已保存" : "地址已添加"); setModal(null); }} />}
+      {modal && <AddrModal store={store} type={tab} kinds={kinds || null} editing={modal.id ? modal : null} onClose={() => setModal(null)} onSaved={() => { tip(modal.id ? "已保存" : "地址已添加"); setModal(null); }} />}
       {toast}
     </>
   );
