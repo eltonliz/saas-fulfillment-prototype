@@ -865,6 +865,9 @@ export function DiffAuditModal({ row, onClose, onPass, onReject }) {
           <div>差异单号：<span className="mono">{row.id}</span>　关联供货单：<span className="mono">{row.supplyNo}</span></div>
           <div>差异摘要：{row.summary}</div>
           {row.evidence && row.evidence !== "—" && <div>举证：{row.evidence}</div>}
+          {/照片 \d+ 张/.test(String(row.evidence)) && (
+            <div style={{ marginTop: 8 }}><EvidencePhotos evidence={row.evidence} size={64} /></div>
+          )}
         </div>
         <div className="radio-row" style={{ marginTop: 14 }}>
           <label><input type="radio" checked={result === "通过"} onChange={() => setResult("通过")} />审核通过</label>

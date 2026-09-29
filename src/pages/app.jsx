@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useReturns, setReturns, patchHop, diffStore, addDiff, supplyStore, supplierStore, orderStore, productStore, addressBookStore } from "../store.js";
-import { diffInTab, DIFF_TABS, applyReceive } from "./supply.jsx";
+import { diffInTab, DIFF_TABS, applyReceive, EvidencePhotos } from "./supply.jsx";
 import { afterAddrOf, fmtAddr, fmtPickupCode, pickupCodeOf, HQ_NAME, SUPPLIER_SELF, itemsOf, qtyOf, sentOf, receivedOf, packagesOf, ordersOf, itemsLabel, matchOrder, matchDoc } from "../data.js";
 import { FlowNode, FlowArrow } from "./buyer.jsx";
 import { useReqPage } from "./reqnotes.jsx";
@@ -653,6 +653,9 @@ function Diffs({ onDetail }) {
             <div className="mrow"><span>发货方</span><b>{d.shipper}（补发责任方）</b></div>
             <div className="mrow"><span>差异摘要</span><b style={{ fontWeight: 400, textAlign: "right" }}>{d.summary}</b></div>
             <div className="mrow"><span>举证信息</span><b style={{ fontWeight: 400 }}>{d.evidence}</b></div>
+            {/照片 \d+ 张/.test(String(d.evidence)) && (
+              <div className="mrow"><span>举证照片</span><span style={{ marginLeft: "auto" }}><EvidencePhotos evidence={d.evidence} size={52} /></span></div>
+            )}
             {d.makeup && <div className="mrow"><span>补发供货单</span><b className="mono">{d.makeup}</b></div>}
             {d.rejectReason && <div className="mrow"><span>驳回原因</span><b style={{ fontWeight: 400, textAlign: "right", color: "#f5522e" }}>{d.rejectReason}</b></div>}
             <div className="macts">
@@ -726,6 +729,9 @@ function DiffDetail({ row, onBack }) {
         <div className="mrow"><span>发货方</span><b>{row.shipper}（补发责任方）</b></div>
         <div className="mrow"><span>差异摘要</span><b style={{ fontWeight: 400, textAlign: "right" }}>{row.summary}</b></div>
         <div className="mrow"><span>举证信息</span><b style={{ fontWeight: 400 }}>{row.evidence}</b></div>
+        {/照片 \d+ 张/.test(String(row.evidence)) && (
+          <div className="mrow"><span>举证照片</span><span style={{ marginLeft: "auto" }}><EvidencePhotos evidence={row.evidence} size={52} /></span></div>
+        )}
         {row.rejectReason && <div className="mrow"><span>驳回原因</span><b style={{ fontWeight: 400, textAlign: "right", color: "#f5522e" }}>{row.rejectReason}</b></div>}
         {row.makeup && <div className="mrow"><span>补发供货单</span><b className="mono">{row.makeup}</b></div>}
       </div>
