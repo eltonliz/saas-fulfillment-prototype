@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 import { afterSaleStore } from "../store.js";
+import { EvidencePhotos } from "./supply.jsx";
 
 /* 1:1 复刻真实 SAAS「售后管理」页（交易 > 售后管理）：
    列表（页签/筛选/列/备注·详情）+ 整页「售后详情」（状态卡 + 步骤条 + 买家备注 +
@@ -364,6 +365,18 @@ export function AfterSales() {
             <div style={{ background: "#fffbe6", border: "1px solid #ffe58f", borderRadius: 4, padding: "8px 14px", marginTop: 14, fontSize: 13, color: "var(--text-2)" }}>
               买家备注：{d.buyerNote}
             </div>
+
+            {d.reject && (
+              <div style={{ border: "1px solid var(--line)", borderRadius: 4, padding: "14px 18px", marginTop: 16 }}>
+                <b style={{ fontSize: 13.5 }}>拒签信息</b>
+                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9, fontSize: 13, color: "var(--text-2)" }}>
+                  <div><span className="note">拒签原因：</span>{d.reject.why}</div>
+                  <div><span className="note">退回物流单号：</span><span className="mono">{d.reject.backNo}</span></div>
+                  <div><span className="note">拒签时间：</span><span className="mono">{d.reject.at}</span></div>
+                  <div style={{ display: "flex", gap: 8 }}><span className="note" style={{ flex: "none" }}>举证照片：</span><EvidencePhotos evidence={`拒签举证 · 照片 ${d.reject.photos} 张`} size={52} /></div>
+                </div>
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 24, marginTop: 16 }}>
               {[

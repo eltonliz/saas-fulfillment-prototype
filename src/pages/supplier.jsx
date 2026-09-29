@@ -1336,9 +1336,10 @@ export function SupAfterSales() {
     act(row, (r) => { add(r, "供应商已签收验收通过", ["验收结果：实物与申请一致，可退款"]); r.status = "待总部退款"; return r; });
     tip("已签收验收 → 待总部退款");
   };
-  const refuse = (row, backNo, why) => {
+  const refuse = (row, backNo, why, photos) => {
     act(row, (r) => {
-      add(r, "供应商拒绝签收退货", [`拒签原因：${why}`]);
+      add(r, "供应商拒绝签收退货", [`拒签原因：${why}`, `举证照片：${photos} 张`]);
+      r.reject = { why, photos, backNo, at: asNow() };
       add(r, "供应商寄回商品", ["退货方式：快递", `物流单号：${backNo}`]);
       add(r, "进入退货异常，待总部处理", ["待总部裁决：认可拒签并关闭售后，或仍向买家退款"]);
       r.status = "退货异常";
@@ -1442,6 +1443,18 @@ export function SupAfterSales() {
               买家备注：{d.buyerNote}
             </div>
 
+            {d.reject && (
+              <div style={{ border: "1px solid var(--line)", borderRadius: 4, padding: "14px 18px", marginTop: 16 }}>
+                <b style={{ fontSize: 13.5 }}>拒签信息</b>
+                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9, fontSize: 13, color: "var(--text-2)" }}>
+                  <div><span className="note">拒签原因：</span>{d.reject.why}</div>
+                  <div><span className="note">退回物流单号：</span><span className="mono">{d.reject.backNo}</span></div>
+                  <div><span className="note">拒签时间：</span><span className="mono">{d.reject.at}</span></div>
+                  <div style={{ display: "flex", gap: 8 }}><span className="note" style={{ flex: "none" }}>举证照片：</span><EvidencePhotos evidence={`拒签举证 · 照片 ${d.reject.photos} 张`} size={52} /></div>
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 24, marginTop: 16 }}>
               <div style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 4, padding: "14px 18px" }}>
                 <b style={{ fontSize: 13.5 }}>售后申请信息</b>
@@ -1508,7 +1521,7 @@ export function SupAfterSales() {
 
         {toast}
         {note && <AsNoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
-        {back && <RefuseModal row={back} onClose={() => setBack(null)} onOk={(no, why) => refuse(back, no, why)} />}
+        {back && <RefuseModal row={back} onClose={() => setBack(null)} onOk={(no, why, photos) => refuse(back, no, why, photos)} />}
       </>
     );
   }
@@ -1640,7 +1653,7 @@ function RefuseModal({ row, onClose, onOk }) {
         </div>
         <div className="gfoot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={!ok} onClick={() => onOk(no.trim(), why.trim())}>确认拒绝签收</button>
+          <button className="btn primary" disabled={!ok} onClick={() => onOk(no.trim(), why.trim(), photos)}>确认拒绝签收</button>
         </div>
       </div>
     </div>
