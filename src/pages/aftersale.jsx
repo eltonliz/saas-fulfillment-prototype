@@ -365,6 +365,11 @@ export function AfterSales() {
             <div style={{ background: "#fffbe6", border: "1px solid #ffe58f", borderRadius: 4, padding: "8px 14px", marginTop: 14, fontSize: 13, color: "var(--text-2)" }}>
               买家备注：{d.buyerNote}
             </div>
+            {d.note && (
+              <div style={{ background: "#f0f7ff", border: "1px solid #cfe3ff", borderRadius: 4, padding: "8px 14px", marginTop: 8, fontSize: 13, color: "var(--text-2)" }}>
+                商家备注：{d.note}<span className="note" style={{ marginLeft: 8 }}>仅总部可见</span>
+              </div>
+            )}
 
             {d.reject && (
               <div style={{ border: "1px solid var(--line)", borderRadius: 4, padding: "14px 18px", marginTop: 16 }}>
@@ -426,7 +431,7 @@ export function AfterSales() {
         </div>
 
         {toast}
-        {note && <NoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
+        {note && <NoteModal row={note} onClose={() => setNote(null)} onSaved={(text) => { act(note, (r) => { r.note = text; return r; }); tip("备注已保存（仅总部可见）"); setNote(null); }} />}
         {back && <BackModal row={back} onClose={() => setBack(null)} onOk={(no) => refuseSign(back, no)} />}
       </>
     );
@@ -526,7 +531,7 @@ export function AfterSales() {
       <Pager {...pg} />
 
       {toast}
-      {note && <NoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
+      {note && <NoteModal row={note} onClose={() => setNote(null)} onSaved={(text) => { act(note, (r) => { r.note = text; return r; }); tip("备注已保存（仅总部可见）"); setNote(null); }} />}
     </>
   );
 }
@@ -557,7 +562,7 @@ function BackModal({ row, onClose, onOk }) {
 
 /* ---------------- 售后备注 ---------------- */
 function NoteModal({ row, onClose, onSaved }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(row.note || "");
   return (
     <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="gbox">
@@ -568,7 +573,7 @@ function NoteModal({ row, onClose, onSaved }) {
           style={{ width: "100%", marginTop: 12, padding: 10, border: "1px solid var(--line)", borderRadius: 4, fontSize: 13, fontFamily: "inherit", resize: "vertical" }} />
         <div className="gfoot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={!text.trim()} onClick={onSaved}>保存</button>
+          <button className="btn primary" disabled={!text.trim()} onClick={() => onSaved(text.trim())}>保存</button>
         </div>
       </div>
     </div>

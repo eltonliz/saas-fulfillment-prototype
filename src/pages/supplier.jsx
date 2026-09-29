@@ -1442,6 +1442,11 @@ export function SupAfterSales() {
             <div style={{ background: "#fffbe6", border: "1px solid #ffe58f", borderRadius: 4, padding: "8px 14px", marginTop: 14, fontSize: 13, color: "var(--text-2)" }}>
               买家备注：{d.buyerNote}
             </div>
+            {d.supNote && (
+              <div style={{ background: "#f0f7ff", border: "1px solid #cfe3ff", borderRadius: 4, padding: "8px 14px", marginTop: 8, fontSize: 13, color: "var(--text-2)" }}>
+                供应商备注：{d.supNote}<span className="note" style={{ marginLeft: 8 }}>仅本供应商可见</span>
+              </div>
+            )}
 
             {d.reject && (
               <div style={{ border: "1px solid var(--line)", borderRadius: 4, padding: "14px 18px", marginTop: 16 }}>
@@ -1520,7 +1525,7 @@ export function SupAfterSales() {
         </div>
 
         {toast}
-        {note && <AsNoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
+        {note && <AsNoteModal row={note} onClose={() => setNote(null)} onSaved={(text) => { act(note, (r) => { r.supNote = text; return r; }); tip("备注已保存（仅本供应商可见）"); setNote(null); }} />}
         {back && <RefuseModal row={back} onClose={() => setBack(null)} onOk={(no, why, photos) => refuse(back, no, why, photos)} />}
       </>
     );
@@ -1611,7 +1616,7 @@ export function SupAfterSales() {
       <Pager {...pgA} />
 
       {toast}
-      {note && <AsNoteModal row={note} onClose={() => setNote(null)} onSaved={() => { tip("备注已保存"); setNote(null); }} />}
+      {note && <AsNoteModal row={note} onClose={() => setNote(null)} onSaved={(text) => { act(note, (r) => { r.supNote = text; return r; }); tip("备注已保存（仅本供应商可见）"); setNote(null); }} />}
     </>
   );
 }
@@ -1662,7 +1667,7 @@ function RefuseModal({ row, onClose, onOk }) {
 
 /* ---------------- 售后备注 ---------------- */
 function AsNoteModal({ row, onClose, onSaved }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(row.supNote || "");
   return (
     <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="gbox">
@@ -1673,7 +1678,7 @@ function AsNoteModal({ row, onClose, onSaved }) {
           style={{ width: "100%", marginTop: 12, padding: 10, border: "1px solid var(--line)", borderRadius: 4, fontSize: 13, fontFamily: "inherit", resize: "vertical" }} />
         <div className="gfoot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={!text.trim()} onClick={onSaved}>保存</button>
+          <button className="btn primary" disabled={!text.trim()} onClick={() => onSaved(text.trim())}>保存</button>
         </div>
       </div>
     </div>

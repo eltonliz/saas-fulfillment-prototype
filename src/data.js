@@ -1831,6 +1831,7 @@ export const AFTER_SALES = [
     way: "退货退款", ship: "暂无", qty: 3, points: 0, reason: "不想要了",
     amount: "117.00", refund: "117.00",
     at: "2026-09-23 09:20:18", timeout: "-", status: "退货异常",
+    note: "该客户 30 天内第 2 次退货，留意风控", supNote: "整箱已拆封，仓库已拍照留档",
     reject: { why: "整箱已拆封使用过半，影响二次销售", photos: 3, backNo: "SF7712008812", at: "2026-09-26 11:08:52" },
     buyerNote: "-", refundNote: "-",
     order: { 应付金额: "￥117.00", 实付金额: "￥117.00", 配送方式: "快递", 物流状态: "已签收" },
