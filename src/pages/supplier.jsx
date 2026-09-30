@@ -1301,16 +1301,16 @@ export function SupDiff() {
    · 拒签不直接关单，转「退货异常」由总部裁决（认可拒签并关单，或仍向买家退款）
    · 金额只读展示（不可操作）；消费者信息仍脱敏 */
 /* 页签口径与租户后台 · 售后管理一致：按「球在谁手里」分，同一个状态两端用同一个页签名 ——
-   供应商侧只出现退货退款单（仅退款不涉及货，不展示），钱款三态（退款中 / 退款异常 / 退款成功）只在租户侧 */
-const AS_TABS = ["全部", "待商家处理", "待商家收货", "待买家处理", "退货异常", "售后完成", "售后关闭"];
+   供应商侧只出现退货退款单（仅退款不涉及货，不展示），钱款三态（退款中 / 退款异常 / 退款成功）只在租户侧。
+   退货异常（拒签后待总部裁决）也归「待商家处理」——裁决是商家要做的动作，状态列标红 */
+const AS_TABS = ["全部", "待商家处理", "待商家收货", "待买家处理", "售后完成", "售后关闭"];
 const asInTab = (status, tab) =>
   tab === "全部" ? true
-    : tab === "待商家处理" ? ["待总部审核", "待总部退款"].includes(status)
+    : tab === "待商家处理" ? ["待总部审核", "待总部退款", "退货异常"].includes(status)
       : tab === "待商家收货" ? status === "待供应商签收"
         : tab === "待买家处理" ? status === "待买家退货"
-          : tab === "退货异常" ? status === "退货异常"
-            : tab === "售后完成" ? status === "售后完成"
-              : status === "售后关闭";
+          : tab === "售后完成" ? status === "售后完成"
+            : status === "售后关闭";
 const AS_STEPS_OF = (row) =>
   row.status === "售后关闭" ? ["买家申请", "总部关闭"]
     : ["买家申请", "总部审核", "买家退货", "供应商签收", "总部退款", "售后完成"];
@@ -1346,11 +1346,12 @@ export function SupAfterSales() {
     act(row, (r) => { add(r, "供应商已签收验收通过", ["验收结果：实物与申请一致，可退款"]); r.status = "待总部退款"; return r; });
     tip("已签收验收 → 待总部退款");
   };
-  const refuse = (row, backNo, why, photos) => {
+  const refuse = (row, backNo, carrier, why, photos) => {
     act(row, (r) => {
       add(r, "供应商拒绝签收退货", [`拒签原因：${why}`, `举证照片：${photos} 张`]);
-      r.reject = { why, photos, backNo, at: asNow() };
-      add(r, "供应商寄回商品", ["退货方式：快递", `物流单号：${backNo}`]);
+      /* 谁发货谁处理：本单是供应商发的货，退回物流就由供应商登记，两端同步看到同一条 */
+      r.reject = { why, photos, carrier, backNo, at: asNow() };
+      add(r, "供应商寄回商品", [`快递公司：${carrier}`, `物流单号：${backNo}`]);
       add(r, "进入退货异常，待总部处理", ["待总部裁决：认可拒签并关闭售后，或仍向买家退款"]);
       r.status = "退货异常";
       return r;
@@ -1463,7 +1464,7 @@ export function SupAfterSales() {
                 <b style={{ fontSize: 13.5 }}>拒签信息</b>
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9, fontSize: 13, color: "var(--text-2)" }}>
                   <div><span className="note">拒签原因：</span>{d.reject.why}</div>
-                  <div><span className="note">退回物流单号：</span><span className="mono">{d.reject.backNo}</span></div>
+                  <div><span className="note">退回物流：</span>{d.reject.carrier ? `${d.reject.carrier} ` : ""}<span className="mono">{d.reject.backNo}</span></div>
                   <div><span className="note">拒签时间：</span><span className="mono">{d.reject.at}</span></div>
                   <div style={{ display: "flex", gap: 8 }}><span className="note" style={{ flex: "none" }}>举证照片：</span><EvidencePhotos evidence={`拒签举证 · 照片 ${d.reject.photos} 张`} size={52} /></div>
                 </div>
@@ -1536,7 +1537,7 @@ export function SupAfterSales() {
 
         {toast}
         {note && <AsNoteModal row={note} onClose={() => setNote(null)} onSaved={(text) => { act(note, (r) => { r.supNote = text; return r; }); tip("备注已保存（仅本供应商可见）"); setNote(null); }} />}
-        {back && <RefuseModal row={back} onClose={() => setBack(null)} onOk={(no, why, photos) => refuse(back, no, why, photos)} />}
+        {back && <RefuseModal row={back} onClose={() => setBack(null)} onOk={(no, carrier, why, photos) => refuse(back, no, carrier, why, photos)} />}
       </>
     );
   }
@@ -1634,8 +1635,16 @@ export function SupAfterSales() {
 /* ---------------- 拒绝签收退货（拒签原因 + 举证照片 + 退回物流单号，必填） ----------------
    拒签不直接关单：转「退货异常」，由总部裁决（认可拒签并关单，或仍向买家退款） */
 function RefuseModal({ row, onClose, onOk }) {
+  /* 代发单的货由供应商处理（谁发货谁处理）：退回物流在这里一次登记，两端同步；
+     收件人信息取订单买家快照，售后单里没有就回落到客户信息 */
+  const order = orderStore.get().find((o) => o.no === row.no);
+  const b = order?.buyer || {};
+  const who = b["收件人"] || b["昵称"] || row.customer?.["收件人"] || "—";
+  const phone = b["收件人电话"] || row.customer?.["收件人电话"] || "—";
+  const addr = b["收件人地址"] || row.customer?.["收货地址"] || "—";
   const [photos, setPhotos] = useState(0);
   const [no, setNo] = useState("");
+  const [carrier, setCarrier] = useState(CARRIERS[0]);
   const [why, setWhy] = useState("");
   const ok = photos >= 1 && no.trim() && why.trim();
   return (
@@ -1643,6 +1652,10 @@ function RefuseModal({ row, onClose, onOk }) {
       <div className="gbox">
         <b>拒绝签收退货</b>
         <p>{row.asNo} · {row.product}</p>
+        <div style={{ marginTop: 14, fontSize: 13, lineHeight: 2, color: "#666" }}>
+          <div>收件人：<b style={{ color: "#333" }}>{who}</b>　收件人电话：<b className="mono" style={{ color: "#333" }}>{phone}</b></div>
+          <div>收货地址：<b style={{ color: "#333" }}>{addr}</b></div>
+        </div>
         <div className="note" style={{ marginTop: 10, lineHeight: 1.9 }}>
           拒绝签收后商品<b>寄回给买家</b>，售后单转「退货异常」——<b>是否退款由总部裁决</b>，本后台不决定钱款。
         </div>
@@ -1663,12 +1676,18 @@ function RefuseModal({ row, onClose, onOk }) {
           </div>
         </div>
         <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 13, marginBottom: 6 }}><i style={{ color: "#f5522e" }}>*</i> 快递公司信息</div>
+          <select className="ctl" style={{ width: "100%" }} value={carrier} onChange={(e) => setCarrier(e.target.value)}>
+            {CARRIERS.map((c) => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div style={{ marginTop: 12 }}>
           <div style={{ fontSize: 13, marginBottom: 6 }}><i style={{ color: "#f5522e" }}>*</i> 退回物流单号</div>
           <input className="ctl" style={{ width: "100%" }} placeholder="请输入寄回给买家的物流单号" value={no} onChange={(e) => setNo(e.target.value)} />
         </div>
         <div className="gfoot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={!ok} onClick={() => onOk(no.trim(), why.trim(), photos)}>确认拒绝签收</button>
+          <button className="btn primary" disabled={!ok} onClick={() => onOk(no.trim(), carrier, why.trim(), photos)}>确认拒绝签收</button>
         </div>
       </div>
     </div>
