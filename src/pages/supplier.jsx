@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, applyShip, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag, DiffAuditModal } from "./supply.jsx";
-import { itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, SUPPLIER_SELF, CARRIERS } from "../data.js";
+import { itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, SUPPLIER_SELF, CARRIERS, asStatusText } from "../data.js";
 import { OrderPool, poolOf, OrderRefsPop } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager, Confirm } from "../ui.jsx";
 import { supplierStore, supplyStore, diffStore, orderStore, patchDoc, addrStore, afterSaleStore } from "../store.js";
@@ -1391,7 +1391,7 @@ export function SupAfterSales() {
 
             <div style={{ display: "flex", border: "1px solid var(--line)", borderRadius: 4 }}>
               <div style={{ width: 340, flex: "none", padding: "18px 20px", borderRight: "1px solid var(--line)" }}>
-                <b style={{ fontSize: 15, color: "#25c7a5" }}>{d.status}</b>
+                <b style={{ fontSize: 15, color: "#25c7a5" }}>{asStatusText(d.status)}</b>
                 <div style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>{desc}</div>
                 <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   {d.status === "待供应商签收" && (
@@ -1610,7 +1610,7 @@ export function SupAfterSales() {
                 <td className="tw mono">{r.at}</td>
                 <td className="tw">{r.timeout}</td>
                 <td className="tw">{r.reason}</td>
-                <td className="tw"><span className={`tag ${asTone(r.status)}`}>{r.status}</span></td>
+                <td className="tw"><span className={`tag ${asTone(r.status)}`}>{asStatusText(r.status)}</span></td>
                 <td className="tw">
                   <div className="op-col">
                     <button className="gray" onClick={() => setNote(r)}>备注</button>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useToast, useRowSelect, BatchBar, usePaged, Pager } from "../ui.jsx";
 import { afterSaleStore } from "../store.js";
 import { EvidencePhotos } from "./supply.jsx";
+import { asStatusText } from "../data.js";
 
 /* 1:1 复刻真实 SAAS「售后管理」页（交易 > 售后管理）：
    列表（页签/筛选/列/备注·详情）+ 整页「售后详情」（状态卡 + 步骤条 + 买家备注 +
@@ -16,7 +17,8 @@ import { EvidencePhotos } from "./supply.jsx";
 /* 页签按「球在谁手里」分，与真实 SAAS 一致：等商家动手的一栏（审核 + 退款）、等商家收货的一栏
    （总仓 / 供应商签收验收）、等买家动手的一栏（寄回）；退款中 / 退款异常 / 退款成功是钱的状态，
    跟「等谁动」分开。退货异常是本模型特有分支（供应商拒签 → 总部裁决），单独留一栏。
-   列表里的「售后状态」仍是绝对口径（待总部审核 / 待供应商签收…），不随端变称呼 */
+   列表与详情上的「售后状态」显示的是页签口径（待商家处理 / 待商家收货 / 待买家处理 / 退款成功），
+   细分口径（审核 / 退款 / 哪一端签收）在详情页的步骤条与时间线里 */
 const TABS = ["全部", "待商家处理", "待商家收货", "待买家处理", "退货异常", "退款异常", "退款中", "退款成功"];
 const inTab = (status, tab) =>
   tab === "全部" ? true
@@ -272,7 +274,7 @@ export function AfterSales() {
     const d = detail;
     const steps = STEPS_OF(d);
     const idx = STEP_IDX(d);
-    const dStatus = d.status;
+    const dStatus = asStatusText(d.status);
     const desc =
       d.status === "待总部审核" ? (d.dropship ? "买家已发起售后申请，等待总部审核（总部决定钱款，通过后才轮到供应商处理货）" : "买家已发起售后申请，等待总部审核")
         : d.status === "待总部退款" ? (d.dropship
@@ -504,7 +506,7 @@ export function AfterSales() {
                 <td className="tw mono">{r.at}</td>
                 <td className="tw">{r.timeout}</td>
                 <td className="tw">{r.reason}</td>
-                <td className="tw"><span className={`tag ${TONE(r.status)}`}>{r.status}</span></td>
+                <td className="tw"><span className={`tag ${TONE(r.status)}`}>{asStatusText(r.status)}</span></td>
                 <td className="tw">
                   <div className="op-col">
                     {r.dropship ? (

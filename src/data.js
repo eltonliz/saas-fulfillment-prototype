@@ -1296,6 +1296,16 @@ export const SUPPLIER_DOCS = [
    一张供货单 = 一个收货主体（门店 / 总仓）的一批货，含多个订单、多个商品行、可能多个包裹。
    单据级的 qty / sent / received 是 items 的汇总值（列表快速展示用），明细一律以 items 为准。
    ========================================================================== */
+/* 售后状态在列表 / 详情上的展示词 = 页签口径（球在谁手里）；细分口径（审核 / 退款 / 哪一端收货）
+   留在详情页的步骤条与时间线里 —— 状态给结论，过程给细节（与真实 SAAS 一致） */
+export const AS_STATUS_TEXT = {
+  待总部审核: "待商家处理", 待总部退款: "待商家处理",
+  待总部签收: "待商家收货", 待供应商签收: "待商家收货",
+  待买家退货: "待买家处理",
+  售后完成: "退款成功",
+};
+export const asStatusText = (s) => AS_STATUS_TEXT[s] || s;
+
 export const itemsOf = (d) => d.items || [];
 export const ordersOf = (d) => d.orderNos || [];
 export const packagesOf = (d) => d.packages || [];
