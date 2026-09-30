@@ -621,11 +621,20 @@ const DIFF_TONE = (s) => (["待总部审核", "待供应商审核"].includes(s) 
    原来这里是一套写死的演示卡（商品数 / 差异总量），与后台差异单对不上账，现在直接读 store */
 /* 来源供货单：发货方、物流单号、商品都从它取，差异单里不另存一份 */
 const srcDocOf = (docs, no) => docs.find((d) => d.id === no) || null;
-/* 差异摘要形如「画板套装 应收2/实收0 差2」，应收/实收从这句里取。
-   不能用「应发 − 差异」反推实发：错货时实收等于应收（「华为手机 应收1/实收1 错货 1 件」），反推会得出实发 0 */
-const parseSummary = (s) => {
-  const m = /应收\s*(\d+)\s*\/\s*实收\s*(\d+)/.exec(s || "");
-  return m ? { shouldQty: Number(m[1]), realQty: Number(m[2]) } : null;
+/* 差异摘要形如「画板套装 应收2/实收0 差2｜少货」，一批里多个商品短少时用「；」连接。
+   应发 / 实收从这句里取，不能用「应发 − 差异」反推实发：错货时实收等于应收
+   （「华为手机 应收1/实收1 错货 1 件」），反推会得出实发 0 */
+const diffLinesOf = (row) => {
+  const lines = String(row.summary || "").split("｜")[0].split("；").map((seg) => {
+    const m = /^(.*?)\s*应收\s*(\d+)\s*\/\s*实收\s*(\d+)(?:\s*差\s*(\d+))?/.exec(seg.trim());
+    return m ? { product: m[1].trim(), shouldQty: Number(m[2]), realQty: Number(m[3]), diffQty: m[4] ? Number(m[4]) : null } : null;
+  }).filter(Boolean);
+  if (!lines.length) return [];
+  /* 摘要里没写「差N」（错货等）时：单条用差异单总量，多条按 应发 − 实收 逐条算 */
+  return lines.map((l) => ({
+    ...l,
+    diffQty: l.diffQty ?? (lines.length === 1 ? row.diffQty ?? Math.max(0, l.shouldQty - l.realQty) : Math.max(0, l.shouldQty - l.realQty)),
+  }));
 };
 
 function Diffs({ onDetail }) {
@@ -680,37 +689,56 @@ function SrcDocBlock({ diff, docs }) {
       <div className="note" style={{ marginTop: 6 }}>该供货单不在当前门店可见范围内</div>
     </div>
   );
+  const items = itemsOf(src);
+  const pk = packagesOf(src);
   return (
     <div className="mcard">
       <div className="hd"><b>来源供货单</b><span className="note" style={{ fontSize: 11.5 }}>{src.leg === "hq_store" ? "总仓 → 门店" : "供应商 → 门店"}</span></div>
       <div className="mrow"><span>供货单号</span><b className="mono">{src.id}</b></div>
       <div className="mrow"><span>发货方</span><b>{src.shipper}</b></div>
-      <div className="mrow"><span>商品</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.emoji} {src.product}</b></div>
-      <div className="mrow"><span>规格</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.spec}</b></div>
-      <div className="mrow"><span>快递公司</span><b>{src.carrier || "—"}</b></div>
-      <div className="mrow"><span>物流单号</span><b className="mono">{src.tracking || "—"}</b></div>
-      <div className="mrow"><span>物流轨迹</span><b style={{ fontWeight: 400, textAlign: "right" }}>{src.track || "尚未发货"}</b></div>
+      {/* 一批可能多种商品、拆多个包裹：逐个列出，店员按实物对单 */}
+      {items.map((it) => (
+        <div key={it.product} className="mrow" style={{ gap: 8 }}>
+          <span>{it.emoji ? `${it.emoji} ` : ""}{it.product}</span>
+          <b style={{ fontWeight: 400, textAlign: "right" }}>{it.spec || "—"}</b>
+        </div>
+      ))}
+      {pk.length
+        ? pk.map((p, i) => (
+          <div key={p.tracking || i} className="mrow" style={{ alignItems: "flex-start" }}>
+            <span>{pk.length > 1 ? `包裹 ${i + 1}` : "物流单号"}</span>
+            <div style={{ textAlign: "right", fontSize: 12.5 }}>
+              <div className="mono">{p.carrier} {p.tracking}</div>
+              <div className="note" style={{ marginTop: 2 }}>{p.track || "尚未发货"}</div>
+            </div>
+          </div>
+        ))
+        : <div className="mrow"><span>物流单号</span><b>—</b></div>}
     </div>
   );
 }
 
-/* 差异明细：商品取自来源供货单、数量取自差异摘要 */
+/* 差异明细：商品取自来源供货单（按商品名对上行，拿到图与规格）、数量取自差异摘要 */
 function DiffItemsBlock({ diff, docs }) {
   const src = srcDocOf(docs, diff.supplyNo);
-  const n = parseSummary(diff.summary);
-  if (!src && !n) return null;
+  const items = src ? itemsOf(src) : [];
+  const lines = diffLinesOf(diff);
+  if (!lines.length) return null;
   return (
     <div className="mcard">
-      <div className="hd"><b>差异明细</b></div>
-      <div style={{ display: "flex", gap: 10, padding: "6px 0", borderTop: "1px solid #f2f2f2" }}>
-        <span style={{ width: 44, height: 44, borderRadius: 5, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 20 }}>{src?.emoji || "📦"}</span>
-        <div style={{ flex: 1, fontSize: 12.5 }}>
-          <div>{src ? `${src.product}　${src.spec}` : diff.summary}</div>
-          <div className="note" style={{ marginTop: 3 }}>
-            {n ? `应发 ${n.shouldQty}　实发 ${n.realQty}　差异 ${diff.diffQty ?? Math.max(0, n.shouldQty - n.realQty)} 件` : `差异 ${diff.diffQty ?? "—"} 件`}
+      <div className="hd"><b>差异明细</b>{lines.length > 1 && <span className="note" style={{ fontSize: 11.5 }}>共 {lines.length} 种</span>}</div>
+      {lines.map((ln, i) => {
+        const it = items.find((x) => String(x.product).trim() === ln.product);
+        return (
+          <div key={i} style={{ display: "flex", gap: 10, padding: "6px 0", borderTop: "1px solid #f2f2f2" }}>
+            <span style={{ width: 44, height: 44, borderRadius: 5, background: "#f2f6f5", display: "grid", placeItems: "center", fontSize: 20, flex: "none" }}>{it?.emoji || "📦"}</span>
+            <div style={{ flex: 1, fontSize: 12.5 }}>
+              <div>{ln.product}{it?.spec ? `　${it.spec}` : ""}</div>
+              <div className="note" style={{ marginTop: 3 }}>应发 {ln.shouldQty}　实收 {ln.realQty}　差异 {ln.diffQty} 件</div>
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 }
