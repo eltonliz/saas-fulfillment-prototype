@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, applyShip, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag, DiffAuditModal } from "./supply.jsx";
 import { itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, SUPPLIER_SELF, CARRIERS, asStatusText } from "../data.js";
+import { RefundConfirmModal, BackToBuyerModal } from "./aftersale.jsx";
 import { OrderPool, poolOf, OrderRefsPop } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager, Confirm } from "../ui.jsx";
 import { supplierStore, supplyStore, diffStore, orderStore, patchDoc, addrStore, afterSaleStore } from "../store.js";
@@ -1331,6 +1332,8 @@ export function SupAfterSales() {
   const [note, setNote] = useState(null);
   const [detail, setDetail] = useState(null);
   const [back, setBack] = useState(null);
+  const [refundDlg, setRefundDlg] = useState(null);   // 退货异常：原路退款（退款确认）
+  const [backDlg, setBackDlg] = useState(null);       // 退货异常：寄回商品给买家
   const [toast, tip] = useToast();
   const { sel, allSel, toggleAll, toggleOne } = useRowSelect(rows.map((r) => r.asNo));
 
@@ -1341,18 +1344,44 @@ export function SupAfterSales() {
   };
   const add = (r, t, lines) => { r.timeline = [...r.timeline, { t, lines: lines || [], at: asNow() }]; };
 
+  /* 拒签之后：本页与租户侧同一套卡——【原路退款】= 裁决退款（钱仍由总部执行）/【寄回】= 登记退回物流、售后关闭 */
+  const decideRefund = (row, { real, note }) => {
+    act(row, (r) => {
+      const should = String(r.refund).replace("¥", "");
+      add(r, "供应商裁决：仍向买家退款", [
+        note || "拒签商品由总部与供应商线下处理",
+        ...(real === should ? [] : [`应退 ￥${should}，实退 ￥${real}`]),
+      ]);
+      r.realRefund = real;
+      r.status = "待总部退款";
+      return r;
+    });
+    setRefundDlg(null);
+    tip("已裁决退款 → 待总部确认退款");
+  };
+  const shipBack = (row, { carrier, tracking }) => {
+    act(row, (r) => {
+      add(r, "供应商寄回商品", [`快递公司：${carrier}`, `物流单号：${tracking}`]);
+      add(r, "售后关闭", ["商品已寄回买家，不退款"]);
+      r.reject = { ...(r.reject || {}), carrier, backNo: tracking };
+      r.status = "售后关闭";
+      return r;
+    });
+    setBackDlg(null);
+    tip("已寄回买家 → 售后关闭（不退款）");
+  };
+
   /* 供应商只有这两个动作，都不涉及钱款 */
   const sign = (row) => {
     act(row, (r) => { add(r, "供应商已签收验收通过", ["验收结果：实物与申请一致，可退款"]); r.status = "待总部退款"; return r; });
     tip("已签收验收 → 待总部退款");
   };
-  const refuse = (row, backNo, carrier, why, photos) => {
+  const refuse = (row, why, photos) => {
     act(row, (r) => {
       add(r, "供应商拒绝签收退货", [`拒签原因：${why}`, `举证照片：${photos} 张`]);
-      /* 谁发货谁处理：本单是供应商发的货，退回物流就由供应商登记，两端同步看到同一条 */
-      r.reject = { why, photos, carrier, backNo, at: asNow() };
-      add(r, "供应商寄回商品", [`快递公司：${carrier}`, `物流单号：${backNo}`]);
-      add(r, "进入退货异常，待总部处理", ["待总部裁决：认可拒签并关闭售后，或仍向买家退款"]);
+      /* 拒签只登记原因与举证；退回物流（寄回买家）在拒签之后由「退货异常」卡上的【寄回】登记 */
+      r.reject = { why, photos, at: asNow() };
+      add(r, "进入退货异常，待总部处理", ["待总部裁决：原路退款，或把商品寄回买家"]);
       r.status = "退货异常";
       return r;
     });
@@ -1373,7 +1402,7 @@ export function SupAfterSales() {
         : d.status === "待买家退货" ? "总部已同意，等待买家退货"
           : d.status === "待供应商签收" ? "买家已退货，待本供应商签收 / 验收"
             : d.status === "待总部退款" ? "已签收验收，等待总部退款（原路退回买家）"
-              : d.status === "退货异常" ? "本供应商已拒签、商品已寄回买家，等总部裁决"
+              : d.status === "退货异常" ? "本供应商已拒签，待处理：原路退款（退钱给买家，由总部执行）或把拒签商品寄回买家（登记退回物流）"
                 : d.status === "售后完成" ? "售后已完成，退款由总部执行"
                   : d.status === "售后关闭" ? "总部已关闭该售后单"
                     : "—";
@@ -1411,12 +1440,13 @@ export function SupAfterSales() {
                     <span style={{ fontSize: 12.5, color: "#f5a623" }}>已验收，等待总部退款（原路退回买家）</span>
                   )}
                   {d.status === "退货异常" && (
-                    <span className="hl" data-hl="拒签不直接关单，转总部裁决">
-                      <span style={{ fontSize: 12.5, color: "#f5522e" }}>已拒签、商品已寄回买家，等总部裁决</span>
+                    <span className="hl" data-hl="拒签不直接关单：原路退款（总部执行）或寄回商品">
+                      <button className="btn primary" onClick={() => setRefundDlg(d)}>原路退款</button>
+                      <button className="btn plain" style={{ marginLeft: 10 }} onClick={() => setBackDlg(d)}>寄回</button>
                     </span>
                   )}
                   {["售后完成", "售后关闭"].includes(d.status) && (
-                    <span style={{ fontSize: 12.5, color: "#8a949d" }}>{d.status === "售后完成" ? "售后已完成，退款由总部执行" : "该售后单已由总部关闭"}</span>
+                    <span style={{ fontSize: 12.5, color: "#8a949d" }}>{d.status === "售后完成" ? "售后已完成，退款由总部执行" : "该售后单已关闭（不退款）"}</span>
                   )}
                   <span style={{ color: "#25c7a5", fontSize: 13, cursor: "pointer" }} onClick={() => setNote(d)}>备 注</span>
                 </div>
@@ -1537,7 +1567,9 @@ export function SupAfterSales() {
 
         {toast}
         {note && <AsNoteModal row={note} onClose={() => setNote(null)} onSaved={(text) => { act(note, (r) => { r.supNote = text; return r; }); tip("备注已保存（仅本供应商可见）"); setNote(null); }} />}
-        {back && <RefuseModal row={back} onClose={() => setBack(null)} onOk={(no, carrier, why, photos) => refuse(back, no, carrier, why, photos)} />}
+        {back && <RefuseModal row={back} onClose={() => setBack(null)} onOk={(why, photos) => refuse(back, why, photos)} />}
+        {refundDlg && <RefundConfirmModal row={refundDlg} onClose={() => setRefundDlg(null)} onOk={(v) => decideRefund(refundDlg, v)} />}
+        {backDlg && <BackToBuyerModal row={backDlg} onClose={() => setBackDlg(null)} onOk={(v) => shipBack(backDlg, v)} />}
       </>
     );
   }
@@ -1635,27 +1667,14 @@ export function SupAfterSales() {
 /* ---------------- 拒绝签收退货（拒签原因 + 举证照片 + 退回物流单号，必填） ----------------
    拒签不直接关单：转「退货异常」，由总部裁决（认可拒签并关单，或仍向买家退款） */
 function RefuseModal({ row, onClose, onOk }) {
-  /* 代发单的货由供应商处理（谁发货谁处理）：退回物流在这里一次登记，两端同步；
-     收件人信息取订单买家快照，售后单里没有就回落到客户信息 */
-  const order = orderStore.get().find((o) => o.no === row.no);
-  const b = order?.buyer || {};
-  const who = b["收件人"] || b["昵称"] || row.customer?.["收件人"] || "—";
-  const phone = b["收件人电话"] || row.customer?.["收件人电话"] || "—";
-  const addr = b["收件人地址"] || row.customer?.["收货地址"] || "—";
   const [photos, setPhotos] = useState(0);
-  const [no, setNo] = useState("");
-  const [carrier, setCarrier] = useState(CARRIERS[0]);
   const [why, setWhy] = useState("");
-  const ok = photos >= 1 && no.trim() && why.trim();
+  const ok = photos >= 1 && why.trim();
   return (
     <div className="gmock" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="gbox">
         <b>拒绝签收退货</b>
         <p>{row.asNo} · {row.product}</p>
-        <div style={{ marginTop: 14, fontSize: 13, lineHeight: 2, color: "#666" }}>
-          <div>收件人：<b style={{ color: "#333" }}>{who}</b>　收件人电话：<b className="mono" style={{ color: "#333" }}>{phone}</b></div>
-          <div>收货地址：<b style={{ color: "#333" }}>{addr}</b></div>
-        </div>
         <div className="note" style={{ marginTop: 10, lineHeight: 1.9 }}>
           拒绝签收后商品<b>寄回给买家</b>，售后单转「退货异常」——<b>是否退款由总部裁决</b>，本后台不决定钱款。
         </div>
@@ -1675,19 +1694,9 @@ function RefuseModal({ row, onClose, onOk }) {
             <span className="note">已传 {photos} 张</span>
           </div>
         </div>
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 13, marginBottom: 6 }}><i style={{ color: "#f5522e" }}>*</i> 快递公司信息</div>
-          <select className="ctl" style={{ width: "100%" }} value={carrier} onChange={(e) => setCarrier(e.target.value)}>
-            {CARRIERS.map((c) => <option key={c}>{c}</option>)}
-          </select>
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 13, marginBottom: 6 }}><i style={{ color: "#f5522e" }}>*</i> 退回物流单号</div>
-          <input className="ctl" style={{ width: "100%" }} placeholder="请输入寄回给买家的物流单号" value={no} onChange={(e) => setNo(e.target.value)} />
-        </div>
         <div className="gfoot">
           <button className="btn plain" onClick={onClose}>取消</button>
-          <button className="btn primary" disabled={!ok} onClick={() => onOk(no.trim(), carrier, why.trim(), photos)}>确认拒绝签收</button>
+          <button className="btn primary" disabled={!ok} onClick={() => onOk(why.trim(), photos)}>确认拒绝签收</button>
         </div>
       </div>
     </div>
