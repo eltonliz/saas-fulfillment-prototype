@@ -13,6 +13,8 @@ export const SUPPLIERS = [
   { no: "SN00000036", name: "供应商003", contact: "供应商003", phone: "13122223333", enabled: true },
 ];
 export const SHIP_MODES = ["供应商直配", "总部仓直配"];
+/* 发货弹窗 / 批量发货 / 导入模板里的快递公司候选 */
+export const CARRIERS = ["顺丰速运", "圆通速递", "中通快递", "京东物流", "韵达快递", "极兔速递"];
 /* 总部仓直配的货源：供应商供货（货先由供应商送到总部仓）｜总部自有（货为总部自有、不经供应商） */
 export const GOODS_SOURCES = ["供应商供货", "总部自有"];
 export const modeLabelOf = (p) => (p && p.shipMode === "总部仓直配" && p.goodsSource === "总部自有" ? "总部仓直配 · 自有货" : (p ? p.shipMode : ""));
@@ -1110,8 +1112,8 @@ export const SUPPLY_DOCS = [
   /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
      否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
   {
-    id: "FHD2609190008", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 17:12:00",
-    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "供应商供货", 
+    id: "FHD2609190013", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 17:12:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "供应商供货",
     orderNos: [],
     items: [
       { product: "保温饭盒", spec: "304不锈钢 / 1.2L", emoji: "🍱", qty: 15, sent: 15, received: 14, from: [] },

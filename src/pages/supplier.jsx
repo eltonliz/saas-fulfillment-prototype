@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { TemplateDrawer, ImportDrawer, BatchShipDrawer, applyShipBatch, applyShip, ReceiveAbnormal, EvidencePhotos, DIFF_TABS, diffInTab, newFhdId, MakeupTag, DiffAuditModal } from "./supply.jsx";
-import { itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, SUPPLIER_SELF } from "../data.js";
+import { itemsOf, ordersOf, packagesOf, qtyOf, sentOf, receivedOf, itemsLabel, SUPPLIER_SELF, CARRIERS } from "../data.js";
 import { OrderPool, poolOf, OrderRefsPop } from "./supply.jsx";
 import { TrackDrawer, useToast, useRowSelect, BatchBar, usePaged, Pager, Confirm } from "../ui.jsx";
 import { supplierStore, supplyStore, diffStore, orderStore, patchDoc, addrStore, afterSaleStore } from "../store.js";
@@ -9,7 +9,6 @@ const LEG_LABEL = {
   supplier_to_hq: "供应商 → 总仓",
   supplier_inbound: "供应商 → 门店",
 };
-const CARRIERS = ["顺丰速运", "圆通速递", "中通快递", "京东物流", "韵达快递", "极兔速递"];
 /* 供货单物流可改窗口：已发货且收货方未收货（部分收货/已收货/收货异常一律锁定） */
 const canEditDocTrack = (d) => !!packagesOf(d).length && ["待发货", "已发货"].includes(d.status);
 
@@ -896,21 +895,24 @@ function SupOrderImportDrawer({ rows, onClose, onDone }) {
   );
 }
 
-/* ---------------- 批量发货（在线：勾选多单 + 统一快递公司 + 逐单运单号） ---------------- */
+/* ---------------- 批量发货（在线：勾选多单，逐单填快递公司与运单号） ---------------- */
 function SupOrderBatchShipDrawer({ rows, onClose, onDone }) {
-  const [carrier, setCarrier] = useState("顺丰速运");
   const [done, setDone] = useState(0);
   const [sel, setSel] = useState(() => Object.fromEntries(rows.map((o) => [o.id, true])));
+  /* 快递公司按单登记（同一批里各走一家是常态），顶部那个选择器只做「一次填成同一家」的便捷动作 */
+  const [carrier, setCarrier] = useState(() => Object.fromEntries(rows.map((o) => [o.id, "顺丰速运"])));
   const [tracking, setTracking] = useState(() => Object.fromEntries(rows.map((o, i) => [o.id, "SF77120045" + String(60 + i)])));
   const [err, setErr] = useState("");
+
+  const setAllCarrier = (c) => setCarrier((s) => Object.fromEntries(rows.map((o) => [o.id, sel[o.id] ? c : s[o.id] || ""])));
 
   const submit = () => {
     const picked = rows.filter((o) => sel[o.id]);
     if (!picked.length) return setErr("请至少勾选一笔订单");
-    const miss = picked.filter((o) => !tracking[o.id]?.trim());
-    if (miss.length) return setErr(`有 ${miss.length} 行未填物流单号`);
+    const miss = picked.filter((o) => !carrier[o.id] || !tracking[o.id]?.trim());
+    if (miss.length) return setErr(`有 ${miss.length} 行未填快递公司或物流单号`);
     setErr("");
-    if (onDone) onDone(picked.map((o) => ({ order: o, carrier, tracking: tracking[o.id].trim() })));
+    if (onDone) onDone(picked.map((o) => ({ order: o, carrier: carrier[o.id], tracking: tracking[o.id].trim() })));
     setDone(picked.length);
   };
 
@@ -923,7 +925,7 @@ function SupOrderBatchShipDrawer({ rows, onClose, onDone }) {
             <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#25c7a5", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px", fontSize: 28 }}>✓</div>
             <b style={{ fontSize: 17 }}>批量发货成功</b>
             <div className="note" style={{ marginTop: 10, lineHeight: 2 }}>
-              已发货 {done} 单，快递公司 {carrier}。<br />
+              已发货 {done} 单，每单各带自己的快递公司与物流单号。<br />
               每单的订单状态与供货任务已同步更新。
             </div>
             <button className="btn primary" style={{ marginTop: 20 }} onClick={onClose}>完成</button>
@@ -935,18 +937,22 @@ function SupOrderBatchShipDrawer({ rows, onClose, onDone }) {
 
   return (
     <div className="drawer-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="drawer" style={{ width: 940 }}>
+      <div className="drawer" style={{ width: 1040 }}>
         <header>批量发货<button className="x" onClick={onClose}>×</button></header>
         <div className="body">
-          <div className="alert"><span className="ic">i</span>批量发货<b style={{ margin: "0 4px" }}>统一快递公司 + 逐单运单号</b>，收货人可不同；发货地址取地址簿的默认发货地址。</div>
+          <div className="alert"><span className="ic">i</span>批量发货<b style={{ margin: "0 4px" }}>逐单填快递公司与运单号</b>，收货人可不同；发货地址取地址簿的默认发货地址。</div>
           <div className="frow">
-            <label><i>*</i>快递公司</label>
-            <div className="fc"><select value={carrier} onChange={(e) => setCarrier(e.target.value)} style={{ maxWidth: 260 }}>
-              {CARRIERS.map((c) => <option key={c}>{c}</option>)}
-            </select></div>
+            <label>统一快递公司</label>
+            <div className="fc" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <select value="" onChange={(e) => e.target.value && setAllCarrier(e.target.value)} style={{ maxWidth: 220 }}>
+                <option value="">选择后填入所有已勾选行</option>
+                {CARRIERS.map((c) => <option key={c}>{c}</option>)}
+              </select>
+              <span className="note">快递公司按单登记，同一批里可以各走一家；这里选一次只是把已勾选行填成同一家，仍可逐单改</span>
+            </div>
           </div>
           <table className="tbl-tight">
-            <thead><tr><th style={{ width: 40 }}><input type="checkbox" defaultChecked /></th><th className="tw">订单号</th><th>收货人</th><th className="tw">商品</th><th className="tw">数量</th><th className="tw">物流单号</th></tr></thead>
+            <thead><tr><th style={{ width: 40 }}><input type="checkbox" defaultChecked /></th><th className="tw">订单号</th><th>收货人</th><th className="tw">商品</th><th className="tw">数量</th><th className="tw" style={{ width: 132 }}>快递公司</th><th className="tw">物流单号</th></tr></thead>
             <tbody>
               {rows.map((o) => (
                 <tr key={o.id}>
@@ -955,10 +961,13 @@ function SupOrderBatchShipDrawer({ rows, onClose, onDone }) {
                   <td>{(o.buyer["收件人"] || o.buyer["昵称"])}<small>{o.buyer["收件人地址"] || "—"}</small></td>
                   <td className="tw">{o.emoji} {o.product}</td>
                   <td className="tw mono">{o.qty - (o.shippedQty || 0)}</td>
+                  <td className="tw"><select value={carrier[o.id] ?? ""} onChange={(e) => setCarrier((s) => ({ ...s, [o.id]: e.target.value }))} style={{ height: 28, width: 126 }}>
+                    {CARRIERS.map((c) => <option key={c}>{c}</option>)}
+                  </select></td>
                   <td className="tw"><input value={tracking[o.id] ?? ""} onChange={(e) => setTracking((s) => ({ ...s, [o.id]: e.target.value }))} style={{ height: 28, width: 150 }} /></td>
                 </tr>
               ))}
-              {!rows.length && <tr><td colSpan={6} style={{ textAlign: "center", padding: 30, color: "#999" }}>暂无待发货订单</td></tr>}
+              {!rows.length && <tr><td colSpan={7} style={{ textAlign: "center", padding: 30, color: "#999" }}>暂无待发货订单</td></tr>}
             </tbody>
           </table>
           {err && <div className="err" style={{ marginTop: 12 }}>{err}</div>}
