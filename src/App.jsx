@@ -148,7 +148,7 @@ export function App() {
             {page === "配送差异" && <SupplyDiff />}
             {page === "退货返厂" && <TenantReturns />}
             {page === "快递模板" && <ExpressTemplate />}
-            {page === "地址库" && <AddressBook kinds={["总部仓", "门店"]} />}
+            {page === "地址库" && <AddressBook />}
             {page === "通用设置" && <GeneralSetting />}
           </>
         )}

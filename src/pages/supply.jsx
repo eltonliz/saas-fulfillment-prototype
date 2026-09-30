@@ -1086,18 +1086,17 @@ function ShipDrawer({ doc, onClose, onDone }) {
             <span className="note" style={{ marginLeft: "auto" }}>地址在「设置 › 地址库」维护，这里只做选择</span>
           </div>
           <table className="tbl-tight">
-            <thead><tr><th style={{ width: 36 }}></th><th className="tw">类型</th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
+            <thead><tr><th style={{ width: 36 }}></th><th className="tw">联系人</th><th className="tw">联系方式</th><th>地址</th></tr></thead>
             <tbody>
               {addresses.map((a, i) => (
                 <tr key={a.id}>
                   <td><input type="radio" checked={addr === i} onChange={() => setAddr(i)} /></td>
-                  <td className="tw">{a.kind || "—"}</td>
                   <td className="tw">{a.name} {a.isDefault && <span className="tag gray">默认</span>}</td>
                   <td className="tw mono">{a.phone}</td>
                   <td>{a.region.replace(/\//g, "")} {a.detail}</td>
                 </tr>
               ))}
-              {!addresses.length && <tr><td colSpan={5} className="note" style={{ padding: 16 }}>地址库里还没有发货地址，请先到「设置 › 地址库」添加</td></tr>}
+              {!addresses.length && <tr><td colSpan={4} className="note" style={{ padding: 16 }}>地址库里还没有发货地址，请先到「设置 › 地址库」添加</td></tr>}
             </tbody>
           </table>
 
