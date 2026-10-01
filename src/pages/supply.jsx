@@ -267,8 +267,8 @@ export function MakeupTag({ d }) {
   );
 }
 
-/* 商品列：一批可能含多个商品，列表只展示首个 + 「等 N 种」，明细进详情看。
-   多商品时不挂规格 —— 规格是第一个商品的，挂在「等 N 种」下面像是整批的规格 */
+/* 商品列：一批可能含多个商品，列表只展示首个 + 「等 N 件」，明细进详情看。
+   多商品时不挂小字 —— 规格是第一个商品的，挂在「等 N 件」下面像是整批的规格 */
 const Thumb = ({ d }) => {
   const { first, spec, emoji, more } = itemsLabel(d);
   const n = itemsOf(d).length;
@@ -276,8 +276,8 @@ const Thumb = ({ d }) => {
     <div className="prod-cell">
       <span className="thumb" style={{ background: "#f4f7f6" }}>{emoji}</span>
       <div>
-        <div>{first}{more > 0 && <span className="note"> 等 {n} 种</span>}</div>
-        <small>{more > 0 ? `共 ${qtyOf(d)} 件` : spec}</small>
+        <div>{first}{more > 0 && <span className="note"> 等 {n} 件</span>}</div>
+        {more === 0 && <small>{spec}</small>}
       </div>
     </div>
   );
