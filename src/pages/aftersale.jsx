@@ -493,11 +493,11 @@ export function AfterSales() {
             <tr>
               <th style={{ width: 36 }}><input type="checkbox" checked={allSel} onChange={toggleAll} /></th>
               <th style={{ width: 40 }}>序号</th>
-              <th style={{ minWidth: 200 }}>商品信息</th><th className="tw">售后编号</th><th className="tw">售后方式</th>
+              <th style={{ minWidth: 200 }}>商品信息</th><th className="tw">售后编号</th><th className="tw col-new" data-hl="本版新增：代发标" style={{ paddingRight: 92 }}>售后方式</th>
               <th className="tw">发货状态</th><th className="tw">订单金额</th><th className="tw">数量</th>
               <th className="tw">退款金额(元)</th><th className="tw">退还积分</th><th className="tw">申请时间</th><th className="tw">超时时间</th>
-              <th className="tw">售后原因</th><th className="tw">售后状态</th>
-              <th className="tw">操作</th>
+              <th className="tw">售后原因</th><th className="tw col-new" data-hl="本版改动：显示词" style={{ paddingRight: 92 }}>售后状态</th>
+              <th className="tw col-new" data-hl="本版新增：处理" style={{ paddingRight: 80 }}>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -516,7 +516,7 @@ export function AfterSales() {
                   </div>
                 </td>
                 <td className="tw mono">{r.asNo}…</td>
-                <td className="tw">{r.way}{r.dropship && <span className="tag blue" style={{ marginLeft: 6 }}>代发</span>}</td>
+                <td className="tw col-new">{r.way}{r.dropship && <span className="tag blue" style={{ marginLeft: 6 }}>代发</span>}</td>
                 <td className="tw">{r.order.物流状态 && r.order.物流状态 !== "-" ? r.order.物流状态 : r.ship}</td>
                 <td className="tw">{r.amount}</td>
                 <td className="tw">{r.qty}</td>
@@ -525,8 +525,8 @@ export function AfterSales() {
                 <td className="tw mono">{r.at}</td>
                 <td className="tw">{r.timeout}</td>
                 <td className="tw">{r.reason}</td>
-                <td className="tw"><span className={`tag ${TONE(r.status)}`}>{asStatusText(r.status)}</span></td>
-                <td className="tw">
+                <td className="tw col-new"><span className={`tag ${TONE(r.status)}`}>{asStatusText(r.status)}</span></td>
+                <td className="tw col-new">
                   <div className="op-col">
                     {r.dropship ? (
                       <>

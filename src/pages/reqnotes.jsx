@@ -55,6 +55,14 @@ export const REQ_NOTES = {
   },
   "t:售后管理": {
     title: "租户后台 · 售后管理",
+    changes: [
+      "**售后状态列**：显示的不是底层状态，而是「给商家看的词」，按状态映射 —— 待总部审核 / 待总部退款 → `待商家处理`；待总部签收 / 待供应商签收 → `待商家收货`；待买家退货 → `待买家处理`；售后完成 → `退款成功`；退货异常 / 退款异常 / 退款中 / 售后关闭 → 原样显示",
+      "**售后方式列**：`仅退款 / 退货退款` + **代发标**（代发 = 一件代发单，判据是这单在不在代发售后数据里）",
+      "**操作列**：代发单在 **待总部审核 / 待总部退款 / 退货异常** 这三个状态显示【处理】，其余状态只有【详情】；自营单只读，只给【备注】【详情】",
+      "**【处理】点开是售后详情页**，动作在详情里按状态给：待总部审核 → 同意 / 拒绝（拒绝必填原因）；待总部退款 → 确认退款（弹窗：应退金额 / 退还积分 / **实退金额可改** / 说明）；退货异常 → **原路退款**（同一个弹窗）/ **寄回**（快递公司 + 快递单号）",
+      "**页签 7 个**：待商家处理 / 待商家收货 / 待买家处理 / 退款异常 / 退款中 / 退款成功（退货异常并入「待商家处理」，靠状态列标红识别）",
+      "**本版不动**：自营（总部仓直配 · 自有货）售后的链路与按钮；买家端售后（本原型未做）",
+    ],
     rules: [
       "自营（总部仓直配 · 自有货 / 自提）：待总部审核「同意 / 拒绝」→ 仅退款：待总部退款「原路退款」→ 售后完成；退货退款：待买家退货 → 待总部签收「同意签收退货 / 拒绝签收退货」→ 待总部退款「原路退款」→ 售后完成",
       "一件代发（供应商直发消费者 · 快递）：**总部审核 + 总部退款，供应商只做货源**。本页可对代发单点「处理」——待总部审核时同意 / 拒绝、待总部退款时确认退款、退货异常时【原路退款】或【寄回】（与供应商后台同一张卡、同一套弹窗）；供应商在供应商后台做签收验收 / 拒签",
@@ -629,6 +637,14 @@ export function ReqPanel({ reqKey, width, setWidth, onClose, top = 92 }) {
           <div style={{ color: "#8a949d", fontSize: 12.5, padding: "24px 0", textAlign: "center" }}>本页暂无需求注释</div>
         ) : (
           <>
+            {!!realList(req.changes).length && (
+              <Sec t="本版本改动">
+                <div style={{ fontSize: 12.5, lineHeight: 1.85, color: "#8a4b00", background: "#fff7e6", border: "1px solid #ffe0a3", borderRadius: 6, padding: "8px 10px", marginBottom: 8 }}>
+                  这一版要动的就下面这些；原型里的历史单据是按老流程造的演示数据，不用管。
+                </div>
+                {realList(req.changes).map((x, i) => <Li key={i} n={i + 1}>{x}</Li>)}
+              </Sec>
+            )}
             {!!realList(req.rules).length && <Sec t="业务规则">{realList(req.rules).map((x, i) => <Li key={i} n={i + 1}>{x}</Li>)}</Sec>}
             {req.flow && <Sec t="数据流转"><div style={{ fontSize: 12.5, lineHeight: 1.85, color: "#3c4650", background: "#f7f9fa", borderRadius: 6, padding: "8px 10px" }}><Rich text={req.flow} /></div></Sec>}
             {(!!realList(req.pre).length || !!realList(req.post).length) && (
