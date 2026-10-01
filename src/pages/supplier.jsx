@@ -1313,7 +1313,7 @@ const asInTab = (status, tab) =>
           : tab === "售后完成" ? status === "售后完成"
             : status === "售后关闭";
 const AS_STEPS_OF = (row) =>
-  row.status === "售后关闭" ? ["买家申请", "总部关闭"]
+  row.status === "售后关闭" ? ["买家申请", "售后关闭"]
     : ["买家申请", "总部审核", "买家退货", "供应商签收", "总部退款", "售后完成"];
 const AS_STEP_IDX = (row) =>
   row.status === "售后完成" ? 99
@@ -1404,7 +1404,7 @@ export function SupAfterSales() {
             : d.status === "待总部退款" ? ((d.timeline || []).some((t) => /拒绝签收退货/.test(t.t)) ? "已裁决退款，等待总部退款（原路退回买家）" : "已签收验收，等待总部退款（原路退回买家）")
               : d.status === "退货异常" ? "本供应商已拒签，待处理：原路退款（退钱给买家，由总部执行）或把拒签商品寄回买家（登记退回物流）"
                 : d.status === "售后完成" ? "售后已完成，退款由总部执行"
-                  : d.status === "售后关闭" ? "总部已关闭该售后单"
+                  : d.status === "售后关闭" ? ((d.timeline || []).some((t) => /供应商寄回商品/.test(t.t)) ? "本端已登记寄回，商品在退回买家的路上，售后关闭（不退款）" : "该售后单已关闭，不退款")
                     : "—";
     return (
       <>
@@ -1494,7 +1494,9 @@ export function SupAfterSales() {
                 <b style={{ fontSize: 13.5 }}>拒签信息</b>
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9, fontSize: 13, color: "var(--text-2)" }}>
                   <div><span className="note">拒签原因：</span>{d.reject.why}</div>
-                  <div><span className="note">退回物流：</span>{d.reject.carrier ? `${d.reject.carrier} ` : ""}<span className="mono">{d.reject.backNo}</span></div>
+                  <div><span className="note">退回物流：</span>{d.reject.backNo
+                    ? <>{d.reject.carrier ? `${d.reject.carrier} ` : ""}<span className="mono">{d.reject.backNo}</span></>
+                    : <span style={{ color: "#8a949d" }}>本端登记【寄回】后回填</span>}</div>
                   <div><span className="note">拒签时间：</span><span className="mono">{d.reject.at}</span></div>
                   <div style={{ display: "flex", gap: 8 }}><span className="note" style={{ flex: "none" }}>举证照片：</span><EvidencePhotos evidence={`拒签举证 · 照片 ${d.reject.photos} 张`} size={52} /></div>
                 </div>
