@@ -1122,6 +1122,63 @@ export const SUPPLY_DOCS = [
     qty: 15, sent: 15, received: 14,
     status: "收货异常",
   },
+  /* 多商品批次：一批货里两三种商品是常态，门店要按商品行点数、按商品行登记实收 ——
+     上面那批样本一单只有一种商品，多商品的卡片、确认收货的分商品登记、差异单的多行摘要都没得看，
+     所以每个「模式 × 状态」的组合里补一条多商品的（自有货那条放后面） */
+  {
+    id: "FHD2609210101", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-21 10:20:00",
+    shipper: "供应商002", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
+    orderNos: [],
+    items: [
+      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 6, sent: 0, received: 0, from: [] },
+      { product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 4, sent: 0, received: 0, from: [] },
+      { product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 8, sent: 0, received: 0, from: [] },
+    ],
+    packages: [],
+    qty: 18, sent: 0, received: 0,
+    status: "待发货",
+  },
+  {
+    id: "FHD2609210102", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-21 09:05:00",
+    shipper: "供应商002", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
+    orderNos: [],
+    items: [
+      { product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎", qty: 6, sent: 6, received: 0, from: [] },
+      { product: "什锦果蔬", spec: "礼盒装 / 6 盒", emoji: "🧺", qty: 4, sent: 4, received: 0, from: [] },
+      { product: "大米", spec: "5kg / 袋", emoji: "🌾", qty: 8, sent: 8, received: 0, from: [] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112702", track: "已发货 2026-09-21 15:30:00" }],
+    qty: 18, sent: 18, received: 0,
+    status: "待收货",
+  },
+  {
+    id: "FHD2609210103", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-20 16:40:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "供应商供货",
+    orderNos: [],
+    items: [
+      { product: "儿童书包", spec: "蓝色 / 大号", emoji: "🎒", qty: 12, sent: 8, received: 8, from: [] },
+      { product: "保温饭盒", spec: "304不锈钢 / 1.2L", emoji: "🍱", qty: 6, sent: 6, received: 6, from: [] },
+      { product: "台灯", spec: "护眼 / 白色", emoji: "💡", qty: 6, sent: 3, received: 3, from: [] },
+    ],
+    packages: [
+      { carrier: "顺丰速运", tracking: "SF7712007788", track: "已发货 2026-09-20 18:10:00" },
+      { carrier: "圆通速递", tracking: "YT5500338977", track: "已发货 2026-09-20 18:12:00" },
+    ],
+    qty: 24, sent: 17, received: 17,
+    status: "部分收货",
+  },
+  {
+    id: "FHD2609210105", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-20 09:30:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "供应商供货",
+    orderNos: [],
+    items: [
+      { product: "儿童绘本套装", spec: "全 8 册", emoji: "📚", qty: 8, sent: 8, received: 6, from: [] },
+      { product: "画板套装", spec: "12 色 / 含画架", emoji: "🎨", qty: 4, sent: 4, received: 4, from: [] },
+    ],
+    packages: [{ carrier: "顺丰速运", tracking: "SF7712007799", track: "已发货 2026-09-21 08:30:00" }],
+    qty: 12, sent: 12, received: 10,
+    status: "收货异常",
+  },
   /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
      否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
   {
@@ -1136,6 +1193,18 @@ export const SUPPLY_DOCS = [
   },
   /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
      否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
+  {
+    id: "FHD2609210104", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-21 08:40:00",
+    shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "总部自有",
+    orderNos: [],
+    items: [
+      { product: "奶粉", spec: "800g / 罐", emoji: "🥛", qty: 4, sent: 4, received: 0, from: [] },
+      { product: "山茶油", spec: "750ml / 瓶", emoji: "🫒", qty: 6, sent: 6, received: 0, from: [] },
+    ],
+    packages: [{ carrier: "京东物流", tracking: "JD9911223301", track: "已发货 2026-09-21 14:00:00" }],
+    qty: 10, sent: 10, received: 0,
+    status: "待收货",
+  },
   {
     id: "FHD2609190010", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 16:05:00",
     shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "总部自有", 
@@ -1599,6 +1668,8 @@ export const DIFFS = [
   /* 门店确认收货时按应发总量算差 → 少发那部分当场开单：不举证，直接进审核 / 补发 */
   { id: "DIFF2609190005", source: "门店上报", leg: "供应商 → 门店", reporter: "门店", supplyNo: "FHD2609190003", shipper: "供应商002", summary: "得佑婴幼儿手口湿巾 弱酸无残留 应收132/实收100 差32｜发货方未发齐 32 件", diffQty: 32, status: "待总部审核", evidence: "少发（发货方未发齐 32 件）· 无需举证", note: "到货 100 件已入库，未发的 32 件等补发" },
   { id: "DIFF2609190006", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609190007", shipper: "九天教育总仓", summary: "儿童书包 应收20/实收12 差8｜发货方未发齐 8 件", diffQty: 8, status: "补发中", evidence: "少发（发货方未发齐 8 件）· 无需举证", makeup: "FHD2609190008" },
+  /* 多商品批次的差异单：摘要只列短少的那个商品，同批别的商品数量无误不写进来 */
+  { id: "DIFF2609210007", source: "门店上报", leg: "总仓 → 门店", reporter: "门店", supplyNo: "FHD2609210105", shipper: "九天教育总仓", summary: "儿童绘本套装 应收8/实收6 差2｜少货", diffQty: 2, status: "待总部审核", evidence: "少货 · 照片 2 张", note: "同批画板套装数量无误，仅绘本少 2 册" },
 ];
 
 /* ==========================================================================

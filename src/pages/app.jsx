@@ -32,6 +32,11 @@ const legTextOf = (d) => (d.leg === "supplier_inbound" ? "供应商 → 门店" 
 /* 收货方视角：「已发货」= 还没确认 → 待收货；「部分收货」= 已确认收过、只是没发齐 → 归「已收货」并带标签 */
 const stateOf = (d) => (d.status === "已发货" ? "待收货" : d.status === "部分收货" ? "已收货" : d.status);
 const isPartial = (d) => d.status === "部分收货";
+/* 多商品批次只报「差 N 件」不够用：得点名是哪个商品差 —— 门店照着这一行才能对出来补什么 */
+const shortLinesOf = (d) => itemsOf(d).filter((i) => (i.received || 0) < (i.qty || 0)).map((i) => `${i.product} 差 ${i.qty - (i.received || 0)}`);
+const lines = (n, arr) => (n > 1 && arr.length
+  ? <div style={{ color: "#8a949d", fontWeight: 400, fontSize: 11.5, marginTop: 2 }}>{arr.join("　")}</div>
+  : null);
 
 /* 移动端底部弹层的壳，物流 / 关联订单共用 */
 function MPop({ title, sub, onClose, children }) {
@@ -271,13 +276,30 @@ function Receipts({ cards, onOpen, mode, setMode, chip, setChip, kw, setKw }) {
                 <span style={{ color: STATE_TONE(st) }}>{st}</span></div>
               <div className="mrow"><span>供货单号</span><b className="mono">{d.id}</b></div>
               <div className="mrow"><span>供货路径</span><b>{legTextOf(d)}</b></div>
-              <div className="mrow"><span>商品</span><b>{l.emoji} {l.more ? `${l.first} 等 ${n} 种` : l.first}</b></div>
-              {!l.more && <div className="mrow"><span>规格</span><b>{l.spec}</b></div>}
+              {/* 多商品的批次折叠成「等 N 种」门店没法照着点数，逐个列；单商品仍拆成 商品 / 规格 两行 */}
+              {n > 1 ? (
+                <div className="mrow" style={{ alignItems: "flex-start" }}>
+                  <span style={{ flex: "none" }}>商品</span>
+                  <b style={{ textAlign: "right", lineHeight: 1.7 }}>
+                    {itemsOf(d).map((it) => (
+                      <div key={it.product}>{it.emoji} {it.product}
+                        <span style={{ color: "#8a949d", fontWeight: 400 }}>　{it.spec}</span>
+                        <span style={{ color: "#25c7a5" }}> ×{it.qty}</span>
+                      </div>
+                    ))}
+                  </b>
+                </div>
+              ) : (
+                <>
+                  <div className="mrow"><span>商品</span><b>{l.emoji} {l.first}</b></div>
+                  <div className="mrow"><span>规格</span><b>{l.spec}</b></div>
+                </>
+              )}
               <div className="mrow"><span>{isPartial(d) ? "应发 / 已发" : sent ? "发货数量" : "应发数量"}</span><b>{isPartial(d) ? `${qtyOf(d)} / ${sent}` : sent || qtyOf(d)} 件</b></div>
               {/* 部分收货是「还差着补」，收货异常是「已经少了」——两种口径不能共用一句话 */}
-              {isPartial(d) && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {received}｜待补 {qtyOf(d) - received} 件</b></div>}
-              {isPartial(d) && sent < qtyOf(d) && <div className="mrow"><span>发货方待发</span><b style={{ color: "#f5a623" }}>{qtyOf(d) - sent} 件</b></div>}
-              {d.status === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>实收 {received}｜差 {qtyOf(d) - received} 件</b></div>}
+              {isPartial(d) && <div className="mrow" style={{ alignItems: "flex-start" }}><span style={{ flex: "none" }}>收货进度</span><b style={{ color: "#f5a623", textAlign: "right" }}>已收 {received}｜待补 {qtyOf(d) - received} 件{lines(n, shortLinesOf(d))}</b></div>}
+              {isPartial(d) && sent < qtyOf(d) && <div className="mrow" style={{ alignItems: "flex-start" }}><span style={{ flex: "none" }}>发货方待发</span><b style={{ color: "#f5a623" }}>{qtyOf(d) - sent} 件</b></div>}
+              {d.status === "收货异常" && <div className="mrow" style={{ alignItems: "flex-start" }}><span style={{ flex: "none" }}>实收数量</span><b style={{ color: "#f5522e", textAlign: "right" }}>实收 {received}｜差 {qtyOf(d) - received} 件{lines(n, shortLinesOf(d))}</b></div>}
               <div className="mrow"><span>发货主体</span><b>{d.shipper}</b></div>
               <div className="mrow"><span>发货时间</span><b className="mono">{sent ? d.batchAt || "—" : "未发货"}</b></div>
               {pk.length > 0 && (
@@ -466,15 +488,31 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
         {card.isMakeup && <div className="mrow"><span>单据类型</span><b style={{ color: "#25c7a5" }}>配送差异补发单{card.reshipOf ? `（源差异单 ${card.reshipOf}）` : ""}</b></div>}
         <div className="mrow"><span>供货单号</span><b className="mono">{card.id}</b></div>
         <div className="mrow"><span>供货路径</span><b>{legTextOf(card)}</b></div>
-        <div className="mrow"><span>商品</span><b>{label.emoji} {label.more ? `${label.first} 等 ${items.length} 种` : label.first}</b></div>
-        {!label.more && <div className="mrow"><span>规格</span><b>{label.spec}</b></div>}
+        {items.length > 1 ? (
+          <div className="mrow" style={{ alignItems: "flex-start" }}>
+            <span style={{ flex: "none" }}>商品</span>
+            <b style={{ textAlign: "right", lineHeight: 1.7 }}>
+              {items.map((it) => (
+                <div key={it.product}>{it.emoji} {it.product}
+                  <span style={{ color: "#8a949d", fontWeight: 400 }}>　{it.spec}</span>
+                  <span style={{ color: "#25c7a5" }}> ×{it.qty}</span>
+                </div>
+              ))}
+            </b>
+          </div>
+        ) : (
+          <>
+            <div className="mrow"><span>商品</span><b>{label.emoji} {label.first}</b></div>
+            <div className="mrow"><span>规格</span><b>{label.spec}</b></div>
+          </>
+        )}
         <div className="mrow"><span>{isPartial(card) ? "应发 / 已发" : sent ? "发货数量" : "应发数量"}</span><b>{isPartial(card) ? `${qtyOf(card)} / ${sent}` : sent || qtyOf(card)} 件</b></div>
         <div className="mrow"><span>发货主体</span><b>{card.shipper}</b></div>
         <div className="mrow"><span>发货时间</span><b className="mono">{sent ? card.batchAt || "—" : "未发货"}</b></div>
         {/* 部分收货是「还差着补」，收货异常是「已经少了」—— 两种口径不共用一句话 */}
-        {isPartial(card) && <div className="mrow"><span>收货进度</span><b style={{ color: "#f5a623" }}>已收 {received}｜待补 {qtyOf(card) - received} 件</b></div>}
-        {isPartial(card) && sent < qtyOf(card) && <div className="mrow"><span>发货方待发</span><b style={{ color: "#f5a623" }}>{qtyOf(card) - sent} 件</b></div>}
-        {card.status === "收货异常" && <div className="mrow"><span>实收数量</span><b style={{ color: "#f5522e" }}>实收 {received}｜差 {qtyOf(card) - received} 件</b></div>}
+        {isPartial(card) && <div className="mrow" style={{ alignItems: "flex-start" }}><span style={{ flex: "none" }}>收货进度</span><b style={{ color: "#f5a623", textAlign: "right" }}>已收 {received}｜待补 {qtyOf(card) - received} 件{lines(items.length, shortLinesOf(card))}</b></div>}
+        {isPartial(card) && sent < qtyOf(card) && <div className="mrow" style={{ alignItems: "flex-start" }}><span style={{ flex: "none" }}>发货方待发</span><b style={{ color: "#f5a623" }}>{qtyOf(card) - sent} 件</b></div>}
+        {card.status === "收货异常" && <div className="mrow" style={{ alignItems: "flex-start" }}><span style={{ flex: "none" }}>实收数量</span><b style={{ color: "#f5522e", textAlign: "right" }}>实收 {received}｜差 {qtyOf(card) - received} 件{lines(items.length, shortLinesOf(card))}</b></div>}
         {pk.length > 0 && (
           <div className="mrow"><span>{pk.length > 1 ? "包裹" : "物流单号"}</span>
             {pk.length > 1
