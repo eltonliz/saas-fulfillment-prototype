@@ -271,9 +271,9 @@ function Receipts({ cards, onOpen, mode, setMode, chip, setChip, kw, setKw }) {
                 <span style={{ color: STATE_TONE(st) }}>{st}</span></div>
               <div className="mrow"><span>供货单号</span><b className="mono">{d.id}</b></div>
               <div className="mrow"><span>供货路径</span><b>{legTextOf(d)}</b></div>
-              {/* 列表卡只报「有哪些商品」：一种就给名字 + 规格两行；多种就「首个 等 N 件」一行 ——
+              {/* 列表卡只报「有哪些商品」：一种就给名字 + 规格两行；多种就「首个 等 N 种」一行 ——
                  每种商品各多少、什么规格，进详情的「商品信息」卡看，外面不铺开 */}
-              <div className="mrow"><span>商品</span><b>{l.emoji} {l.more ? `${l.first} 等 ${n} 件` : l.first}</b></div>
+              <div className="mrow"><span>商品</span><b>{l.emoji} {l.more ? `${l.first} 等 ${n} 种` : l.first}</b></div>
               {!l.more && <div className="mrow"><span>规格</span><b>{l.spec}</b></div>}
               <div className="mrow"><span>{isPartial(d) ? "应发 / 已发" : sent ? "发货数量" : "应发数量"}</span><b>{isPartial(d) ? `${qtyOf(d)} / ${sent}` : sent || qtyOf(d)} 件</b></div>
               {/* 部分收货是「还差着补」，收货异常是「已经少了」——两种口径不能共用一句话 */}
@@ -468,7 +468,7 @@ function Receive({ card, onConfirm, onBack, onGoDiffs }) {
         {card.isMakeup && <div className="mrow"><span>单据类型</span><b style={{ color: "#25c7a5" }}>配送差异补发单{card.reshipOf ? `（源差异单 ${card.reshipOf}）` : ""}</b></div>}
         <div className="mrow"><span>供货单号</span><b className="mono">{card.id}</b></div>
         <div className="mrow"><span>供货路径</span><b>{legTextOf(card)}</b></div>
-        <div className="mrow"><span>商品</span><b>{label.emoji} {label.more ? `${label.first} 等 ${items.length} 件` : label.first}</b></div>
+        <div className="mrow"><span>商品</span><b>{label.emoji} {label.more ? `${label.first} 等 ${items.length} 种` : label.first}</b></div>
         {!label.more && <div className="mrow"><span>规格</span><b>{label.spec}</b></div>}
         <div className="mrow"><span>{isPartial(card) ? "应发 / 已发" : sent ? "发货数量" : "应发数量"}</span><b>{isPartial(card) ? `${qtyOf(card)} / ${sent}` : sent || qtyOf(card)} 件</b></div>
         <div className="mrow"><span>发货主体</span><b>{card.shipper}</b></div>

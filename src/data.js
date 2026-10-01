@@ -1383,7 +1383,7 @@ export const sumOf = (d, k) => itemsOf(d).reduce((s, i) => s + (i[k] || 0), 0);
 export const qtyOf = (d) => (d.items ? sumOf(d, "qty") : d.qty || 0);
 export const sentOf = (d) => (d.items ? sumOf(d, "sent") : d.sent || 0);
 export const receivedOf = (d) => (d.items ? sumOf(d, "received") : d.received || 0);
-/* 列表里商品列的展示文案：单个直接给名字，多个给「首个 等 N 件」 */
+/* 列表里商品列的展示文案：单个直接给名字，多个给「首个 等 N 种」（「种」不是「件」——件会跟数量混） */
 export const itemsLabel = (d) => {
   const it = itemsOf(d);
   if (!it.length) return { first: d.product || "-", spec: d.spec || "", emoji: d.emoji || "📦", more: 0 };
