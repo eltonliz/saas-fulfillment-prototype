@@ -32,7 +32,7 @@ const inTab = (status, tab) =>
 
 const STEPS_OF = (row) =>
   row.status === "售后关闭" ? ["买家维权", "售后关闭"]
-    : row.way === "退货退款" ? ["买家维权", "总部审核", "买家退货", "签收验收", "总部退款", "售后完成"]
+    : row.way === "退货退款" ? ["买家维权", "总部审核", isPickup(row) ? "客户到店退回" : "买家退货", isPickup(row) ? "门店验收" : "签收验收", "总部退款", "售后完成"]
       : ["买家维权", "总部审核", "总部退款", "售后完成"];
 const STEP_IDX = (row) =>
   row.status === "售后完成" ? 99
@@ -40,6 +40,9 @@ const STEP_IDX = (row) =>
       : ({ 待总部审核: 1, 待买家退货: 2, 待总部签收: 3, 待供应商签收: 3, 退货异常: 3, 待总部退款: 4, 退款中: 4, 退款异常: 4 }[row.status] ?? 1);
 const TONE = (s) => (["待总部审核", "待总部退款"].includes(s) ? "warn"
   : s === "退货异常" ? "danger" : s === "售后关闭" ? "gray" : s === "退款异常" ? "danger" : "blue");
+
+/* 自提单（上门自提）：配送方式是订单快照里的，售后单直接读它 */
+const isPickup = (d) => d?.order?.["配送方式"] === "上门自提";
 
 const ROWS = [
   {
@@ -63,6 +66,21 @@ const ROWS = [
     timeline: [
       { t: "买家发起退款申请", lines: ["售后类型：仅退款", "申请退款金额：￥1.00", "退款原因：不想要了", "退款说明：测试"], at: "2026-09-18 17:44:22" },
       { t: "总部已同意售后申请", lines: [], at: "2026-09-18 18:02:10" },
+    ],
+  },
+  /* 自提单的退货退款：货在门店、客户把货拿回店里，不存在「寄回」这一步 ——
+     走到「待买家退货」时显示成「待客户到店退回」，门店收到后直接转「待总部退款」（不走总部签收） */
+  {
+    no: "ORD260925000401", product: "苹果", spec: "红富士 / 5 斤装", emoji: "🍎",
+    asNo: "R20260928260928000009", way: "退货退款", ship: "已发货", amount: "¥99.80", qty: 2, refund: "¥99.80", points: 0,
+    at: "2026-09-28 10:15:32", timeout: "-", reason: "商品与描述不符", status: "待买家退货",
+    buyerNote: "-", refundNote: "-",
+    order: { 应付金额: "¥99.80", 实付金额: "¥99.80", 配送方式: "上门自提", 物流状态: "已签收" },
+    customer: { 申请人: "阿凯", 收货人: "阿凯", 联系电话: "17723456781", 收货地址: "广州市越秀区东风中路 410 号时代地产中心（濮源直播间 · 到店自提）" },
+    goods: { 单价: "49.90", 数量: 2, 实付款: "99.80", 退货数量: 2, 退货金额: "99.80" },
+    timeline: [
+      { t: "买家发起退款申请", lines: ["售后类型：退货退款", "申请退款金额：￥99.80", "退款原因：商品与描述不符", "退款说明：-"], at: "2026-09-28 10:15:32" },
+      { t: "总部已同意售后申请，等待客户到店退回", lines: ["退回方式：到店退回（货在门店，不用寄快递）"], at: "2026-09-28 10:40:05" },
     ],
   },
   {
@@ -172,12 +190,12 @@ export function AfterSales() {
         addTimeline(r, "总部已同意售后申请");
         r.status = "待总部退款";
       } else {
-        addTimeline(r, "总部已同意售后申请，等待买家退货");
+        addTimeline(r, isPickup(r) ? "总部已同意售后申请，等待客户到店退回" : "总部已同意售后申请，等待买家退货");
         r.status = "待买家退货";
       }
       return r;
     });
-    tip(row.way === "仅退款" ? "已同意 → 待总部退款" : "已同意 → 等待买家退货");
+    tip(row.way === "仅退款" ? "已同意 → 待总部退款" : (isPickup(row) ? "已同意 → 等待客户到店退回" : "已同意 → 等待买家退货"));
   };
   /* 代发专属：待总部退款 → 确认退款；退货异常 → 总部裁决 */
   const hqRefund = (row) => {
@@ -205,14 +223,22 @@ export function AfterSales() {
     setRefundDlg(null);
     tip("已裁决：原路退款 → 售后完成");
   };
-  /* 原型快捷：买家寄回的动作发生在买家端（本原型未做），给个按钮让「审核 → 签收 → 退款」链路能走通 */
+  /* 原型快捷：买家寄回的动作发生在买家端（本原型未做），给个按钮让「审核 → 签收 → 退款」链路能走通。
+     自提单不一样：客户是把货拿到店里的，门店收到就等于签收验货做完，直接转「待总部退款」——
+     货不经过总部，没有可签收的实物，所以自提单不走「待总部签收」这一跳 */
   const buyerShipped = (row) => {
+    const pickup = isPickup(row);
     act(row, (r) => {
-      addTimeline(r, "买家已退货，待供应商签收", ["退货方式：快递", "物流单号：SF7712009088"]);
-      r.status = row.dropship ? "待供应商签收" : "待总部签收";
+      if (pickup) {
+        addTimeline(r, "客户已到店退回（门店当面验收）", ["退回方式：到店退回"]);
+        r.status = "待总部退款";
+      } else {
+        addTimeline(r, "买家已退货，待供应商签收", ["退货方式：快递", "物流单号：SF7712009088"]);
+        r.status = row.dropship ? "待供应商签收" : "待总部签收";
+      }
       return r;
     });
-    tip("已模拟买家寄回 → 待" + (row.dropship ? "供应商" : "总部") + "签收");
+    tip(pickup ? "已模拟客户到店退回 → 待总部退款（自提单不走总部签收）" : "已模拟买家寄回 → 待" + (row.dropship ? "供应商" : "总部") + "签收");
   };
   const refuseApply = (row) => {
     act(row, (r) => {
@@ -280,7 +306,7 @@ export function AfterSales() {
         : d.status === "待总部退款" ? (d.dropship
           ? (d.way === "仅退款" ? "总部已同意售后申请，待总部退款（原路退回买家）；不经供应商，无退货环节" : "供应商已签收验收，待总部退款（原路退回买家）")
           : "总部已同意，待总部退款")
-          : d.status === "待买家退货" ? "总部已同意售后申请，等待买家退货"
+          : d.status === "待买家退货" ? (isPickup(d) ? "总部已同意售后申请，等待客户到店退回（货在门店，客户把货拿回来即可，不用寄快递）" : "总部已同意售后申请，等待买家退货")
             : d.status === "待总部签收" ? "买家已退货，待总部签收"
               : d.status === "待供应商签收" ? "买家已退货，待供应商后台签收 / 验收（本页不操作）"
                 : d.status === "退货异常" ? "供应商已拒签，待决定钱款：原路退款（退钱给买家）；商品退回由发货方（供应商）处理，它登记寄回物流后本单自动关闭"
@@ -320,7 +346,7 @@ export function AfterSales() {
                       {d.status === "退货异常" && <button className="btn primary" onClick={() => setRefundDlg(d)}>原路退款</button>}
                       {["待买家退货", "待供应商签收"].includes(d.status) && (
                         <span style={{ fontSize: 12.5, color: "#f5a623" }}>
-                          {d.status === "待买家退货" ? "已同意，等待买家寄回" : "买家已寄回，待供应商后台签收验收（本页不操作）"}
+                          {d.status === "待买家退货" ? (isPickup(d) ? "已同意，等待客户到店退回（门店当面验收，退回后直接转待总部退款）" : "已同意，等待买家寄回") : "买家已寄回，待供应商后台签收验收（本页不操作）"}
                         </span>
                       )}
                       {d.status === "待买家退货" && (
@@ -335,7 +361,7 @@ export function AfterSales() {
                     <>
                       {d.status === "待总部审核" && <><button className="btn primary" onClick={() => agree(d)}>同意</button><button className="btn plain" onClick={() => refuseApply(d)}>拒绝</button></>}
                       {d.status === "待总部签收" && <><button className="btn primary" onClick={() => agreeSign(d)}>同意签收退货</button><button className="btn plain" onClick={() => setBack(d)}>拒绝签收退货</button></>}
-                      {d.status === "待买家退货" && <span style={{ color: "#25c7a5", fontSize: 13, cursor: "pointer" }} onClick={() => buyerShipped(d)}>（原型：模拟买家已寄回）</span>}
+                      {d.status === "待买家退货" && <span style={{ color: "#25c7a5", fontSize: 13, cursor: "pointer" }} onClick={() => buyerShipped(d)}>{isPickup(d) ? "（原型：模拟客户已到店退回）" : "（原型：模拟买家已寄回）"}</span>}
                       {d.status === "待总部退款" && <button className="btn primary" onClick={() => refund(d)}>原路退款</button>}
                       {d.status === "退款异常" && <><button className="btn primary" onClick={() => retryRefund(d)}>重新退款</button><span style={{ fontSize: 12.5, color: "#f5522e" }}>原路退款失败，请重试</span></>}
                       {d.status === "退款中" && <span style={{ fontSize: 12.5, color: "#2f80ed" }}>退款处理中，预计 1-3 个工作日到账</span>}
