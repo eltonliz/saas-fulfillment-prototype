@@ -792,16 +792,21 @@ export const returnAddrOf = (who, book) => (who === HQ_NAME
   ? (book.find((x) => x.type === "warehouse" && x.isDefault) || book.find((x) => x.type === "warehouse") || null)
   : afterAddrOf(who));
 
-/* 可发起返厂的来源 = 本门店**已核销**的自提单商品行（消费者退货是订单的事：
+/* 可发起返厂的来源 = 本门店的**货还在门店**的自提单商品行（消费者退货是订单的事：
    不再从「已收货供货单」派生——没走过供货单的货（总部自有 / 门店自有）也能退）。
+   判据是「货在门店」而不是「客户提没提货」，两种都算：
+     ① 客户提过货 → 客户退货时会把货送回门店
+     ② 客户没提货就整单退款 → 货一直躺在门店、客户也不会再来取，是笔死货，更该往回退
    退回方看商品绑定的供应商；退货期按支付后 N 天算（原型没有核销时间字段，正式版应改按核销时间） */
 export const RETURN_WINDOW_DAYS = 15;
 export const returnSourcesOf = (orders, products, returns, supplyDocs) => {
   const rows = [];
   for (const o of orders) {
     if (o.delivery !== "上门自提" || o.store !== STORE_NAME) continue;
-    if (!o.pickupUsed) continue;   // 客户提过货，才谈得上「退货给门店」
-    if (["已取消", "已关闭", "已全额退款", "售后中", "退款中"].includes(o.status)) continue;
+    const noPickup = !o.pickupUsed && o.status === "已全额退款";   // 没提货就退款，货还在门店
+    if (!o.pickupUsed && !noPickup) continue;
+    /* 提过货的单仍按原口径排除在途售后：钱还没退成，货怎么处理也还没定 */
+    if (o.pickupUsed && ["已取消", "已关闭", "已全额退款", "售后中", "退款中"].includes(o.status)) continue;
     /* 退回路径「原路返回」：从订单反查当时载过它的供货单——
        供应商直发门店的退那家供应商；经总仓到店的先回总仓、再退上游供应商（供应商 → 总仓那张单的发货主体）；
        总部自有货没有供应商，退到总仓为止。查不到供货链路（门店自有货等）时按商品绑定 / 订单快照兜底 */
@@ -829,7 +834,7 @@ export const returnSourcesOf = (orders, products, returns, supplyDocs) => {
     const days = at ? Math.floor((Date.now() - new Date(at.replace(/-/g, "/")).getTime()) / 864e5) : 0;
     rows.push({
       key: `${o.no}|${o.product}`,
-      orderNo: o.no, product: o.product, spec: o.spec, emoji: o.emoji,
+      orderNo: o.no, product: o.product, spec: o.spec, emoji: o.emoji, noPickup,
       qty: canQty, totalQty: o.qty || 1, doneQty,
       buyer: o.buyer?.["昵称"] || "—", phone: o.buyer?.["收件人电话"] || "",
       code: pickupCodeOf(o), at, days, overdue: days > RETURN_WINDOW_DAYS,
@@ -982,12 +987,13 @@ function NewReturnSheet({ sources, onClose, onSubmit }) {
   const [reason, setReason] = useState(RETURN_REASONS[0]);
   const book = addressBookStore.use();
   const k = kw.trim().toLowerCase();
-  /* 订单号 / 提货码 / 手机号 / 昵称都能搜，只在本门店已核销的自提单里搜 */
+  /* 订单号 / 提货码 / 手机号 / 昵称都能搜，只在本门店「货还在门店」的自提单里搜 */
   const hits = (k
     ? sources.filter((s) => [s.orderNo, s.phone, s.buyer, s.product, String(s.code)].some((v) => String(v || "").toLowerCase().includes(k)))
     : sources).slice(0, 20);
   const src = sources.find((s) => s.key === key) || null;
-  const pick = (s) => { setKey(s.key); setQty(s.qty); };
+  /* 没提货就退款的单，原因直接落到「客户取消（未提货）」，不用门店再想 */
+  const pick = (s) => { setKey(s.key); setQty(s.qty); setReason(s.noPickup ? "客户取消（未提货）" : RETURN_REASONS[0]); };
   return (
     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.35)", display: "flex", alignItems: "flex-end" }} onClick={onClose}>
       <div style={{ width: "100%", background: "#fff", borderRadius: "12px 12px 0 0", padding: "16px 16px 22px", maxHeight: "86%", overflow: "auto" }}
@@ -1000,7 +1006,7 @@ function NewReturnSheet({ sources, onClose, onSubmit }) {
         <div className="mfield">
           <label><i>*</i>找这笔订单</label>
           <input value={kw} onChange={(e) => setKw(e.target.value)} placeholder="订单号 / 提货码 / 手机号 / 昵称" style={{ width: "100%", height: 38 }} />
-          <div className="note" style={{ marginTop: 6 }}>只列本门店<b>已核销</b>的自提单——客户提过货，才谈得上退货</div>
+          <div className="note" style={{ marginTop: 6 }}>只列本门店<b>货还在门店</b>的自提单：客户提过货后退回的，和客户<b>没提货就整单退款</b>、货一直压在店里的</div>
         </div>
 
         <div className="mcard" style={{ margin: "0 0 12px", maxHeight: 216, overflow: "auto" }}>
@@ -1010,7 +1016,8 @@ function NewReturnSheet({ sources, onClose, onSubmit }) {
               <input type="radio" checked={s.key === key} onChange={() => pick(s)} style={{ marginTop: 4 }} />
               <div style={{ fontSize: 12.5, lineHeight: 1.7 }}>
                 <b>{s.emoji} {s.product}</b> × {s.qty} 件
-                <div className="mono" style={{ color: "#666", fontSize: 11.5 }}>{s.orderNo} · {s.at.slice(0, 10)} 提货</div>
+                {s.noPickup && <span style={{ marginLeft: 6, fontSize: 10.5, color: "#f5522e", border: "1px solid #ffd0c4", background: "#fff2ef", borderRadius: 3, padding: "0 5px", lineHeight: "17px" }}>未提货 · 已退款</span>}
+                <div className="mono" style={{ color: "#666", fontSize: 11.5 }}>{s.orderNo} · {s.noPickup ? "未核销" : `${s.at.slice(0, 10)} 提货`}</div>
                 <div style={{ color: "#666", fontSize: 11.5 }}>买家 {s.buyer}{s.phone ? ` · ${s.phone}` : ""}</div>
                 {s.doneQty > 0 && <div style={{ color: "#666", fontSize: 11.5 }}>本单共 {s.totalQty} 件，已退 {s.doneQty} 件，可退 {s.qty} 件</div>}
                 {s.overdue && <div style={{ color: "#f5a623", fontSize: 11.5 }}>已超 {RETURN_WINDOW_DAYS} 天退货期，请联系总部确认</div>}
@@ -1019,7 +1026,7 @@ function NewReturnSheet({ sources, onClose, onSubmit }) {
           ))}
           {!hits.length && (
             <div style={{ textAlign: "center", color: "#999", padding: 22, fontSize: 12.5 }}>
-              {sources.length ? "没搜到：换个订单号 / 手机号，或确认这笔单是不是本门店提的货" : "本门店还没有「已提货」的自提单，退不了货"}
+              {sources.length ? "没搜到：换个订单号 / 手机号，或确认这笔单的货是不是在本门店" : "本门店还没有货在店里的自提单，退不了货"}
             </div>
           )}
         </div>
@@ -1027,7 +1034,9 @@ function NewReturnSheet({ sources, onClose, onSubmit }) {
         {src && (
         <div className="mcard" style={{ margin: "0 0 12px" }}>
           <div className="mrow"><span>销售订单</span><b className="mono">{src.orderNo}</b></div>
-          <div className="mrow"><span>提货码</span><b className="mono">{fmtPickupCode(src.code)}</b></div>
+          <div className="mrow"><span>提货码</span>{src.noPickup
+            ? <b style={{ color: "#f5522e", fontWeight: 400 }}>未核销（客户没来取，已退款）</b>
+            : <b className="mono">{fmtPickupCode(src.code)}</b>}</div>
           <div className="mrow"><span>买家</span><b>{src.buyer}</b></div>
           <div className="mrow"><span>商品</span><b>{src.emoji} {src.product}</b></div>
           <div className="mrow"><span>规格</span><b style={{ fontWeight: 400 }}>{src.spec}</b></div>

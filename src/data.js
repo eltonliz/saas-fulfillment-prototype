@@ -1182,6 +1182,17 @@ export const SUPPLY_DOCS = [
   /* 门店APP 登录门店（濮源直播间）的收货样本：三个供货模式 × 五个状态都要有数据，
      否则门店端某个页签点开是空的 —— 顺便让「关联订单 / 多包裹」在门店端有得演示 */
   {
+    id: "FHD2609290106", leg: "supplier_inbound", source: "发货任务生成", batchAt: "2026-09-29 10:00:00",
+    shipper: "供应商002", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心",
+    orderNos: [],
+    items: [
+      { product: "山茶油", spec: "750ml / 瓶", emoji: "🫒", qty: 2, sent: 2, received: 2, from: [] },
+    ],
+    packages: [{ carrier: "中通快递", tracking: "ZT8800112803", track: "已发货 2026-09-29 11:20:00" }],
+    qty: 2, sent: 2, received: 2,
+    status: "已收货",
+  },
+  {
     id: "FHD2609190009", leg: "hq_store", source: "发货任务生成", batchAt: "2026-09-19 15:40:00",
     shipper: "九天教育总仓", receiver: "濮源直播间", receiverAddr: "广州市越秀区东风中路 410 号时代地产中心", goodsSource: "总部自有", 
     orderNos: [],
@@ -1441,6 +1452,19 @@ const LEG_ORDER_RULE = {
   supplier_inbound: { supplyMode: "供应商直配", storeOf: (d) => d.receiver },
   supplier_to_hq: { supplyMode: "总部仓直配", goodsSource: "供应商供货", storeOf: () => "九天门店" },
 };
+
+/* 「客户没提货就退款、货还在门店」的样本：货已经到门店（pickupReady）但提货码从没核销过，
+   客户直接退款走了，这件货就成了门店手里的死货 —— 它也要能发起退货返厂。
+   必须写在 seedBatchOrders() 之前，才会被上面那张 FHD2609290106 认领、反查出退回路径 */
+ORDERS.push({
+  id: "o64", no: "ORD260928000405", product: "山茶油", spec: "750ml / 瓶", qty: 2, unitPrice: "¥88.00", emoji: "🫒",
+  afterSale: "退款成功",
+  amounts: { 商品金额: "176.00", 邮费: "-", 优惠金额: "-", 积分抵现: "-", 应收金额: "176.00", 实收金额: "176.00" },
+  buyer: { 昵称: "陈小满", 收件人电话: "13512345678" },
+  store: "濮源直播间", delivery: "上门自提", pickupCode: "查看自提码", pickupReady: true, pickupUsed: false,
+  createdAt: "2026-09-28 09:41:22", status: "已全额退款",
+  payMethod: "微信支付", payTime: "2026-09-28 09:41:24", ops: ["详情", "备注"], supplyMode: "供应商直配",
+});
 
 function seedBatchOrders() {
   const docs = [];
